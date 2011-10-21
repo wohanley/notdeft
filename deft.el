@@ -112,7 +112,7 @@
 
 ;; Files opened with deft are automatically saved after Emacs has been
 ;; idle for a customizable number of seconds.  This value is a floating
-;; point number given by `deft-auto-save-interval' (default: 1.0).
+;; point number given by `deft-auto-save-interval'.
 
 ;; Getting Started
 ;; ---------------
