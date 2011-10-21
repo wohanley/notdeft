@@ -26,7 +26,6 @@
 ;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;; POSSIBILITY OF SUCH DAMAGE.
 
-;; Version: 0.3
 ;; Author: Jason R. Blevins <jrblevin@sdf.org>
 ;; Keywords: plain text, notes, Simplenote, Notational Velocity
 ;; URL: http://jblevins.org/projects/deft/
@@ -323,6 +322,27 @@ Set to nil to hide."
 
 ;; File processing
 
+(defun deft-title-to-base-filename (s)
+  "Turn a title string to a base filename."
+  (while (string-match "[^[:alnum:]-]+" s)
+    (setq s (replace-match "-" t t s)))
+  s)
+
+(defun deft-format-time-for-filename (tm)
+  "Format a time suitably for filenames."
+  (format-time-string "%Y-%m-%d-%H-%M-%S" tm))
+
+(defun deft-generate-filename ()
+  "Generate a new unique filename without being given any information about note title or content."
+  (let (filename)
+    (while (or (not filename)
+	       (file-exists-p filename))
+      (let* ((ctime (current-time))
+	     (ctime-s (deft-format-time-for-filename ctime))
+	     (fn (format "Deft--%s.%s" ctime-s deft-extension)))
+	(setq filename (concat (file-name-as-directory deft-directory) fn))))
+    filename))
+
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
   (let ((s str))
@@ -558,24 +578,15 @@ use it as the title."
     (deft-open-file file)))
 
 (defun deft-new-file ()
-  "Create a new file quickly, with an automatically generated filename
-(based on the filter string if it is non-nil)."
+  "Create a new file quickly, with an automatically generated filename,
+based on the filter string if it is non-nil."
   (interactive)
-  (let (filename)
-    (if deft-filter-regexp
-	(setq filename (concat (file-name-as-directory deft-directory) deft-filter-regexp "." deft-extension))
-      (let (fmt counter temp-buffer)
-	(setq counter 0)
-	(setq fmt (concat "deft-%d." deft-extension))
-	(setq filename (concat (file-name-as-directory deft-directory)
-			       (format fmt counter)))
-	(while (or (file-exists-p filename)
-		   (get-file-buffer filename))
-	  (setq counter (1+ counter))
-	  (setq filename (concat (file-name-as-directory deft-directory)
-				 (format fmt counter))))
-	(when deft-filter-regexp
-	  (write-region (concat deft-filter-regexp "\n\n") nil filename nil))))
+  (let ((filename
+	 (if deft-filter-regexp
+	     (concat (file-name-as-directory deft-directory) deft-filter-regexp "." deft-extension)
+	   (deft-generate-filename))))
+    (when deft-filter-regexp
+      (write-region (concat deft-filter-regexp "\n\n") nil filename nil))
     (deft-open-file filename)
     (with-current-buffer (get-file-buffer filename)
       (goto-char (point-max)))))
