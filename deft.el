@@ -335,7 +335,7 @@ Set to nil to hide."
 
 (defun deft-format-time-for-filename (tm)
   "Format a time suitably for filenames."
-  (format-time-string "%Y-%m-%d-%H-%M-%S" tm))
+  (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ;; UTC
 
 (defun deft-generate-filename ()
   "Generate a new unique filename without being given any information about note title or content."
