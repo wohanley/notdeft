@@ -228,7 +228,7 @@
   :type 'function
   :group 'deft)
 
-(defcustom deft-auto-save-interval 1.0
+(defcustom deft-auto-save-interval 0.0
   "Idle time in seconds before automatically saving buffers opened by Deft.
 Set to zero to disable."
   :type 'float
