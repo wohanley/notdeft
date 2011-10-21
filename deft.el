@@ -228,13 +228,13 @@
   :safe 'stringp
   :group 'deft)
 
-(defcustom deft-extension "txt"
+(defcustom deft-extension "org"
   "Deft file extension."
   :type 'string
   :safe 'stringp
   :group 'deft)
 
-(defcustom deft-text-mode 'text-mode
+(defcustom deft-text-mode 'org-mode
   "Default mode used for editing files."
   :type 'function
   :group 'deft)
@@ -296,7 +296,7 @@ Set to nil to hide."
 
 ;; Constants
 
-(defconst deft-version "0.3")
+(defconst deft-version "0.3c")
 
 (defconst deft-buffer "*Deft*"
   "Deft buffer name.")
