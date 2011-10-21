@@ -166,16 +166,6 @@
 ;;     (setq deft-extension "org")
 ;;     (setq deft-text-mode 'org-mode)
 
-;; For compatibility with other applications which take the title from
-;; the filename, rather than from first line of the file, set the
-;; `deft-use-filename-as-title' flag to a non-nil value.  This also
-;; changes the default behavior for creating new files when the filter
-;; is non-empty: the filter string will be used as the new filename
-;; rather than inserted into the new file.  To enable this
-;; functionality, simply add the following to your `.emacs` file:
-
-;;     (setq deft-use-filename-as-title t)
-
 ;; You can easily set up a global keyboard binding for Deft.  For
 ;; example, to bind it to F8, add the following code to your `.emacs`
 ;; file:
@@ -250,11 +240,6 @@ Set to zero to disable."
 Set to nil to hide."
   :type '(choice (string :tag "Time format")
 		 (const :tag "Hide" nil))
-  :group 'deft)
-
-(defcustom deft-use-filename-as-title nil
-  "Use filename as title, instead of the first line of the contents."
-  :type 'boolean
   :group 'deft)
 
 ;; Faces
@@ -367,13 +352,10 @@ Set to nil to hide."
 
 (defun deft-parse-title (file contents)
   "Parse the given FILE and CONTENTS and determine the title.
-According to `deft-use-filename-as-title', the title is taken to
-be the first non-empty line of a file or the file name."
-  (if deft-use-filename-as-title
-      (deft-base-filename file)
-    (let ((begin (string-match "^.+$" contents)))
-      (when begin
-	(substring contents begin (match-end 0))))))
+The title is taken to be the first non-empty line of a file name."
+  (let ((begin (string-match "^.+$" contents)))
+    (when begin
+      (substring contents begin (match-end 0)))))
 
 (defun deft-parse-summary (contents title)
   "Parse the file CONTENTS, given the TITLE, and extract a summary.
@@ -381,7 +363,7 @@ The summary is a string extracted from the contents following the
 title."
   (let (summary)
     (setq summary (replace-regexp-in-string "[\n\t]" " " contents))
-    (when (and (not deft-use-filename-as-title) title)
+    (when title
       (string-match (regexp-quote title) summary)
       (setq summary (deft-chomp (substring summary (match-end 0) (length summary)))))
     summary))
@@ -571,18 +553,16 @@ use it as the title."
                      file "." deft-extension))
   (if (file-exists-p file)
       (message (concat "Aborting, file already exists: " file))
-    (when (and deft-filter-regexp (not deft-use-filename-as-title))
+    (when deft-filter-regexp
       (write-region deft-filter-regexp nil file nil))
     (deft-open-file file)))
 
 (defun deft-new-file ()
   "Create a new file quickly, with an automatically generated filename
-or the filter string if non-nil and deft-use-filename-as-title is set.
-If the filter string is non-nil and title is not from filename,
-use it as the title."
+(based on the filter string if it is non-nil)."
   (interactive)
   (let (filename)
-    (if (and deft-use-filename-as-title deft-filter-regexp)
+    (if deft-filter-regexp
 	(setq filename (concat (file-name-as-directory deft-directory) deft-filter-regexp "." deft-extension))
       (let (fmt counter temp-buffer)
 	(setq counter 0)
