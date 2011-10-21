@@ -324,8 +324,13 @@ Set to nil to hide."
 
 (defun deft-title-to-base-filename (s)
   "Turn a title string to a base filename."
+  (when (string-match "^[^[:alnum:]-]+" s)
+    (setq s (replace-match "" t t s)))
+  (when (string-match "[^[:alnum:]-]+$" s)
+    (setq s (replace-match "" t t s)))
   (while (string-match "[^[:alnum:]-]+" s)
     (setq s (replace-match "-" t t s)))
+  (setq s (downcase s))
   s)
 
 (defun deft-format-time-for-filename (tm)
@@ -583,7 +588,7 @@ based on the filter string if it is non-nil."
   (interactive)
   (let ((filename
 	 (if deft-filter-regexp
-	     (concat (file-name-as-directory deft-directory) deft-filter-regexp "." deft-extension)
+	     (concat (file-name-as-directory deft-directory) (deft-title-to-base-filename deft-filter-regexp) "." deft-extension)
 	   (deft-generate-filename))))
     (when deft-filter-regexp
       (write-region (concat deft-filter-regexp "\n\n") nil filename nil))
