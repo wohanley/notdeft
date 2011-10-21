@@ -348,6 +348,9 @@ Set to nil to hide."
 	(setq filename (concat (file-name-as-directory deft-directory) fn))))
     filename))
 
+(defun deft-filename-from-title (title)
+  (concat (file-name-as-directory deft-directory) (deft-title-to-base-filename title) "." deft-extension))
+
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
   (let ((s str))
@@ -569,31 +572,30 @@ title."
   (interactive "F")
   (deft-open-file file))
 
-(defun deft-new-file-named (file)
-  "Create a new file named FILE (or interactively prompt for a filename).
-If the filter string is non-nil and title is not from file name,
-use it as the title."
-  (interactive "sNew filename (without extension): ")
-  (setq file (concat (file-name-as-directory deft-directory)
-                     file "." deft-extension))
-  (if (file-exists-p file)
-      (message (concat "Aborting, file already exists: " file))
-    (when deft-filter-regexp
-      (write-region deft-filter-regexp nil file nil))
-    (deft-open-file file)))
+(defun deft-new-file-named (title)
+  "Create a new file named based on TITLE, or interactively prompt for a title."
+  (interactive "sNew title: ")
+  (if (not (string-match "[[:alnum:]]" title))
+      (message (concat "Aborting, unsuitable title: " title))
+    (let ((file (deft-filename-from-title title)))
+      (if (file-exists-p file)
+	  (message (concat "Aborting, file already exists: " file))
+	(progn
+	 (write-region title nil file nil)
+	 (deft-open-file file))))))
 
 (defun deft-new-file ()
   "Create a new file quickly, with an automatically generated filename,
 based on the filter string if it is non-nil."
   (interactive)
-  (let ((filename
+  (let ((file
 	 (if deft-filter-regexp
-	     (concat (file-name-as-directory deft-directory) (deft-title-to-base-filename deft-filter-regexp) "." deft-extension)
+	     (deft-filename-from-title deft-filter-regexp)
 	   (deft-generate-filename))))
     (when deft-filter-regexp
-      (write-region (concat deft-filter-regexp "\n\n") nil filename nil))
-    (deft-open-file filename)
-    (with-current-buffer (get-file-buffer filename)
+      (write-region (concat deft-filter-regexp "\n\n") nil file nil))
+    (deft-open-file file)
+    (with-current-buffer (get-file-buffer file)
       (goto-char (point-max)))))
 
 (defun deft-delete-file ()
