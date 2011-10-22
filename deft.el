@@ -211,7 +211,7 @@
   "Emacs Deft mode."
   :group 'local)
 
-(defcustom deft-path 
+(defcustom deft-path
   (list "~/.deft/")
   "Deft directory search path."
   :type '(repeat (string :tag "Directory"))
