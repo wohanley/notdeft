@@ -211,10 +211,10 @@
   "Emacs Deft mode."
   :group 'local)
 
-(defcustom deft-directory (expand-file-name "~/.deft/")
-  "Deft directory."
-  :type 'directory
-  :safe 'stringp
+(defcustom deft-path 
+  (list "~/.deft/")
+  "Deft directory search path."
+  :type '(repeat (string :tag "Directory"))
   :group 'deft)
 
 (defcustom deft-extension "org"
@@ -289,6 +289,9 @@ Set to nil to hide."
   "Text used to separate file titles and summaries.")
 
 ;; Global variables
+
+(defvar deft-directory nil
+  "Chosen Deft data directory.")
 
 (defvar deft-mode-hook nil
   "Hook run when entering Deft mode.")
@@ -804,13 +807,41 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 
 (put 'deft-mode 'mode-class 'special)
 
+(defun deft-select-existing-dirs (in-lst)
+  "Filters the given IN-LST, rejecting anything but names of existing directories."
+  (let (lst)
+    (mapc (lambda (d) 
+	    (when (file-directory-p (expand-file-name d))
+	      (setq lst (cons d lst))))
+	  (reverse in-lst))
+    lst))
+
+(defun deft-select-directory (fn-pattern)
+  "Tries to select and set 'deft-directory' according to the configured list of directories and the given filename pattern."
+  (if (not deft-path)
+      (message "No configured Deft data directories.")
+    (let ((lst (deft-select-existing-dirs deft-path)))
+      (if (not lst)
+	  (message "No existing Daft data directories.")
+	(let ((found
+	       (find fn-pattern lst
+		     :test (lambda (p e)
+			     (string-match fn-pattern 
+					   (expand-file-name e))))))
+	  (if (not found)
+	      (message "No matching Daft data directories.")
+	    (setq deft-directory (expand-file-name found))))))))
+
 ;;;###autoload
-(defun deft ()
+(defun deft (fn-pattern)
   "Switch to *Deft* buffer and load files."
-  (interactive)
-  (switch-to-buffer deft-buffer)
-  (if (not (eq major-mode 'deft-mode))
-      (deft-mode)))
+  (interactive "sDirectory (pattern): ")
+  (deft-select-directory fn-pattern)
+  (when deft-directory
+    (message (format "Using Deft data directory %s" deft-directory))
+    (switch-to-buffer deft-buffer)
+    (if (not (eq major-mode 'deft-mode))
+	(deft-mode))))
 
 (provide 'deft)
 
