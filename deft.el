@@ -303,7 +303,7 @@ Set to nil to hide."
   "List of files matching current filter.")
 
 (defvar deft-all-files nil
-  "List of files matching current filter.")
+  "List of all files in the data directory.")
 
 (defvar deft-hash-contents nil
   "Hash containing complete cached file contents, keyed by filename.")
@@ -322,6 +322,19 @@ Set to nil to hide."
 
 (defvar deft-window-width nil
   "Width of Deft buffer.")
+
+(defun deft-reset-state ()
+  "Resets Deft internal state, but not configuration settings."
+  (setq deft-directory nil)
+  (setq deft-filter-regexp nil)
+  (setq deft-current-files nil)
+  (setq deft-all-files nil)
+  (setq deft-hash-contents nil)
+  (setq deft-hash-mtimes nil)
+  (setq deft-hash-titles nil)
+  (setq deft-hash-summaries nil)
+  (setq deft-auto-save-buffers nil)
+  (setq deft-window-width nil))
 
 ;; File processing
 
@@ -836,12 +849,12 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 (defun deft (fn-pattern)
   "Switch to *Deft* buffer and load files."
   (interactive "sDirectory (pattern): ")
+  (setq deft-directory nil)
   (deft-select-directory fn-pattern)
   (when deft-directory
     (message (format "Using Deft data directory %s" deft-directory))
     (switch-to-buffer deft-buffer)
-    (if (not (eq major-mode 'deft-mode))
-	(deft-mode))))
+    (deft-mode)))
 
 (provide 'deft)
 
