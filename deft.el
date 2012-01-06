@@ -369,57 +369,58 @@ Set to nil to hide."
 
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
-  (let ((s str))
-    (replace-regexp-in-string "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" s)))
+  (replace-regexp-in-string "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" str))
 
 (defun deft-base-filename (file)
   "Strip the path and extension from filename FILE."
   (setq file (file-name-nondirectory file))
-  (if (> (length deft-extension) 0)
+  (when (> (length deft-extension) 0)
       (setq file (replace-regexp-in-string (concat "\." deft-extension "$") "" file)))
   file)
 
 (defun deft-find-all-files ()
   "Return a list of all files in the Deft directory."
-  (if (file-exists-p deft-directory)
-      (let (files result)
-        ;; List all files
-        (setq files
-              (directory-files deft-directory t
-                               (concat "\." deft-extension "$") t))
-        ;; Filter out files that are not readable or are directories
-        (dolist (file files)
-          (when (and (file-readable-p file)
-                     (not (file-directory-p file)))
-            (setq result (cons file result))))
-        result)))
+  (if (not (file-exists-p deft-directory))
+      '()
+    (let (files result)
+      ;; List all files
+      (setq files
+	    (directory-files deft-directory t
+			     (concat "\." deft-extension "$") t))
+      ;; Filter out files that are not readable or are directories
+      (dolist (file files)
+	(when (and (file-readable-p file)
+		   (not (file-directory-p file)))
+	  (setq result (cons file result))))
+      result)))
 
 (defun deft-parse-title (file contents)
   "Parse the given FILE and CONTENTS and determine the title.
-The title is taken to be the first non-empty line of a file name."
+The title is taken to be the first non-empty line of a file.
+Returns the empty string if there are no such lines."
   (let ((begin (string-match "^.+$" contents)))
-    (when begin
+    (if (not begin) ""
       (substring contents begin (match-end 0)))))
 
 (defun deft-parse-summary (contents title)
   "Parse the file CONTENTS, given the TITLE, and extract a summary.
 The summary is a string extracted from the contents following the
 title."
-  (let (summary)
-    (setq summary (replace-regexp-in-string "[\n\t]" " " contents))
-    (when title
-      (string-match (regexp-quote title) summary)
-      (setq summary (deft-chomp (substring summary (match-end 0) (length summary)))))
-    summary))
+  (unless (string-match (regexp-quote title) contents)
+    (error "Title not found in file contents"))
+  (let* ((me (match-end 0))
+	 (summary (deft-chomp (substring contents me (length contents)))))
+    (replace-regexp-in-string "[\n\t]" " " summary)))
 
 (defun deft-cache-file (file)
   "Update file cache if FILE exists."
   (when (file-exists-p file)
     (let ((mtime-cache (deft-file-mtime file))
           (mtime-file (nth 5 (file-attributes file))))
-      (if (or (not mtime-cache)
-              (time-less-p mtime-cache mtime-file))
-          (deft-cache-newer-file file mtime-file)))))
+      (when (or (not mtime-cache)
+		(time-less-p mtime-cache mtime-file))
+          (deft-cache-newer-file file mtime-file)
+	  ))))
 
 (defun deft-cache-newer-file (file mtime)
   "Update cached information for FILE with given MTIME."
@@ -456,7 +457,8 @@ title."
   "Update cached file information."
   (setq deft-all-files (deft-find-all-files))             ; List all files
   (mapc 'deft-cache-file deft-all-files)                  ; Cache contents
-  (setq deft-all-files (deft-sort-files deft-all-files))) ; Sort by mtime
+  (setq deft-all-files (deft-sort-files deft-all-files))
+  ) ; Sort by mtime
 
 ;; Cache access
 
@@ -592,10 +594,10 @@ title."
   "Create a new file named based on TITLE, or interactively prompt for a title."
   (interactive "sNew title: ")
   (if (not (string-match "[[:alnum:]]" title))
-      (message (concat "Aborting, unsuitable title: " title))
+      (message "Aborting, unsuitable title: '%s'" title)
     (let ((file (deft-filename-from-title title)))
       (if (file-exists-p file)
-	  (message (concat "Aborting, file already exists: " file))
+	  (message "Aborting, file already exists: '%s'" file)
 	(progn
 	 (write-region title nil file nil)
 	 (deft-open-file file))))))
@@ -670,7 +672,7 @@ If the point is not on a file widget, do nothing."
     (insert (deft-file-title file))
     (insert (deft-file-contents file))
     (goto-char (point-min))
-    (if (search-forward deft-filter-regexp nil t)
+    (when (search-forward deft-filter-regexp nil t)
         file)))
 
 ;; Filters that cause a refresh
@@ -852,7 +854,7 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (setq deft-directory nil)
   (deft-select-directory fn-pattern)
   (when deft-directory
-    (message (format "Using Deft data directory %s" deft-directory))
+    (message "Using Deft data directory '%s'" deft-directory)
     (switch-to-buffer deft-buffer)
     (deft-mode)))
 
