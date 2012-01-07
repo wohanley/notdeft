@@ -831,29 +831,31 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 	  (reverse in-lst))
     lst))
 
-(defun deft-select-directory (fn-pattern)
-  "Tries to select and set 'deft-directory' according to the configured list of directories and the given filename pattern."
+(defun deft-select-directory ()
+  "Tries to select and set 'deft-directory' according to the configured list of directories, possibly user assisted. Returns the selected directory, or nil if nothing was selected. Non-existing directories cannot be selected."
   (if (not deft-path)
-      (message "No configured Deft data directories.")
+      (progn (message "No configured Deft data directories.") nil)
     (let ((lst (deft-select-existing-dirs deft-path)))
       (if (not lst)
-	  (message "No existing Daft data directories.")
-	(let ((found
-	       (find fn-pattern lst
-		     :test (lambda (p e)
-			     (string-match fn-pattern 
-					   (expand-file-name e))))))
-	  (if (not found)
-	      (message "No matching Daft data directories.")
-	    (setq deft-directory (expand-file-name found))))))))
+	  (progn (message "No existing Deft data directories.") nil)
+	(if (= (length lst) 1)
+	    (first lst)
+	  (let ((d (completing-read "Data directory: " lst nil 
+				    'confirm-after-completion 
+				    nil nil nil t)))
+	    (if (not d)
+		(progn (message "Nothing selected.") nil)
+	      (if (not (file-directory-p d))
+		  (progn (message "Not a directory.") nil)
+		d))))))))
 
 ;;;###autoload
-(defun deft (fn-pattern)
+(defun deft ()
   "Switch to *Deft* buffer and load files."
-  (interactive "sDirectory (pattern): ")
-  (setq deft-directory nil)
-  (deft-select-directory fn-pattern)
+  (interactive)
+  (setq deft-directory (deft-select-directory))
   (when deft-directory
+    (setq deft-directory (expand-file-name deft-directory))
     (message "Using Deft data directory '%s'" deft-directory)
     (switch-to-buffer deft-buffer)
     (deft-mode)))
