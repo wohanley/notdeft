@@ -340,11 +340,11 @@ Set to nil to hide."
 
 (defun deft-title-to-base-filename (s)
   "Turn a title string to a base filename."
-  (when (string-match "^[^[:alnum:]-]+" s)
+  (when (string-match "^[^[a-zA-Z0-9]-]+" s)
     (setq s (replace-match "" t t s)))
-  (when (string-match "[^[:alnum:]-]+$" s)
+  (when (string-match "[^[a-zA-Z0-9]-]+$" s)
     (setq s (replace-match "" t t s)))
-  (while (string-match "[^[:alnum:]-]+" s)
+  (while (string-match "[^[a-zA-Z0-9]-]+" s)
     (setq s (replace-match "-" t t s)))
   (setq s (downcase s))
   s)
@@ -593,7 +593,7 @@ title."
 (defun deft-new-file-named (title)
   "Create a new file named based on TITLE, or interactively prompt for a title."
   (interactive "sNew title: ")
-  (if (not (string-match "[[:alnum:]]" title))
+  (if (not (string-match "[[a-zA-Z0-9]]" title))
       (message "Aborting, unsuitable title: '%s'" title)
     (let ((file (deft-filename-from-title title)))
       (if (file-exists-p file)
@@ -622,13 +622,17 @@ If the point is not on a file widget, do nothing.  Prompts before
 proceeding."
   (interactive)
   (let ((filename (widget-get (widget-at) :tag)))
-    (when filename
-      (when (y-or-n-p
-             (concat "Delete file " (file-name-nondirectory filename) "? "))
-        (delete-file filename)
-        (delq filename deft-current-files)
-        (delq filename deft-all-files)
-        (deft-refresh)))))
+    (if filename
+	(let ((filename-nd 
+	       (file-name-nondirectory filename)))
+	  (when (y-or-n-p
+		 (concat "Delete file " filename-nd "? "))
+	    (delete-file filename)
+	    (delq filename deft-current-files)
+	    (delq filename deft-all-files)
+	    (deft-refresh)
+	    (message (concat "Deleted " filename-nd))))
+      (error "Not on a file"))))
 
 (defun deft-rename-file ()
   "Rename the file represented by the widget at the point.
@@ -849,16 +853,19 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 		  (progn (message "Not a directory.") nil)
 		d))))))))
 
-;;;###autoload
-(defun deft ()
-  "Switch to *Deft* buffer and load files."
-  (interactive)
-  (setq deft-directory (deft-select-directory))
+(defun deft-with-directory (dir)
+  (setq deft-directory dir)
   (when deft-directory
     (setq deft-directory (expand-file-name deft-directory))
     (message "Using Deft data directory '%s'" deft-directory)
     (switch-to-buffer deft-buffer)
-    (deft-mode)))
+    (deft-mode)))  
+
+;;;###autoload
+(defun deft ()
+  "Switch to *Deft* buffer and load files."
+  (interactive)
+  (deft-with-directory (deft-select-directory)))
 
 (provide 'deft)
 
