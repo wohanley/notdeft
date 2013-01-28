@@ -1187,7 +1187,7 @@ Otherwise, quickly create a new file."
   "Save any modified files in `deft-auto-save-buffers'."
   (save-excursion
     (dolist (buf deft-auto-save-buffers)
-      (if (get-buffer buf)
+      (if (buffer-name buf)
           ;; Save open buffers that have been modified.
           (progn
             (set-buffer buf)
