@@ -340,11 +340,11 @@ Set to nil to hide."
 
 (defun deft-title-to-base-filename (s)
   "Turn a title string to a base filename."
-  (when (string-match "^[^[a-zA-Z0-9]-]+" s)
+  (when (string-match "^[^a-zA-Z0-9-]+" s)
     (setq s (replace-match "" t t s)))
-  (when (string-match "[^[a-zA-Z0-9]-]+$" s)
+  (when (string-match "[^a-zA-Z0-9-]+$" s)
     (setq s (replace-match "" t t s)))
-  (while (string-match "[^[a-zA-Z0-9]-]+" s)
+  (while (string-match "[^a-zA-Z0-9-]+" s)
     (setq s (replace-match "-" t t s)))
   (setq s (downcase s))
   s)
@@ -593,7 +593,7 @@ title."
 (defun deft-new-file-named (title)
   "Create a new file named based on TITLE, or interactively prompt for a title."
   (interactive "sNew title: ")
-  (if (not (string-match "[[a-zA-Z0-9]]" title))
+  (if (not (string-match "[a-zA-Z0-9]" title))
       (message "Aborting, unsuitable title: '%s'" title)
     (let ((file (deft-filename-from-title title)))
       (if (file-exists-p file)
@@ -860,6 +860,21 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
     (message "Using Deft data directory '%s'" deft-directory)
     (switch-to-buffer deft-buffer)
     (deft-mode)))  
+
+;;;###autoload
+(defun deft-open-file-by-basename (path)
+  (let ((fn) (cand-dirs deft-path))
+    (while (and cand-dirs (not fn))
+      (let ((dir (car cand-dirs)))
+	(setq cand-dirs (cdr cand-dirs))
+	(let ((cand-fn (concat (file-name-as-directory
+				(expand-file-name dir))
+			       path)))
+	  (when (file-exists-p cand-fn)
+	    (setq fn cand-fn)))))
+    (if (not fn)
+	(message "No Deft file '%s'" path)
+      (deft-open-file fn))))
 
 ;;;###autoload
 (defun deft ()
