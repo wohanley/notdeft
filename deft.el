@@ -862,6 +862,17 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
     (deft-mode)))  
 
 ;;;###autoload
+(defun deft-make-note-basename-list ()
+  (let ((dir-lst (deft-select-existing-dirs deft-path))
+	(fn-lst '()))
+    (dolist (dir dir-lst)
+      (setq fn-lst
+	    (append fn-lst
+		    (directory-files dir nil "[.]org$" t))))
+    (sort fn-lst 'string-lessp)
+    fn-lst))
+
+;;;###autoload
 (defun deft-open-file-by-basename (path)
   (let ((fn) (cand-dirs deft-path))
     (while (and cand-dirs (not fn))
