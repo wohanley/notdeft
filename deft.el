@@ -869,8 +869,8 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
       (setq fn-lst
 	    (append fn-lst
 		    (directory-files dir nil "[.]org$" t))))
-    (sort fn-lst 'string-lessp)
-    fn-lst))
+    ;; `sort` may modify `fn-lst`
+    (sort fn-lst 'string-lessp)))
 
 ;;;###autoload
 (defun deft-open-file-by-basename (path)
