@@ -844,9 +844,10 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 	  (progn (message "No existing Deft data directories.") nil)
 	(if (= (length lst) 1)
 	    (first lst)
-	  (let ((d (completing-read "Data directory: " lst nil 
-				    'confirm-after-completion 
-				    nil nil nil t)))
+	  (let ((d (ido-completing-read
+		    "Data directory: " lst
+		    nil 'confirm-after-completion 
+		    nil nil nil t)))
 	    (if (not d)
 		(progn (message "Nothing selected.") nil)
 	      (if (not (file-directory-p d))
