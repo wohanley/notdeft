@@ -830,13 +830,19 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   "Filters the given IN-LST, rejecting anything but names of existing directories."
   (let (lst)
     (mapc (lambda (d) 
-	    (when (file-directory-p (expand-file-name d))
+	    (when (file-directory-p d)
 	      (setq lst (cons d lst))))
 	  (reverse in-lst))
     lst))
 
+(defun drop-nth-cons (n lst)
+  (let* ((len (length lst))
+	 (rst (- len n)))
+    (cons (nth n lst) (append (butlast lst rst) (last lst (- rst 1))))))
+
+;;;###autoload
 (defun deft-select-directory ()
-  "Tries to select and set 'deft-directory' according to the configured list of directories, possibly user assisted. Returns the selected directory, or nil if nothing was selected. Non-existing directories cannot be selected."
+  "Tries to select and according to the configured list of directories, possibly user assisted. If `default-directory' is a Deft one, then uses that as the default choice. Returns the selected directory, or nil if nothing was selected. Non-existing directories cannot be selected."
   (if (not deft-path)
       (progn (message "No configured Deft data directories.") nil)
     (let ((lst (deft-select-existing-dirs deft-path)))
@@ -844,10 +850,16 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 	  (progn (message "No existing Deft data directories.") nil)
 	(if (= (length lst) 1)
 	    (first lst)
-	  (let ((d (ido-completing-read
-		    "Data directory: " lst
-		    nil 'confirm-after-completion 
-		    nil nil nil t)))
+	  (let* ((ix
+		  (cl-position-if
+		   (lambda (x) (file-equal-p default-directory x))
+		   lst))
+		 (choice-lst
+		  (if ix (drop-nth-cons ix lst) lst))
+		 (d (ido-completing-read
+		     "Data directory: " choice-lst
+		     nil 'confirm-after-completion 
+		     nil nil nil t)))
 	    (if (not d)
 		(progn (message "Nothing selected.") nil)
 	      (if (not (file-directory-p d))
@@ -855,12 +867,13 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 		d))))))))
 
 (defun deft-with-directory (dir)
+  "Sets `deft-directory' to DIR, and opens that directory in Deft."
   (setq deft-directory dir)
   (when deft-directory
     (setq deft-directory (expand-file-name deft-directory))
     (message "Using Deft data directory '%s'" deft-directory)
     (switch-to-buffer deft-buffer)
-    (deft-mode)))  
+    (deft-mode)))
 
 ;;;###autoload
 (defun deft-make-note-basename-list ()
@@ -874,7 +887,9 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
     (sort fn-lst 'string-lessp)))
 
 ;;;###autoload
-(defun deft-open-file-by-basename (path)
+(defun deft-expand-file-name (path)
+  "Expands a basename to a full pathname under a Deft directory,
+if such a file indeed exists. Otherwise returns nil."
   (let ((fn) (cand-dirs deft-path))
     (while (and cand-dirs (not fn))
       (let ((dir (car cand-dirs)))
@@ -884,6 +899,11 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 			       path)))
 	  (when (file-exists-p cand-fn)
 	    (setq fn cand-fn)))))
+    fn))
+
+;;;###autoload
+(defun deft-open-file-by-basename (path)
+  (let ((fn (deft-expand-file-name path)))
     (if (not fn)
 	(message "No Deft file '%s'" path)
       (deft-open-file fn))))
@@ -897,3 +917,4 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 (provide 'deft)
 
 ;;; deft.el ends here
+
