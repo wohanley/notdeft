@@ -351,7 +351,7 @@ Set to nil to hide."
 
 (defun deft-format-time-for-filename (tm)
   "Format a time suitably for filenames."
-  (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ;; UTC
+  (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ; UTC
 
 (defun deft-generate-filename ()
   "Generate a new unique filename without being given any
@@ -365,10 +365,18 @@ information about note title or content."
 	(setq filename (concat (file-name-as-directory deft-directory) fn))))
     filename))
 
-(defun deft-filename-from-title (title)
-  (concat (file-name-as-directory deft-directory)
-	  (deft-title-to-base-filename title) "."
-	  deft-extension))
+(defun deft-make-filename (base-filename &optional dir)
+  (concat (file-name-as-directory (or dir deft-directory))
+	  base-filename "." deft-extension))
+
+(defun deft-filename-from-title (title &optional in-subdir)
+  (let ((base-filename (deft-title-to-base-filename title)))
+    (deft-make-filename
+      base-filename
+      (if in-subdir
+	  (concat (file-name-as-directory deft-directory)
+		  base-filename)
+	deft-directory))))
 
 (defun deft-title-from-file-content (file)
   "Extracts a title from FILE, returning nil on failure."
@@ -380,7 +388,7 @@ information about note title or content."
 		 (buffer-string)))
 	      (title
 	       (deft-parse-title file contents)))
-	 (and (not (string= "" title)) title))))
+	 title)))
 
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
@@ -399,10 +407,10 @@ information about note title or content."
   (and
    (file-exists-p directory)
    (directory-files
-    directory ;; DIRECTORY
-    full ;; return FULL (absolute) paths
-    (concat "\." deft-extension "$") ;; regexp to MATCH
-    t) ;; NOSORT for unpredictable ordering
+    directory ; DIRECTORY
+    full ; return FULL (absolute) paths
+    (concat "\." deft-extension "$") ; regexp to MATCH
+    t) ; NOSORT for unpredictable ordering
     ))
 
 (defun deft-find-all-files ()
@@ -411,11 +419,11 @@ Deft directory, as absolute paths."
   (let ((files (deft-find-all-files-in-dir deft-directory t))
 	result)
     ;; Filter out files that are not readable or are directories.
-       (dolist (file files)
-	 (when (and (file-readable-p file)
-		    (not (file-directory-p file)))
-	   (setq result (cons file result))))
-       result))
+    (dolist (file files)
+      (when (and (file-readable-p file)
+		 (not (file-directory-p file)))
+	(setq result (cons file result))))
+    result))
 
 ;;;###autoload
 (defun deft-make-note-basename-list ()
@@ -434,10 +442,13 @@ The result list is sorted by the `string-lessp' relation."
 (defun deft-parse-title (file contents)
   "Parse the given FILE and CONTENTS and determine the title.
 The title is taken to be the first non-empty line of a file.
-Returns the empty string if there are no such lines."
+Returns nil if there is no non-empty, not-just-whitespace
+title in CONTENTS."
   (let ((begin (string-match "^.+$" contents)))
-    (if (not begin) ""
-      (substring contents begin (match-end 0)))))
+    (and begin
+	 (let* ((line (substring contents begin (match-end 0)))
+		(title (deft-chomp line)))
+	   (and (not (string= "" title)) title)))))
 
 (defun deft-parse-summary (contents title)
   "Parse the file CONTENTS, given the TITLE, and extract a summary.
@@ -470,7 +481,7 @@ title."
       (setq contents (concat (buffer-string))))
     (puthash file contents deft-hash-contents)
     ;; Title
-    (setq title (deft-parse-title file contents))
+    (setq title (or (deft-parse-title file contents) ""))
     (puthash file title deft-hash-titles)
     ;; Summary
     (puthash file (deft-parse-summary contents title) deft-hash-summaries))
@@ -557,8 +568,9 @@ title."
 	   (text (deft-file-contents file))
 	   (title (deft-file-title file))
 	   (summary (deft-file-summary file))
-	   (mtime (when deft-time-format
-		    (format-time-string deft-time-format (deft-file-mtime file))))
+	   (mtime (and deft-time-format
+		    (format-time-string deft-time-format
+					(deft-file-mtime file))))
 	   (mtime-width (length mtime))
 	   (line-width (- deft-window-width mtime-width))
 	   (title-width (min line-width (length title)))
