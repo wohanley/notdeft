@@ -354,7 +354,8 @@ Set to nil to hide."
   (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ;; UTC
 
 (defun deft-generate-filename ()
-  "Generate a new unique filename without being given any information about note title or content."
+  "Generate a new unique filename without being given any
+information about note title or content."
   (let (filename)
     (while (or (not filename)
 	       (file-exists-p filename))
@@ -365,7 +366,21 @@ Set to nil to hide."
     filename))
 
 (defun deft-filename-from-title (title)
-  (concat (file-name-as-directory deft-directory) (deft-title-to-base-filename title) "." deft-extension))
+  (concat (file-name-as-directory deft-directory)
+	  (deft-title-to-base-filename title) "."
+	  deft-extension))
+
+(defun deft-title-from-file-content (file)
+  "Extracts a title from FILE, returning nil on failure."
+  (and (file-readable-p file)
+       (not (file-directory-p file))
+       (let* ((contents
+	       (with-temp-buffer
+		 (insert-file-contents file)
+		 (buffer-string)))
+	      (title
+	       (deft-parse-title file contents)))
+	 (and (not (string= "" title)) title))))
 
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
@@ -375,7 +390,8 @@ Set to nil to hide."
   "Strip the path and extension from filename FILE."
   (setq file (file-name-nondirectory file))
   (when (> (length deft-extension) 0)
-      (setq file (replace-regexp-in-string (concat "\." deft-extension "$") "" file)))
+    (setq file (replace-regexp-in-string
+		(concat "\." deft-extension "$") "" file)))
   file)
 
 (defun deft-find-all-files ()
@@ -591,7 +607,8 @@ title."
   (deft-open-file file))
 
 (defun deft-new-file-named (title)
-  "Create a new file named based on TITLE, or interactively prompt for a title."
+  "Create a new file named based on TITLE,
+or prompting for a title when called interactively."
   (interactive "sNew title: ")
   (if (not (string-match "[a-zA-Z0-9]" title))
       (message "Aborting, unsuitable title: '%s'" title)
@@ -618,7 +635,7 @@ based on the filter string if it is non-nil."
 
 (defun deft-delete-file ()
   "Delete the file represented by the widget at the point.
-If the point is not on a file widget, do nothing.  Prompts before
+If the point is not on a file widget, do nothing. Prompts before
 proceeding."
   (interactive)
   (let ((filename (widget-get (widget-at) :tag)))
@@ -634,21 +651,38 @@ proceeding."
 	    (message (concat "Deleted " filename-nd))))
       (error "Not on a file"))))
 
-(defun deft-rename-file ()
+(defun deft-rename-file (pfx)
   "Rename the file represented by the widget at the point.
-If the point is not on a file widget, do nothing."
-  (interactive)
-  (let (old-filename new-filename old-name new-name)
-    (setq old-filename (widget-get (widget-at) :tag))
-    (when old-filename
-      (setq old-name (deft-base-filename old-filename))
-      (setq new-name (read-string
-                      (concat "Rename " old-name " to (without extension): ")))
-      (setq new-filename
-            (concat (file-name-as-directory deft-directory)
-                    new-name "." deft-extension))
-      (rename-file old-filename new-filename)
-      (deft-refresh))))
+If the point is not on a file widget, do nothing.
+Defaults to a content-derived title if called with
+a prefix argument."
+  (interactive "P")
+  (let ((old-filename (widget-get (widget-at) :tag)))
+    (if (not old-filename)
+	(error "Not on a file")
+      (let* ((old-name (deft-base-filename old-filename))
+	     (def-name (or (and
+			    pfx
+			    (let ((title
+				   (deft-title-from-file-content
+				     old-filename)))
+			      (and title
+				   (deft-title-to-base-filename title))))
+			   old-name))
+	     (history (list def-name))
+	     (new-name
+	      (read-string
+	       (concat "Rename " old-name " to (without extension): ")
+	       (car history) ;; INITIAL-INPUT
+	       '(history . 1) ;; HISTORY
+	       nil ;; DEFAULT-VALUE
+	       ))
+	     (new-filename
+	      (concat (file-name-as-directory deft-directory)
+		      new-name "." deft-extension)))
+	;; Fails if `new-filename` already exists.
+	(rename-file old-filename new-filename nil)
+	(deft-refresh)))))
 
 ;; File list filtering
 
@@ -827,7 +861,8 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 (put 'deft-mode 'mode-class 'special)
 
 (defun deft-select-existing-dirs (in-lst)
-  "Filters the given IN-LST, rejecting anything but names of existing directories."
+  "Filters the given IN-LST, rejecting anything except for names
+of existing directories."
   (let (lst)
     (mapc (lambda (d) 
 	    (when (file-directory-p d)
