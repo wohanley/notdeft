@@ -210,9 +210,9 @@
   "Emacs Deft mode."
   :group 'local)
 
-(defcustom deft-path 
-  `(,(expand-file-name "~/.deft/"))
-  "Deft directory search path."
+(defcustom deft-path '("~/.deft/")
+  "Deft directory search path.
+A list of directories which may or may not exist on startup."
   :type '(repeat (string :tag "Directory"))
   :group 'deft)
 
@@ -412,7 +412,10 @@ Use `file-name-directory' to get the directory component."
 Returns them as absolute paths if FULL is true."
   (and
    (file-exists-p directory)
-   (let* ((files (directory-files directory nil nil t))
+   (let* ((directory
+	   (file-name-as-directory
+	    (expand-file-name directory)))
+	  (files (directory-files directory nil nil t))
 	  (file-re (concat "\." deft-extension "$"))
 	  result)
      (dolist (filename files result)
@@ -420,8 +423,7 @@ Returns them as absolute paths if FULL is true."
 	((string= "." filename))
 	((string= ".." filename))
 	(t
-	 (let ((file (concat (file-name-as-directory directory)
-			     filename)))
+	 (let ((file (concat directory filename)))
 	   (cond
 	    ((file-directory-p file)
 	     (let ((sub-file (deft-make-filename filename file)))
@@ -692,7 +694,7 @@ proceeding."
   (interactive)
   (let ((filename (widget-get (widget-at) :tag)))
     (if filename
-	(let ((filename-nd 
+	(let ((filename-nd
 	       (file-name-nondirectory filename)))
 	  (when (y-or-n-p
 		 (concat "Delete file " filename-nd "? "))
@@ -729,7 +731,7 @@ proceeding."
 	      (file-name-directory old-file)
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
-	(deft-move-file/mkdir old-file new-file)
+	(deft-rename-file/mkdir old-file new-file)
 	(deft-refresh)
 	(message "Renamed as `%s`" new-file))))))
 
@@ -764,15 +766,12 @@ a prefix argument, rather than the old file name."
 		(file-name-directory old-filename))))
 	;; Fails if `new-filename` already exists.
 	(rename-file old-filename new-filename nil)
-	(deft-refresh)))))
+	(deft-refresh)
+	(message "Renamed as `%s`" new-file)))))
 
-(defun deft-move-file/mkdir (old-file new-file)
+(defun deft-rename-file/mkdir (old-file new-file)
   (ignore-errors
     (make-directory (file-name-directory new-file) nil))
-  (rename-file old-file new-file nil))
-
-(defun deft-move-file/mkdir-p (old-file new-file)
-  (make-directory (file-name-directory new-file) t)
   (rename-file old-file new-file nil))
 
 (defun deft-archive-file ()
@@ -790,7 +789,7 @@ If the point is not on a file widget, do nothing."
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory "archive")
 		     (file-name-nondirectory old-file))))
-	(deft-move-file/mkdir old-file new-file)
+	(deft-rename-file/mkdir old-file new-file)
 	(deft-refresh)
 	(message "Archived as `%s`" new-file))))))
 
@@ -964,11 +963,11 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 
 (put 'deft-mode 'mode-class 'special)
 
-(defun deft-select-existing-dirs (in-lst)
+(defun deft-filter-existing-dirs (in-lst)
   "Filters the given IN-LST, rejecting anything except for names
 of existing directories."
   (let (lst)
-    (mapc (lambda (d) 
+    (mapc (lambda (d)
 	    (when (file-directory-p d)
 	      (setq lst (cons d lst))))
 	  (reverse in-lst))
@@ -981,12 +980,16 @@ of existing directories."
 
 ;;;###autoload
 (defun deft-select-directory ()
-  "Tries to select and according to the configured list of directories, possibly user assisted. If `default-directory' is a Deft one, then uses that as the default choice. Returns the selected directory, or nil if nothing was selected. Non-existing directories cannot be selected."
+  "Tries to select a Deft directory according to the configured
+list of directories, possibly user assisted. If `default-directory'
+is a Deft one, then uses that as the default choice.
+Returns a selected directory, or errors out.
+Non-existing directories are not available for selecting."
   (if (not deft-path)
-      (progn (message "No configured Deft data directories.") nil)
-    (let ((lst (deft-select-existing-dirs deft-path)))
+      (error "No configured Deft data directories.")
+    (let ((lst (deft-filter-existing-dirs deft-path)))
       (if (not lst)
-	  (progn (message "No existing Deft data directories.") nil)
+	  (error "No existing Deft data directories.")
 	(if (= (length lst) 1)
 	    (first lst)
 	  (let* ((ix
@@ -997,22 +1000,20 @@ of existing directories."
 		  (if ix (drop-nth-cons ix lst) lst))
 		 (d (ido-completing-read
 		     "Data directory: " choice-lst
-		     nil 'confirm-after-completion 
+		     nil 'confirm-after-completion
 		     nil nil nil t)))
 	    (if (not d)
-		(progn (message "Nothing selected.") nil)
+		(error "Nothing selected.")
 	      (if (not (file-directory-p d))
-		  (progn (message "Not a directory.") nil)
+		  (error "Not a directory.")
 		d))))))))
 
-(defun deft-with-directory (dir)
+(defun deft-mode-with-directory (dir)
   "Sets `deft-directory' to DIR, and opens that directory in Deft."
-  (setq deft-directory dir)
-  (when deft-directory
-    (setq deft-directory (expand-file-name deft-directory))
-    (message "Using Deft data directory '%s'" deft-directory)
-    (switch-to-buffer deft-buffer)
-    (deft-mode)))
+  (setq deft-directory (file-name-as-directory (expand-file-name dir)))
+  (message "Using Deft data directory '%s'" dir)
+  (switch-to-buffer deft-buffer)
+  (deft-mode))
 
 ;;;###autoload
 (defun deft-expand-file-name (filename)
@@ -1050,7 +1051,7 @@ If none exist, returns nil."
 (defun deft ()
   "Switch to *Deft* buffer and load files."
   (interactive)
-  (deft-with-directory (deft-select-directory)))
+  (deft-mode-with-directory (deft-select-directory)))
 
 (provide 'deft)
 
