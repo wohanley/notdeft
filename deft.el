@@ -394,21 +394,42 @@ information about note title or content."
 		(concat "\." deft-extension "$") "" file)))
   file)
 
+(defun deft-find-all-files-in-dir (directory full)
+  "Return a list of all files in the specified Deft directory."
+  (and
+   (file-exists-p directory)
+   (directory-files
+    directory ;; DIRECTORY
+    full ;; return FULL (absolute) paths
+    (concat "\." deft-extension "$") ;; regexp to MATCH
+    t) ;; NOSORT for unpredictable ordering
+    ))
+
 (defun deft-find-all-files ()
-  "Return a list of all files in the Deft directory."
-  (if (not (file-exists-p deft-directory))
-      '()
-    (let (files result)
-      ;; List all files
-      (setq files
-	    (directory-files deft-directory t
-			     (concat "\." deft-extension "$") t))
-      ;; Filter out files that are not readable or are directories
-      (dolist (file files)
-	(when (and (file-readable-p file)
-		   (not (file-directory-p file)))
-	  (setq result (cons file result))))
-      result)))
+  "Return a list of all readable Deft files in the specified
+Deft directory, as absolute paths."
+  (let ((files (deft-find-all-files-in-dir deft-directory t))
+	result)
+    ;; Filter out files that are not readable or are directories.
+       (dolist (file files)
+	 (when (and (file-readable-p file)
+		    (not (file-directory-p file)))
+	   (setq result (cons file result))))
+       result))
+
+;;;###autoload
+(defun deft-make-note-basename-list ()
+  "Returns the non-directory components of all Deft files
+in all of the existing `deft-path' directories.
+The result list is sorted by the `string-lessp' relation."
+  (let ((dir-lst deft-path)
+	(fn-lst '()))
+    (dolist (dir dir-lst)
+      (setq fn-lst
+	    (append fn-lst
+		    (deft-find-all-files-in-dir dir nil))))
+    ;; `sort` may modify `fn-lst`
+    (sort fn-lst 'string-lessp)))
 
 (defun deft-parse-title (file contents)
   "Parse the given FILE and CONTENTS and determine the title.
@@ -471,10 +492,10 @@ title."
 
 (defun deft-cache-update ()
   "Update cached file information."
-  (setq deft-all-files (deft-find-all-files))             ; List all files
+  (setq deft-all-files (deft-find-all-files))
   (mapc 'deft-cache-file deft-all-files)                  ; Cache contents
-  (setq deft-all-files (deft-sort-files deft-all-files))
-  ) ; Sort by mtime
+  (setq deft-all-files (deft-sort-files deft-all-files))  ; Sort by mtime
+  )
 
 ;; Cache access
 
@@ -911,17 +932,6 @@ of existing directories."
     (deft-mode)))
 
 ;;;###autoload
-(defun deft-make-note-basename-list ()
-  (let ((dir-lst (deft-select-existing-dirs deft-path))
-	(fn-lst '()))
-    (dolist (dir dir-lst)
-      (setq fn-lst
-	    (append fn-lst
-		    (directory-files dir nil "[.]org$" t))))
-    ;; `sort` may modify `fn-lst`
-    (sort fn-lst 'string-lessp)))
-
-;;;###autoload
 (defun deft-expand-file-name (path)
   "Expands a basename to a full pathname under a Deft directory,
 if such a file indeed exists. Otherwise returns nil."
@@ -952,4 +962,3 @@ if such a file indeed exists. Otherwise returns nil."
 (provide 'deft)
 
 ;;; deft.el ends here
-
