@@ -699,6 +699,38 @@ proceeding."
 	    (message (concat "Deleted " filename-nd))))
       (error "Not on a file"))))
 
+(defun deft-direct-file-p (file)
+  (let ((cand-dirs deft-path)
+	(file-dir (file-name-directory file))
+	result)
+    (while (and cand-dirs (not result))
+      (let ((dir (car cand-dirs)))
+	(setq cand-dirs (cdr cand-dirs))
+	(when (file-equal-p (expand-file-name dir) file-dir)
+	  (setq result t))))
+    result))
+
+(defun deft-move-into-subdir ()
+  "Move the file at point into a subdirectory of the same name."
+  (interactive)
+  (let ((old-file (widget-get (widget-at) :tag)))
+    (cond
+     ((not old-file)
+      (error "Not on a file"))
+     ((not (deft-direct-file-p old-file))
+      (error "Cannot move into a subdir"))
+     (t
+      (let ((new-file
+	     (concat
+	      (file-name-directory old-file)
+	      (file-name-as-directory (deft-base-filename old-file))
+	      (file-name-nondirectory old-file))))
+	(ignore-errors
+	  (make-directory (file-name-directory new-file nil)))
+	(rename-file old-file new-file nil)
+	(deft-refresh)
+	(message "Renamed as `%s`" new-file))))))
+
 (defun deft-rename-file (pfx)
   "Rename the file represented by the widget at the point.
 If the point is not on a file widget, do nothing.
@@ -862,11 +894,11 @@ Otherwise, quick create a new file."
     ;; File creation
     (define-key map (kbd "C-c C-n") 'deft-new-file)
     (define-key map (kbd "C-c C-m") 'deft-new-file-named)
-    (define-key map (kbd "<C-return>") 'deft-new-file-named)
     ;; File management
     (define-key map (kbd "C-c C-d") 'deft-delete-file)
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)
+    (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c C-q") 'quit-window)
