@@ -403,13 +403,6 @@ Use `file-name-directory' to get the directory component."
 		file)))
   file)
 
-(defun deft-find-all-files-in-subdir (directory full)
-  (directory-files
-   directory ; DIRECTORY
-   full ; return FULL (absolute) paths
-   (concat "\." deft-extension "$") ; regexp to MATCH
-   t))
-
 (defun deft-find-all-files-in-dir (directory full)
   "Return a list of all Deft files in the specified Deft DIRECTORY.
 Returns them as absolute paths if FULL is true."
@@ -427,9 +420,12 @@ Returns them as absolute paths if FULL is true."
 			     filename)))
 	   (cond
 	    ((file-directory-p file)
-	     (setq result (append
-			   (deft-find-all-files-in-subdir file full)
-			   result)))
+	     (let ((sub-file (deft-make-filename filename file)))
+	       (when (file-exists-p sub-file)
+		 (let ((x (if full
+			      sub-file
+			    (file-name-nondirectory sub-file))))
+		   (setq result (cons x result))))))
 	    ((string-match-p file-re filename)
 	     (setq result (cons (if full file filename) result)))))))))))
 
