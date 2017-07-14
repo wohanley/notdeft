@@ -126,11 +126,6 @@
 ;; to create a global keybinding for the `deft` function (e.g., a
 ;; function key) to start it quickly (see below for details).
 
-;; When you first run Deft, it will complain that it cannot find the
-;; `~/.deft` directory.  You can either create a symbolic link to
-;; another directory where you keep your notes or run `M-x deft-setup`
-;; to create the `~/.deft` directory automatically.
-
 ;; One useful way to use Deft is to keep a directory of notes in a
 ;; Dropbox folder.  This can be used with other applications and
 ;; mobile devices, for example, Notational Velocity or Simplenote
@@ -211,8 +206,8 @@
   "Emacs Deft mode."
   :group 'local)
 
-(defcustom deft-path
-  (list "~/.deft/")
+(defcustom deft-path 
+  `(,(expand-file-name "~/.deft/"))
   "Deft directory search path."
   :type '(repeat (string :tag "Directory"))
   :group 'deft)
@@ -361,8 +356,8 @@ information about note title or content."
 	       (file-exists-p filename))
       (let* ((ctime (current-time))
 	     (ctime-s (deft-format-time-for-filename ctime))
-	     (fn (format "Deft--%s.%s" ctime-s deft-extension)))
-	(setq filename (concat (file-name-as-directory deft-directory) fn))))
+	     (base-filename (format "Deft--%s" ctime-s)))
+	(setq filename (deft-make-filename base-filename))))
     filename))
 
 (defun deft-make-filename (base-filename &optional dir)
@@ -378,10 +373,13 @@ information about note title or content."
 		  base-filename)
 	deft-directory))))
 
+(defun deft-file-readable-p (file)
+  (and (file-readable-p file)
+       (not (file-directory-p file))))
+
 (defun deft-title-from-file-content (file)
   "Extracts a title from FILE, returning nil on failure."
-  (and (file-readable-p file)
-       (not (file-directory-p file))
+  (and (deft-file-readable-p file)
        (let* ((contents
 	       (with-temp-buffer
 		 (insert-file-contents file)
@@ -395,15 +393,19 @@ information about note title or content."
   (replace-regexp-in-string "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" str))
 
 (defun deft-base-filename (file)
-  "Strip the path and extension from filename FILE."
+  "Strip the path and extension from filename FILE.
+Use `file-name-directory' to get the directory component."
   (setq file (file-name-nondirectory file))
-  (when (> (length deft-extension) 0)
+  (unless (string= "" deft-extension)
     (setq file (replace-regexp-in-string
-		(concat "\." deft-extension "$") "" file)))
+		(concat "\." deft-extension "$")
+		""
+		file)))
   file)
 
 (defun deft-find-all-files-in-dir (directory full)
-  "Return a list of all files in the specified Deft directory."
+  "Return a list of all Deft files in the specified Deft DIRECTORY.
+Returns them as absolute paths if FULL is true."
   (and
    (file-exists-p directory)
    (directory-files
@@ -420,8 +422,7 @@ Deft directory, as absolute paths."
 	result)
     ;; Filter out files that are not readable or are directories.
     (dolist (file files)
-      (when (and (file-readable-p file)
-		 (not (file-directory-p file)))
+      (when (deft-file-readable-p file)
 	(setq result (cons file result))))
     result))
 
@@ -687,21 +688,21 @@ proceeding."
 (defun deft-rename-file (pfx)
   "Rename the file represented by the widget at the point.
 If the point is not on a file widget, do nothing.
-Defaults to a content-derived title if called with
-a prefix argument."
+Defaults to a content-derived file name if called with
+a prefix argument, rather than the old file name."
   (interactive "P")
   (let ((old-filename (widget-get (widget-at) :tag)))
     (if (not old-filename)
 	(error "Not on a file")
       (let* ((old-name (deft-base-filename old-filename))
-	     (def-name (or (and
-			    pfx
-			    (let ((title
-				   (deft-title-from-file-content
-				     old-filename)))
-			      (and title
-				   (deft-title-to-base-filename title))))
-			   old-name))
+	     (def-name
+	       (or (and
+		    pfx
+		    (let ((title
+			   (deft-title-from-file-content old-filename)))
+		      (and title
+			   (deft-title-to-base-filename title))))
+		   old-name))
 	     (history (list def-name))
 	     (new-name
 	      (read-string
@@ -711,8 +712,8 @@ a prefix argument."
 	       nil ;; DEFAULT-VALUE
 	       ))
 	     (new-filename
-	      (concat (file-name-as-directory deft-directory)
-		      new-name "." deft-extension)))
+	      (deft-make-filename new-name
+		(file-name-directory old-filename))))
 	;; Fails if `new-filename` already exists.
 	(rename-file old-filename new-filename nil)
 	(deft-refresh)))))
@@ -826,13 +827,6 @@ Otherwise, quick create a new file."
   (interactive)
   (message "Deft %s" deft-version))
 
-(defun deft-setup ()
-  "Prepare environment by creating the Deft notes directory."
-  (interactive)
-  (when (not (file-exists-p deft-directory))
-    (make-directory deft-directory t))
-  (deft-refresh))
-
 (defvar deft-mode-map
   (let ((i 0)
         (map (make-keymap)))
@@ -944,25 +938,27 @@ of existing directories."
     (deft-mode)))
 
 ;;;###autoload
-(defun deft-expand-file-name (path)
-  "Expands a basename to a full pathname under a Deft directory,
-if such a file indeed exists. Otherwise returns nil."
-  (let ((fn) (cand-dirs deft-path))
+(defun deft-expand-file-name (filename)
+  "Expands a basename (with extension) to a full pathname
+under a Deft directory, if such a file indeed exists.
+(If multiple such files exist, returns one of them.)
+Otherwise returns nil."
+  (let ((cand-dirs deft-path) fn)
     (while (and cand-dirs (not fn))
       (let ((dir (car cand-dirs)))
 	(setq cand-dirs (cdr cand-dirs))
 	(let ((cand-fn (concat (file-name-as-directory
 				(expand-file-name dir))
-			       path)))
+			       filename)))
 	  (when (file-exists-p cand-fn)
 	    (setq fn cand-fn)))))
     fn))
 
 ;;;###autoload
-(defun deft-open-file-by-basename (path)
-  (let ((fn (deft-expand-file-name path)))
+(defun deft-open-file-by-basename (filename)
+  (let ((fn (deft-expand-file-name filename)))
     (if (not fn)
-	(message "No Deft file '%s'" path)
+	(message "No Deft file '%s'" filename)
       (deft-open-file fn))))
 
 ;;;###autoload
