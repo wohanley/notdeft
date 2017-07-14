@@ -403,17 +403,35 @@ Use `file-name-directory' to get the directory component."
 		file)))
   file)
 
+(defun deft-find-all-files-in-subdir (directory full)
+  (directory-files
+   directory ; DIRECTORY
+   full ; return FULL (absolute) paths
+   (concat "\." deft-extension "$") ; regexp to MATCH
+   t))
+
 (defun deft-find-all-files-in-dir (directory full)
   "Return a list of all Deft files in the specified Deft DIRECTORY.
 Returns them as absolute paths if FULL is true."
   (and
    (file-exists-p directory)
-   (directory-files
-    directory ; DIRECTORY
-    full ; return FULL (absolute) paths
-    (concat "\." deft-extension "$") ; regexp to MATCH
-    t) ; NOSORT for unpredictable ordering
-    ))
+   (let* ((files (directory-files directory nil nil t))
+	  (file-re (concat "\." deft-extension "$"))
+	  result)
+     (dolist (filename files result)
+       (cond
+	((string= "." filename))
+	((string= ".." filename))
+	(t
+	 (let ((file (concat (file-name-as-directory directory)
+			     filename)))
+	   (cond
+	    ((file-directory-p file)
+	     (setq result (append
+			   (deft-find-all-files-in-subdir file full)
+			   result)))
+	    ((string-match-p file-re filename)
+	     (setq result (cons (if full file filename) result)))))))))))
 
 (defun deft-find-all-files ()
   "Return a list of all readable Deft files in the specified
@@ -941,18 +959,26 @@ of existing directories."
 (defun deft-expand-file-name (filename)
   "Expands a basename (with extension) to a full pathname
 under a Deft directory, if such a file indeed exists.
-(If multiple such files exist, returns one of them.)
-Otherwise returns nil."
-  (let ((cand-dirs deft-path) fn)
-    (while (and cand-dirs (not fn))
-      (let ((dir (car cand-dirs)))
+If multiple such files exist, returns one of them.
+If none exist, returns nil."
+  (let ((subdir-filename
+	 (concat (file-name-as-directory
+		  (deft-base-filename filename))
+		 filename))
+        (cand-dirs deft-path)
+        result)
+    (while (and cand-dirs (not result))
+      (let* ((dir (car cand-dirs))
+	     (full-dir (file-name-as-directory
+			(expand-file-name dir))))
 	(setq cand-dirs (cdr cand-dirs))
-	(let ((cand-fn (concat (file-name-as-directory
-				(expand-file-name dir))
-			       filename)))
-	  (when (file-exists-p cand-fn)
-	    (setq fn cand-fn)))))
-    fn))
+	(let ((cand-fn (concat full-dir filename)))
+	  (if (file-exists-p cand-fn)
+	    (setq result cand-fn)
+            (let ((cand-fn (concat full-dir subdir-filename)))
+	      (when (file-exists-p cand-fn)
+		(setq result cand-fn)))))))
+    result))
 
 ;;;###autoload
 (defun deft-open-file-by-basename (filename)
