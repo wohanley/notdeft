@@ -110,6 +110,10 @@
 ;; `C-c C-m` for a filename prompt.  You can leave Deft at any time
 ;; with `C-c C-q`.
 
+;; Archiving unused files can be carried out by pressing `C-c C-a`.
+;; Files will be moved to `deft-archive-directory', which is a
+;; directory named `archive` within your `deft-directory' by default.
+
 ;; Files opened with deft are automatically saved after Emacs has been
 ;; idle for a customizable number of seconds.  This value is a floating
 ;; point number given by `deft-auto-save-interval'.
@@ -725,9 +729,7 @@ proceeding."
 	      (file-name-directory old-file)
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
-	(ignore-errors
-	  (make-directory (file-name-directory new-file nil)))
-	(rename-file old-file new-file nil)
+	(deft-move-file/mkdir old-file new-file)
 	(deft-refresh)
 	(message "Renamed as `%s`" new-file))))))
 
@@ -763,6 +765,34 @@ a prefix argument, rather than the old file name."
 	;; Fails if `new-filename` already exists.
 	(rename-file old-filename new-filename nil)
 	(deft-refresh)))))
+
+(defun deft-move-file/mkdir (old-file new-file)
+  (ignore-errors
+    (make-directory (file-name-directory new-file) nil))
+  (rename-file old-file new-file nil))
+
+(defun deft-move-file/mkdir-p (old-file new-file)
+  (make-directory (file-name-directory new-file) t)
+  (rename-file old-file new-file nil))
+
+(defun deft-archive-file ()
+  "Archive the file represented by the widget at the point.
+If the point is not on a file widget, do nothing."
+  (interactive)
+  (let ((old-file (widget-get (widget-at) :tag)))
+    (cond
+     ((not old-file)
+      (error "Not on a file"))
+     ((not (deft-direct-file-p old-file))
+      (error "Sub-directories not supported"))
+     (t
+      (let ((new-file
+	     (concat (file-name-directory old-file)
+		     (file-name-as-directory "archive")
+		     (file-name-nondirectory old-file))))
+	(deft-move-file/mkdir old-file new-file)
+	(deft-refresh)
+	(message "Archived as `%s`" new-file))))))
 
 ;; File list filtering
 
@@ -899,6 +929,7 @@ Otherwise, quick create a new file."
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)
     (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
+    (define-key map (kbd "C-c C-a") 'deft-archive-file)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c C-q") 'quit-window)
