@@ -222,6 +222,12 @@ A list of directories which may or may not exist on startup."
   :safe 'stringp
   :group 'deft)
 
+(defcustom deft-index-extension "index"
+  "File extension for notes in subdirectories."
+  :type 'string
+  :safe 'stringp
+  :group 'deft)
+
 (defcustom deft-text-mode 'org-mode
   "Default mode used for editing files."
   :type 'function
@@ -337,8 +343,11 @@ Set to nil to hide."
 
 ;; File processing
 
-(defun deft-title-to-base-filename (s)
-  "Turn a title string to a base filename."
+(defun deft-notename-p (s)
+  (string-match-p "^[a-z0-9-]+$" s))
+
+(defun deft-title-to-notename (s)
+  "Turn a title string to a note name string."
   (when (string-match "^[^a-zA-Z0-9-]+" s)
     (setq s (replace-match "" t t s)))
   (when (string-match "[^a-zA-Z0-9-]+$" s)
@@ -364,18 +373,59 @@ information about note title or content."
 	(setq filename (deft-make-filename base-filename))))
     filename))
 
-(defun deft-make-filename (base-filename &optional dir)
-  (concat (file-name-as-directory (or dir deft-directory))
-	  base-filename "." deft-extension))
+(defun deft-make-filename (notename &optional dir in-subdir)
+  (let ((root (or dir deft-directory)))
+    (if in-subdir
+	(concat (file-name-as-directory root)
+		(file-name-as-directory notename)
+		notename "." deft-index-extension "." deft-extension)
+	(concat (file-name-as-directory root)
+		notename "." deft-extension))))
 
-(defun deft-filename-from-title (title &optional in-subdir)
-  (let ((base-filename (deft-title-to-base-filename title)))
-    (deft-make-filename
-      base-filename
-      (if in-subdir
-	  (concat (file-name-as-directory deft-directory)
-		  base-filename)
-	deft-directory))))
+(defun deft-make-file-re ()
+  (concat "\\." (regexp-quote deft-extension) "$"))
+
+(defun deft-make-index-re ()
+  (concat "\\." (regexp-quote deft-index-extension)
+	  (deft-make-file-re)))
+
+(defun deft-strip-extension (file)
+  (replace-regexp-in-string (deft-make-file-re) "" file))
+  
+(defun deft-base-filename (file)
+  "Strip the leading path and `deft-extension' from filename FILE.
+Use `file-name-directory' to get the directory component."
+  (let* ((file (file-name-nondirectory file))
+	 (file (deft-strip-extension file)))
+    file))
+
+(defun deft-index-file-p (file)
+  (and
+   (string-match-p (deft-make-index-re) file)
+   (deft-notename-p
+    (replace-regexp-in-string (deft-make-index-re) "" file))))
+
+(defun deft-index-file-in-dir (dir)
+  "Finds an index file from DIR, returning it's
+non-directory filename, or nil if there is no index file
+in the directory DIR."
+  (let ((files (directory-files dir nil nil t)))
+    (cl-loop for file in files
+	     when (deft-index-file-p file)
+	     return file)))
+
+(defun deft-notename-from-file (file)
+  "Extracts the name of the note FILE,
+which must be given as an absolute path."
+  (if (deft-index-file-p file)
+      (file-name-nondirectory
+       (directory-file-name
+	(file-name-directory file)))
+    (deft-base-filename file)))
+
+(defun deft-filename-from-title (title)
+  (let ((notename (deft-title-to-notename title)))
+    (deft-make-filename notename)))
 
 (defun deft-file-readable-p (file)
   (and (file-readable-p file)
@@ -396,48 +446,36 @@ information about note title or content."
   "Trim leading and trailing whitespace from STR."
   (replace-regexp-in-string "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" str))
 
-(defun deft-base-filename (file)
-  "Strip the path and extension from filename FILE.
-Use `file-name-directory' to get the directory component."
-  (setq file (file-name-nondirectory file))
-  (unless (string= "" deft-extension)
-    (setq file (replace-regexp-in-string
-		(concat "\." deft-extension "$")
-		""
-		file)))
-  file)
-
 (defun deft-find-all-files-in-dir (directory full)
-  "Return a list of all Deft files in the specified Deft DIRECTORY.
+  "Returns a list of all Deft files under the specified
+Deft root DIRECTORY.
+Returns an empty list if there is no readable DIRECTORY.
 Returns them as absolute paths if FULL is true."
   (and
-   (file-exists-p directory)
+   (file-readable-p directory)
+   (file-directory-p directory)
    (let* ((directory
 	   (file-name-as-directory
 	    (expand-file-name directory)))
-	  (files (directory-files directory nil nil t))
-	  (file-re (concat "\." deft-extension "$"))
+	  (files (directory-files directory nil "^[^.]" t))
+	  (file-re (deft-make-file-re))
 	  result)
      (dolist (filename files result)
-       (cond
-	((string= "." filename))
-	((string= ".." filename))
-	(t
-	 (let ((file (concat directory filename)))
-	   (cond
-	    ((file-directory-p file)
-	     (let ((sub-file (deft-make-filename filename file)))
-	       (when (file-exists-p sub-file)
-		 (let ((x (if full
-			      sub-file
-			    (file-name-nondirectory sub-file))))
-		   (setq result (cons x result))))))
-	    ((string-match-p file-re filename)
-	     (setq result (cons (if full file filename) result)))))))))))
+       (let ((file (concat directory filename)))
+	 (cond
+	  ((file-directory-p file)
+	   (let ((sub-file (deft-index-file-in-dir file)))
+	     (when sub-file
+	       (let ((x (if full
+			    (concat (file-name-as-directory file) sub-file)
+			  sub-file)))
+		 (setq result (cons x result))))))
+	  ((string-match-p file-re filename)
+	   (setq result (cons (if full file filename) result)))))))))
 
-(defun deft-find-all-files ()
-  "Return a list of all readable Deft files in the specified
-Deft directory, as absolute paths."
+(defun deft-find-all-readable-files ()
+  "Return a list of all readable Deft files under
+the `deft-directory` root directory, as absolute paths."
   (let ((files (deft-find-all-files-in-dir deft-directory t))
 	result)
     ;; Filter out files that are not readable or are directories.
@@ -447,18 +485,19 @@ Deft directory, as absolute paths."
     result))
 
 ;;;###autoload
-(defun deft-make-note-basename-list ()
-  "Returns the non-directory components of all Deft files
-in all of the existing `deft-path' directories.
+(defun deft-make-notename-list ()
+  "Returns the names of all Deft files in all of
+the existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation."
   (let ((dir-lst deft-path)
 	(fn-lst '()))
     (dolist (dir dir-lst)
       (setq fn-lst
 	    (append fn-lst
-		    (deft-find-all-files-in-dir dir nil))))
-    ;; `sort` may modify `fn-lst`
-    (sort fn-lst 'string-lessp)))
+		    (deft-find-all-files-in-dir dir t))))
+    ;; `sort` may modify `name-lst`
+    (let ((name-lst (mapcar 'deft-notename-from-file fn-lst)))
+      (sort name-lst 'string-lessp))))
 
 (defun deft-parse-title (file contents)
   "Parse the given FILE and CONTENTS and determine the title.
@@ -524,7 +563,7 @@ title."
 
 (defun deft-cache-update ()
   "Update cached file information."
-  (setq deft-all-files (deft-find-all-files))
+  (setq deft-all-files (deft-find-all-readable-files))
   (mapc 'deft-cache-file deft-all-files)                  ; Cache contents
   (setq deft-all-files (deft-sort-files deft-all-files))  ; Sort by mtime
   )
@@ -689,21 +728,25 @@ based on the filter string if it is non-nil."
 
 (defun deft-delete-file ()
   "Delete the file represented by the widget at the point.
-If the point is not on a file widget, do nothing. Prompts before
-proceeding."
+If the point is not on a file widget, do nothing.
+Prompts before proceeding."
   (interactive)
   (let ((filename (widget-get (widget-at) :tag)))
-    (if filename
-	(let ((filename-nd
-	       (file-name-nondirectory filename)))
-	  (when (y-or-n-p
-		 (concat "Delete file " filename-nd "? "))
-	    (delete-file filename)
-	    (delq filename deft-current-files)
-	    (delq filename deft-all-files)
-	    (deft-refresh)
-	    (message (concat "Deleted " filename-nd))))
-      (error "Not on a file"))))
+    (cond
+     ((not filename)
+      (message "Not on a file"))
+     ((not (deft-direct-file-p filename))
+      (error "Sub-directories not supported"))
+     (t
+      (let ((filename-nd
+	     (file-name-nondirectory filename)))
+	(when (y-or-n-p
+	       (concat "Delete file " filename-nd "? "))
+	  (delete-file filename)
+	  (delq filename deft-current-files)
+	  (delq filename deft-all-files)
+	  (deft-refresh)
+	  (message (concat "Deleted " filename-nd))))))))
 
 (defun deft-direct-file-p (file)
   (let ((cand-dirs deft-path)
@@ -722,9 +765,9 @@ proceeding."
   (let ((old-file (widget-get (widget-at) :tag)))
     (cond
      ((not old-file)
-      (error "Not on a file"))
+      (message "Not on a file"))
      ((not (deft-direct-file-p old-file))
-      (error "Cannot move into a subdir"))
+      (error "Already in a subdir"))
      (t
       (let ((new-file
 	     (concat
@@ -737,13 +780,16 @@ proceeding."
 
 (defun deft-rename-file (pfx)
   "Rename the file represented by the widget at the point.
-If the point is not on a file widget, do nothing.
 Defaults to a content-derived file name if called with
 a prefix argument, rather than the old file name."
   (interactive "P")
   (let ((old-filename (widget-get (widget-at) :tag)))
-    (if (not old-filename)
-	(error "Not on a file")
+    (cond
+     ((not old-filename)
+      (message "Not on a file"))
+     ((not (deft-direct-file-p old-filename))
+      (error "Sub-directories not supported"))
+     (t
       (let* ((old-name (deft-base-filename old-filename))
 	     (def-name
 	       (or (and
@@ -751,7 +797,7 @@ a prefix argument, rather than the old file name."
 		    (let ((title
 			   (deft-title-from-file-content old-filename)))
 		      (and title
-			   (deft-title-to-base-filename title))))
+			   (deft-title-to-notename title))))
 		   old-name))
 	     (history (list def-name))
 	     (new-name
@@ -767,7 +813,7 @@ a prefix argument, rather than the old file name."
 	;; Fails if `new-filename` already exists.
 	(rename-file old-filename new-filename nil)
 	(deft-refresh)
-	(message "Renamed as `%s`" new-file)))))
+	(message "Renamed as `%s`" new-file))))))
 
 (defun deft-rename-file/mkdir (old-file new-file)
   (ignore-errors
@@ -775,8 +821,7 @@ a prefix argument, rather than the old file name."
   (rename-file old-file new-file nil))
 
 (defun deft-archive-file ()
-  "Archive the file represented by the widget at the point.
-If the point is not on a file widget, do nothing."
+  "Archives the file represented by the widget at the point."
   (interactive)
   (let ((old-file (widget-get (widget-at) :tag)))
     (cond
@@ -1016,35 +1061,38 @@ Non-existing directories are not available for selecting."
   (deft-mode))
 
 ;;;###autoload
-(defun deft-expand-file-name (filename)
-  "Expands a basename (with extension) to a full pathname
-under a Deft directory, if such a file indeed exists.
+(defun deft-file-by-notename (name)
+  "Resolves a Deft note NAME to a full pathname
+under a Deft directory, if such a note file does exist.
 If multiple such files exist, returns one of them.
 If none exist, returns nil."
-  (let ((subdir-filename
-	 (concat (file-name-as-directory
-		  (deft-base-filename filename))
-		 filename))
-        (cand-dirs deft-path)
+  (let ((cand-roots deft-path)
         result)
-    (while (and cand-dirs (not result))
-      (let* ((dir (car cand-dirs))
-	     (full-dir (file-name-as-directory
-			(expand-file-name dir))))
-	(setq cand-dirs (cdr cand-dirs))
-	(let ((cand-fn (concat full-dir filename)))
+    (while (and cand-roots (not result))
+      (let* ((root (car cand-roots))
+	     (full-root (file-name-as-directory
+			 (expand-file-name root))))
+	(setq cand-roots (cdr cand-roots))
+	;; Whether immediately under root.
+	(let ((cand-fn (deft-make-filename name full-root)))
 	  (if (file-exists-p cand-fn)
-	    (setq result cand-fn)
-            (let ((cand-fn (concat full-dir subdir-filename)))
-	      (when (file-exists-p cand-fn)
-		(setq result cand-fn)))))))
+	      (setq result cand-fn)
+	    ;; Whether in its own subdirectory.
+            (let* ((dir (concat full-root name))
+		   (sub-fn (and (file-directory-p dir)
+				(deft-index-file-in-dir dir))))
+	      (when sub-fn
+		(setq result (concat (file-name-as-directory dir)
+				     sub-fn))))))))
     result))
 
 ;;;###autoload
-(defun deft-open-file-by-basename (filename)
-  (let ((fn (deft-expand-file-name filename)))
+(defun deft-open-file-by-notename (notename)
+  (let* ((notename ;; conversion for backward compatibility
+	  (replace-regexp-in-string (deft-make-file-re) "" notename))
+	 (fn (deft-file-by-notename notename)))
     (if (not fn)
-	(message "No Deft file '%s'" filename)
+	(message "No Deft note '%s'" notename)
       (deft-open-file fn))))
 
 ;;;###autoload
