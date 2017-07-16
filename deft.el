@@ -332,8 +332,8 @@ Set to nil to hide."
   "Resets Deft internal state, but not configuration settings."
   (setq deft-directory nil)
   (setq deft-filter-regexp nil)
-  (setq deft-current-files nil)
-  (setq deft-all-files nil)
+  (setq deft-current-files nil) ;; filtered `deft-all-files`
+  (setq deft-all-files nil) ;; cache of files in `deft-directory`
   (setq deft-hash-contents nil)
   (setq deft-hash-mtimes nil)
   (setq deft-hash-titles nil)
@@ -400,10 +400,15 @@ Use `file-name-directory' to get the directory component."
     file))
 
 (defun deft-index-file-p (file)
-  (and
-   (string-match-p (deft-make-index-re) file)
-   (deft-notename-p
-    (replace-regexp-in-string (deft-make-index-re) "" file))))
+  "A predicate for determining whether FILE
+names an index file for a Deft sub-directory.
+The filesystem is not consulted."
+  (let ((re (deft-make-index-re)))
+    (and
+     (string-match-p re file)
+     (deft-notename-p
+       (file-name-nondirectory
+	(replace-regexp-in-string re "" file))))))
 
 (defun deft-index-file-in-dir (dir)
   "Finds an index file from DIR, returning it's
@@ -709,7 +714,7 @@ or prompting for a title when called interactively."
       (if (file-exists-p file)
 	  (message "Aborting, file already exists: '%s'" file)
 	(progn
-	 (write-region title nil file nil)
+	 (write-region title nil file nil nil nil t)
 	 (deft-open-file file))))))
 
 (defun deft-new-file ()
@@ -728,7 +733,6 @@ based on the filter string if it is non-nil."
 
 (defun deft-delete-file ()
   "Delete the file represented by the widget at the point.
-If the point is not on a file widget, do nothing.
 Prompts before proceeding."
   (interactive)
   (let ((filename (widget-get (widget-at) :tag)))
@@ -736,7 +740,7 @@ Prompts before proceeding."
      ((not filename)
       (message "Not on a file"))
      ((not (deft-direct-file-p filename))
-      (error "Sub-directories not supported"))
+      (message "Not deleting a file in a sub-directory"))
      (t
       (let ((filename-nd
 	     (file-name-nondirectory filename)))
@@ -749,6 +753,8 @@ Prompts before proceeding."
 	  (message (concat "Deleted " filename-nd))))))))
 
 (defun deft-direct-file-p (file)
+  "Whether the absolute path FILE names a file or directory
+that is directly in one of the directories on the `deft-path'."
   (let ((cand-dirs deft-path)
 	(file-dir (file-name-directory file))
 	result)
@@ -767,7 +773,7 @@ Prompts before proceeding."
      ((not old-file)
       (message "Not on a file"))
      ((not (deft-direct-file-p old-file))
-      (error "Already in a subdir"))
+      (message "Already in a sub-directory"))
      (t
       (let ((new-file
 	     (concat
@@ -826,9 +832,18 @@ a prefix argument, rather than the old file name."
   (let ((old-file (widget-get (widget-at) :tag)))
     (cond
      ((not old-file)
-      (error "Not on a file"))
-     ((not (deft-direct-file-p old-file))
-      (error "Sub-directories not supported"))
+      (message "Not on a file"))
+     ((deft-index-file-p old-file)
+      (let* ((old-file (directory-file-name
+			(file-name-directory old-file)))
+	     (new-file (concat (file-name-directory old-file)
+			       (file-name-as-directory "archive")
+			       (file-name-nondirectory old-file))))
+	(unless (deft-direct-file-p old-file)
+	  (error "Assertion failed for assumed sub-directory `%s`" old-file))
+	(deft-rename-file/mkdir old-file new-file)
+	(deft-refresh)
+	(message "Archived `%s` as `%s`" old-file new-file)))
      (t
       (let ((new-file
 	     (concat (file-name-directory old-file)
