@@ -826,32 +826,49 @@ a prefix argument, rather than the old file name."
     (make-directory (file-name-directory new-file) nil))
   (rename-file old-file new-file nil))
 
-(defun deft-archive-file ()
-  "Archives the file represented by the widget at the point."
+(defun deft-move-file (old-file new-root)
+  "Moves the OLD-FILE note file into the NEW-ROOT directory.
+If OLD-FILE has its own subdirectory, then the entire
+subdirectory is moved."
+  (cond
+   ((deft-index-file-p old-file)
+    (let* ((old-file (directory-file-name
+		      (file-name-directory old-file)))
+	   (new-file (concat (file-name-as-directory new-root)
+			     (file-name-nondirectory old-file))))
+      (unless (deft-direct-file-p old-file)
+	(error "Assumed sub-directory `%s`" old-file))
+      (deft-rename-file/mkdir old-file new-file)))
+   (t
+    (let ((new-file
+	   (concat (file-name-as-directory new-root)
+		   (file-name-nondirectory old-file))))
+      (deft-rename-file/mkdir old-file new-file)))))
+
+(defun deft-move-elsewhere ()
   (interactive)
   (let ((old-file (widget-get (widget-at) :tag)))
-    (cond
-     ((not old-file)
-      (message "Not on a file"))
-     ((deft-index-file-p old-file)
-      (let* ((old-file (directory-file-name
-			(file-name-directory old-file)))
-	     (new-file (concat (file-name-directory old-file)
-			       (file-name-as-directory "archive")
-			       (file-name-nondirectory old-file))))
-	(unless (deft-direct-file-p old-file)
-	  (error "Assertion failed for assumed sub-directory `%s`" old-file))
-	(deft-rename-file/mkdir old-file new-file)
-	(deft-refresh)
-	(message "Archived `%s` as `%s`" old-file new-file)))
-     (t
-      (let ((new-file
+    (if (not old-file)
+	(message "Not on a file")
+      (let ((new-root (file-name-as-directory
+		       (deft-select-directory))))
+	(unless (file-equal-p new-root deft-directory)
+	  (deft-move-file old-file new-root)
+	  (deft-refresh)
+	  (message "Moved `%s` under root `%s`" old-file new-root))))))
+
+(defun deft-archive-file ()
+  "Archives the file represented by the widget at point."
+  (interactive)
+  (let ((old-file (widget-get (widget-at) :tag)))
+    (if (not old-file)
+	(message "Not on a file")
+      (let ((new-root
 	     (concat (file-name-directory old-file)
-		     (file-name-as-directory "archive")
-		     (file-name-nondirectory old-file))))
-	(deft-rename-file/mkdir old-file new-file)
+		     (file-name-as-directory "archive"))))
+	(deft-move-file old-file new-root)
 	(deft-refresh)
-	(message "Archived as `%s`" new-file))))))
+	(message "Archived `%s` into `%s`" old-file new-root)))))
 
 ;; File list filtering
 
@@ -989,6 +1006,7 @@ Otherwise, quick create a new file."
     (define-key map (kbd "C-c C-f") 'deft-find-file)
     (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
+    (define-key map (kbd "C-c C-x C-m") 'deft-move-elsewhere)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c C-q") 'quit-window)
