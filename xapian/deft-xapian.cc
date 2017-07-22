@@ -100,7 +100,7 @@ static int doIndex(vector<string> subArgs) {
       // Whether a readable and writable directory.
       if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode) &&
 	  (access(dir.c_str(), R_OK|W_OK) != -1)) {
-	cout << "indexing directory " << dir << endl;
+	//cout << "indexing directory " << dir << endl;
 	
 	string dbFile(file_join(dir, ".xapian-db"));
 	Xapian::WritableDatabase db(dbFile, Xapian::DB_CREATE_OR_OVERWRITE);
@@ -126,7 +126,7 @@ static int doIndex(vector<string> subArgs) {
       }
     }
   } catch (const Xapian::Error &e) {
-    cout << e.get_description() << endl;
+    cerr << e.get_description() << endl;
     return 1;
   }
 
@@ -136,12 +136,44 @@ static int doIndex(vector<string> subArgs) {
 static int doSearch(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine("Specify a query expression as a string.");
   TCLAP::ValueArg<string>
+    langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
+	    false, "en", "language");
+  cmdLine.add(langArg);
+  TCLAP::ValueArg<string>
     queryArg("q", "query", "specifies a query string", true, "", "string");
   cmdLine.add(queryArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("dir...", "specifies directories to search", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
+  try {
+    Xapian::Database db;
+    auto dirs = dirsArg.getValue();
+    for (auto dir : dirs) {
+      string dbFile(file_join(dir, ".xapian-db"));
+      if (access(dbFile.c_str(), R_OK) != -1) {
+	Xapian::Database dirDb(dbFile);
+	db.add_database(dirDb);
+      }
+    }
+    Xapian::Enquire enquire(db);
+    Xapian::QueryParser qp;
+    Xapian::Stem stemmer(langArg.getValue());
+    qp.set_stemmer(stemmer);
+    qp.set_database(db);
+    qp.set_stemming_strategy(Xapian::QueryParser::STEM_SOME);
+    Xapian::Query query = qp.parse_query(queryArg.getValue());
+    //cout << "Parsed query is: " << query.get_description() << endl;
+    enquire.set_query(query);
+
+    Xapian::MSet matches = enquire.get_mset(0, db.get_doccount());
+    for (Xapian::MSetIterator i = matches.begin(); i != matches.end(); ++i) {
+      cout << i.get_document().get_data() << endl;
+    }
+  } catch (const Xapian::Error &e) {
+    cerr << e.get_description() << endl;
+    return 1;
+  }
   return 0;
 }
 
