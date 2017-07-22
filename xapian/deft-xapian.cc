@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <fstream>
 #include <iostream>
 #include <string.h>
 #include <sys/stat.h>
@@ -74,50 +75,72 @@ static void usage()
   cerr << "  deft-xapian index [options] directory..." << endl;
   cerr << "To find text documents" << endl;
   cerr << "(matching the specified query):" << endl;
-  cerr << "  deft-xapian search [options] term..." << endl;
+  cerr << "  deft-xapian search [options] directory..." << endl;
 }
 
 static int doIndex(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine("Specify the directories to index.");
+  TCLAP::ValueArg<string>
+    langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
+	    false, "en", "language");
+  cmdLine.add(langArg);
   TCLAP::UnlabeledMultiArg<string>
-    multi("directory...", "index specified dirs", false, "directory");
-  cmdLine.add(multi);
+    dirsArg("directory...", "index specified dirs", false, "directory");
+  cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
 
-  auto dirs = multi.getValue();
-  for (auto dir : dirs) {
-    struct stat sb;
-    // Whether a readable and writable directory.
-    if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode) &&
-	(access(dir.c_str(), R_OK|W_OK) != -1)) {
-      cout << "indexing " << dir << endl;
+  try {
+    Xapian::TermGenerator indexer;
+    Xapian::Stem stemmer(langArg.getValue());
+    indexer.set_stemmer(stemmer);
+    
+    auto dirs = dirsArg.getValue();
+    for (auto dir : dirs) {
+      struct stat sb;
+      // Whether a readable and writable directory.
+      if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode) &&
+	  (access(dir.c_str(), R_OK|W_OK) != -1)) {
+	cout << "indexing directory " << dir << endl;
+	
+	string dbFile(file_join(dir, ".xapian-db"));
+	Xapian::WritableDatabase db(dbFile, Xapian::DB_CREATE_OR_OVERWRITE);
+	db.begin_transaction(false);
 
-      string dbFile(file_join(dir, ".xapian-db"));
-      Xapian::WritableDatabase db(dbFile, Xapian::DB_CREATE_OR_OVERWRITE);
-      //db.begin_transaction(false);
-
-      vector<string> orgFiles;
-      ls_org(orgFiles, dir);
-      for (const string& file : orgFiles) {
-	cout << file << endl;
-
-	// Traverse directory, add a document for each “.org” file.
-	//db.add_document(doc);
-      
+	vector<string> orgFiles;
+	ls_org(orgFiles, dir);
+	for (const string& file : orgFiles) {
+	  //cout << "indexing file " << file << endl;
+	  
+	  ifstream infile(file_join(dir, file));
+	  Xapian::Document doc;
+	  doc.set_data(file);
+	  indexer.set_document(doc);
+	  for (string line; getline(infile, line); ) {
+	    //cout << "line: '" << line << "'" << endl;
+	    indexer.index_text(line);
+	  }
+	  db.add_document(doc);
+	}
+	
+	db.commit_transaction();
       }
-
-      //      db.commit();
     }
+  } catch (const Xapian::Error &e) {
+    cout << e.get_description() << endl;
+    return 1;
   }
-  
+
   return 0;
 }
 
 static int doSearch(vector<string> subArgs) {
-  TCLAP::CmdLine cmdLine("Specify required search terms.");
+  TCLAP::CmdLine cmdLine("Specify a query expression as a string.");
+  TCLAP::ValueArg<string>
+    queryArg("q", "query", "specifies a query string", true, "", "string");
+  cmdLine.add(queryArg);
   TCLAP::UnlabeledMultiArg<string>
-    multi("term...", "search for specified terms", true, "term");
-  cmdLine.add(multi);
+    dirsArg("dir...", "specifies directories to search", false, "directory");
+  cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
   return 0;
 }
