@@ -728,7 +728,8 @@ based on the filter string if it is non-nil."
 	 (if deft-filter-regexp
 	     (deft-filename-from-title deft-filter-regexp)
 	   (deft-generate-filename))))
-    (when deft-filter-regexp
+    (when (and deft-filter-regexp
+	       (not (file-exists-p file)))
       (write-region (concat deft-filter-regexp "\n\n")
 		    nil file nil nil nil 'excl))
     (deft-open-file file)
