@@ -711,11 +711,8 @@ or prompting for a title when called interactively."
   (if (not (string-match "[a-zA-Z0-9]" title))
       (message "Aborting, unsuitable title: '%s'" title)
     (let ((file (deft-filename-from-title title)))
-      (if (file-exists-p file)
-	  (message "Aborting, file already exists: '%s'" file)
-	(progn
-	 (write-region title nil file nil nil nil t)
-	 (deft-open-file file))))))
+      (write-region title nil file nil nil nil 'excl)
+      (deft-open-file file))))
 
 (defun deft-new-file ()
   "Create a new file quickly, with an automatically generated filename,
@@ -726,7 +723,8 @@ based on the filter string if it is non-nil."
 	     (deft-filename-from-title deft-filter-regexp)
 	   (deft-generate-filename))))
     (when deft-filter-regexp
-      (write-region (concat deft-filter-regexp "\n\n") nil file nil))
+      (write-region (concat deft-filter-regexp "\n\n")
+		    nil file nil nil nil 'excl))
     (deft-open-file file)
     (with-current-buffer (get-file-buffer file)
       (goto-char (point-max)))))
