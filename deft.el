@@ -111,8 +111,8 @@
 ;; with `C-c C-q`.
 
 ;; Archiving unused files can be carried out by pressing `C-c C-a`.
-;; Files will be moved to `deft-archive-directory', which is a
-;; directory named `archive` within your `deft-directory' by default.
+;; Files will be moved to `deft-archive-directory' within your
+;; `deft-directory'.
 
 ;; Files opened with deft are automatically saved after Emacs has been
 ;; idle for a customizable number of seconds.  This value is a floating
@@ -224,6 +224,12 @@ A list of directories which may or may not exist on startup."
 
 (defcustom deft-index-extension "index"
   "File extension for notes in subdirectories."
+  :type 'string
+  :safe 'stringp
+  :group 'deft)
+
+(defcustom deft-archive-directory "_archive"
+  "Sub-directory name for archived notes."
   :type 'string
   :safe 'stringp
   :group 'deft)
@@ -462,7 +468,7 @@ Returns them as absolute paths if FULL is true."
    (let* ((directory
 	   (file-name-as-directory
 	    (expand-file-name directory)))
-	  (files (directory-files directory nil "^[^.]" t))
+	  (files (directory-files directory nil "^[^._]" t))
 	  (file-re (deft-make-file-re))
 	  result)
      (dolist (filename files result)
@@ -863,7 +869,7 @@ subdirectory is moved."
 	(message "Not on a file")
       (let ((new-root
 	     (concat (file-name-directory old-file)
-		     (file-name-as-directory "archive"))))
+		     (file-name-as-directory deft-archive-directory))))
 	(deft-move-file old-file new-root)
 	(deft-refresh)
 	(message "Archived `%s` into `%s`" old-file new-root)))))
