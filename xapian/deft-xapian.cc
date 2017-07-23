@@ -32,8 +32,9 @@ vector<string> ls(const string& file) {
   struct dirent* entry;
   while ((entry = readdir(dir)) != NULL) {
     string name(entry->d_name);
-    if (!string_starts_with(name, ".") &&
-	!string_starts_with(name, "#")) {
+    if (!(string_starts_with(name, ".") ||
+	  string_starts_with(name, "_") ||
+	  string_starts_with(name, "#"))) {
       lst.push_back(name);
     }
   }
@@ -177,6 +178,40 @@ static int doSearch(vector<string> subArgs) {
   return 0;
 }
 
+static int doDump(vector<string> subArgs) {
+  TCLAP::CmdLine cmdLine("Specify the directories for dumping.");
+  TCLAP::UnlabeledMultiArg<string>
+    dirsArg("dir...", "specifies directories to search", false, "directory");
+  cmdLine.add(dirsArg);
+  cmdLine.parse(subArgs);
+  try {
+    auto dirs = dirsArg.getValue();
+    for (auto dir : dirs) {
+      string dbFile(file_join(dir, ".xapian-db"));
+      if (access(dbFile.c_str(), R_OK) != -1) {
+	cout << "database " << dbFile << endl;
+	Xapian::Database db(dbFile);
+	
+	for (auto it = db.metadata_keys_begin();
+	     it != db.metadata_keys_end(); it++) {
+	  auto mkey = *it;
+	  auto mvalue = db.get_metadata(mkey);
+	  cout << "metadata " << mkey << " = " << mvalue << endl;
+	}
+
+	for (auto it = db.allterms_begin();
+	     it != db.allterms_end(); it++) {
+	  cout << "term " << *it << endl;
+	}
+      }
+    }
+  } catch (const Xapian::Error &e) {
+    cerr << e.get_description() << endl;
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, const char* argv[])
 {
   if (argc <= 1) {
@@ -194,6 +229,8 @@ int main(int argc, const char* argv[])
     return doIndex(args);
   } else if (cmd == "search") {
     return doSearch(args);
+  } else if (cmd == "dump") {
+    return doDump(args);
   } else if (cmd == "-h" || cmd == "--help") {
     usage();
     return 0;
