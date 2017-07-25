@@ -50,19 +50,16 @@ string file_join(const string& x, const string& y) {
   return x + "/" + y;
 }
   
-void ls_org(vector<string>& res, const string& root) {
-  for (const string& file : ls(root)) {
-    auto absFile = file_join(root, file);
+void ls_org(vector<string>& res, const string& root,
+	    const string& dir) {
+  auto absDir = file_join(root, dir);
+  for (const string& file : ls(absDir)) {
+    auto relFile = file_join(dir, file);
+    auto absFile = file_join(absDir, file);
     if (string_ends_with(file, ".org")) {
-      res.push_back(file);
+      res.push_back(relFile);
     } else if (file_directory_p(absFile)) {
-      vector<string> subLst = ls(absFile);
-      for (const string& subFile : subLst) {
-	if (string_ends_with(subFile, ".index.org")) {
-	  res.push_back(file_join(file, subFile));
-	  break;
-	}
-      }
+      ls_org(res, root, relFile);
     }
   }
 }
@@ -108,7 +105,7 @@ static int doIndex(vector<string> subArgs) {
 	db.begin_transaction(false);
 
 	vector<string> orgFiles;
-	ls_org(orgFiles, dir);
+	ls_org(orgFiles, dir, ".");
 	for (const string& file : orgFiles) {
 	  //cout << "indexing file " << file << endl;
 	  
