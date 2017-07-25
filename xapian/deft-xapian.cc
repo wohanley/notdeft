@@ -51,15 +51,15 @@ string file_join(const string& x, const string& y) {
 }
   
 void ls_org(vector<string>& res, const string& root,
-	    const string& dir) {
+	    const string& dir, const string ext) {
   auto absDir = file_join(root, dir);
   for (const string& file : ls(absDir)) {
     auto relFile = file_join(dir, file);
     auto absFile = file_join(absDir, file);
-    if (string_ends_with(file, ".org")) {
+    if (string_ends_with(file, ext)) {
       res.push_back(relFile);
     } else if (file_directory_p(absFile)) {
-      ls_org(res, root, relFile);
+      ls_org(res, root, relFile, ext);
     }
   }
 }
@@ -82,11 +82,17 @@ static int doIndex(vector<string> subArgs) {
     langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
 	    false, "en", "language");
   cmdLine.add(langArg);
+  TCLAP::ValueArg<string>
+    extArg("x", "extension", "filename extension (default: '.org')",
+	    false, ".org", "extension");
+  cmdLine.add(extArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("directory...", "index specified dirs", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
 
+  auto ext = extArg.getValue();
+  
   try {
     Xapian::TermGenerator indexer;
     Xapian::Stem stemmer(langArg.getValue());
@@ -105,7 +111,7 @@ static int doIndex(vector<string> subArgs) {
 	db.begin_transaction(false);
 
 	vector<string> orgFiles;
-	ls_org(orgFiles, dir, ".");
+	ls_org(orgFiles, dir, ".", ext);
 	for (const string& file : orgFiles) {
 	  //cout << "indexing file " << file << endl;
 	  
