@@ -392,7 +392,8 @@ which must be given as an absolute path."
        (not (file-directory-p file))))
 
 (defun deft-title-from-file-content (file)
-  "Extracts a title from FILE, returning nil on failure."
+  "Extracts a title from FILE content,
+returning nil on failure."
   (and (deft-file-readable-p file)
        (let* ((contents
 	       (with-temp-buffer
@@ -508,25 +509,43 @@ It may contain duplicates."
       (sort name-lst 'string-lessp))))
 
 (defun deft-parse-title (file contents)
-  "Parse the given FILE and CONTENTS and determine the title.
+  "Parse the given FILE CONTENTS and determine the title.
 The title is taken to be the first non-empty line of a file.
+Org comments are skipped, and \"#+TITLE\" syntax is recognized,
+and may also be used to define the title.
 Returns nil if there is no non-empty, not-just-whitespace
 title in CONTENTS."
-  (let ((begin (string-match "^.+$" contents)))
-    (and begin
-	 (let* ((line (substring contents begin (match-end 0)))
-		(title (deft-chomp line)))
-	   (and (not (string= "" title)) title)))))
-
-(defun deft-parse-summary (contents title)
-  "Parse the file CONTENTS, given the TITLE, and extract a summary.
+  (car (deft-parse-contents file contents)))
+  
+(defun deft-parse-contents (file contents)
+  "Parses the FILE CONTENTS, and extracts a title and summary.
 The summary is a string extracted from the contents following the
 title."
-  (unless (string-match (regexp-quote title) contents)
-    (error "Title not found in file contents"))
-  (let* ((me (match-end 0))
-	 (summary (deft-chomp (substring contents me (length contents)))))
-    (replace-regexp-in-string "[\n\t]" " " summary)))
+  (let ((begin 0) title summary)
+    (while (and begin (not (and title summary)))
+      ;;(message "%S" (list begin title (and summary t)))
+      (cond
+       ((string-match "^#\\+TITLE:[ \t]*\\(.*\\)$" ;; Org title
+		      contents begin)
+	(setq title (match-string 1 contents))
+	(setq begin (match-end 0)))
+       ((or ;; comments and whitespace
+	 (string-match "^#.*$" contents begin)
+	 (string-match "^[[:space:]]+$" contents begin))
+	(setq begin (match-end 0)))
+       ((string-match "^.+$" contents begin) ;; non-empty line
+	(unless title
+	  (setq title (match-string 0 contents))
+	  (setq begin (match-end 0)))
+	(setq summary (substring contents begin (length contents)))
+	(setq begin nil))
+       (t ;; EOF
+	(setq begin nil))))
+    (list
+     (and title (let ((title (deft-chomp title)))
+		  (and (not (string= "" title)) title)))
+     (and summary (let ((summary (deft-chomp summary)))
+		    (replace-regexp-in-string "[\n\t]" " " summary))))))
 
 (defun deft-cache-file (file)
   "Update file cache if FILE exists."
@@ -542,17 +561,18 @@ title."
   "Update cached information for FILE with given MTIME."
   ;; Modification time
   (puthash file mtime deft-hash-mtimes)
-  (let (contents title)
+  (let (contents)
     ;; Contents
     (with-current-buffer (get-buffer-create "*Deft temp*")
       (insert-file-contents file nil nil nil t)
       (setq contents (concat (buffer-string))))
     (puthash file contents deft-hash-contents)
-    ;; Title
-    (setq title (or (deft-parse-title file contents) ""))
-    (puthash file title deft-hash-titles)
-    ;; Summary
-    (puthash file (deft-parse-summary contents title) deft-hash-summaries))
+    ;; Title and Summary
+    (let* ((res (deft-parse-contents file contents))
+	   (title (or (car res) ""))
+	   (summary (cadr res)))
+      (puthash file title deft-hash-titles)
+      (puthash file summary deft-hash-summaries)))
   (kill-buffer "*Deft temp*"))
 
 (defun deft-file-newer-p (file1 file2)
