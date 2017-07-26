@@ -146,10 +146,14 @@ static int doSearch(vector<string> subArgs) {
   TCLAP::ValueArg<string>
     queryArg("q", "query", "specifies a query string", true, "", "string");
   cmdLine.add(queryArg);
+  TCLAP::ValueArg<int>
+    countArg("c", "max-count", "maximum number of results", false, 0, "number");
+  cmdLine.add(countArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("dir...", "specifies directories to search", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
+  auto maxDocCount = countArg.getValue();
   try {
     Xapian::Database db;
     auto dirs = dirsArg.getValue();
@@ -170,7 +174,8 @@ static int doSearch(vector<string> subArgs) {
     //cout << "Parsed query is: " << query.get_description() << endl;
     enquire.set_query(query);
 
-    Xapian::MSet matches = enquire.get_mset(0, db.get_doccount());
+    int count = (maxDocCount || db.get_doccount());
+    Xapian::MSet matches = enquire.get_mset(0, count);
     for (Xapian::MSetIterator i = matches.begin(); i != matches.end(); ++i) {
       cout << i.get_document().get_data() << endl;
     }
