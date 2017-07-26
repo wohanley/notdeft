@@ -245,6 +245,15 @@ Set to nil to hide."
 		 (const :tag "Hide" nil))
   :group 'deft)
 
+(defcustom deft-xapian-program nil
+  "Xapian backend's executable program path,
+as an absolute path.
+If nil, then incremental search is limited to
+the files in the current `deft-directory'."
+  :type 'string
+  :safe 'stringp
+  :group 'deft)
+
 ;; Faces
 
 (defgroup deft-faces nil
@@ -284,7 +293,7 @@ Set to nil to hide."
 
 ;; Constants
 
-(defconst deft-version "0.3c")
+(defconst deft-version "0.3x")
 
 (defconst deft-buffer "*Deft*"
   "Deft buffer name.")
