@@ -580,8 +580,8 @@ component may be nil."
     (puthash file contents deft-hash-contents)
     ;; Title and Summary
     (let* ((res (deft-parse-contents file contents))
-	   (title (or (car res) ""))
-	   (summary (or (cadr res) "")))
+	   (title (car res))
+	   (summary (cadr res)))
       (puthash file title deft-hash-titles)
       (puthash file summary deft-hash-summaries)))
   (kill-buffer "*Deft temp*"))
@@ -651,8 +651,7 @@ component may be nil."
   (if (not (file-exists-p deft-directory))
       (widget-insert (deft-no-directory-message))
     (if deft-current-files
-        (progn
-          (mapc 'deft-file-widget deft-current-files))
+	(mapc 'deft-file-widget deft-current-files) ;; for side effects
       (widget-insert (deft-no-files-message))))
 
   (use-local-map deft-mode-map)
@@ -684,11 +683,14 @@ component may be nil."
 		   :help-echo "Edit this file"
 		   :notify (lambda (widget &rest ignore)
 			     (deft-open-file (widget-get widget :tag)))
-		   (if title (substring title 0 title-width) "[Empty file]"))
+		   (if title
+		       (substring title 0 title-width)
+		     "[Empty file]"))
     (when (> summary-width 0)
       (widget-insert (propertize deft-separator 'face 'deft-separator-face))
-      (widget-insert (propertize (substring summary 0 summary-width)
-				 'face 'deft-summary-face)))
+      (widget-insert (propertize
+		      (if summary (substring summary 0 summary-width) "")
+		      'face 'deft-summary-face)))
     (when mtime
       (while (< (current-column) line-width)
 	(widget-insert " "))
@@ -941,7 +943,8 @@ including filename, title, and summary."
 	(message "name=%S file=%S title=%S summary=%S"
 		 (deft-notename-from-file file)
 		 file title
-		 (substring summary 0 (min 50 (length summary))))))))
+		 (and summary
+		      (substring summary 0 (min 50 (length summary)))))))))
 
 (defun deft-show-file-parse (file)
   (interactive "F")
