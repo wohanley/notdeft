@@ -524,35 +524,37 @@ Org comments are skipped, and \"#+TITLE\" syntax is recognized,
 and may also be used to define the title.
 Returns nil if there is no non-empty, not-just-whitespace
 title in CONTENTS."
-  (car (deft-parse-contents file contents)))
-  
+  (let ((title (car (deft-parse-contents file contents))))
+    (and title (not (string= "" title)) title)))
+
 (defun deft-parse-contents (file contents)
   "Parses the FILE CONTENTS, and extracts a title and summary.
 The summary is a string extracted from the contents following the
-title."
+title. The result is a list (TITLE SUMMARY) where either
+component may be nil."
   (let ((begin 0) title summary)
     (while (and begin (not (and title summary)))
       ;;(message "%S" (list begin title (and summary t)))
       (cond
-       ((string-match "^#\\+TITLE:[ \t]*\\(.*\\)$" ;; Org title
+       ((string-match "\\`#\\+TITLE:[ \t]*\\(.*\\)$" ;; Org title
 		      contents begin)
 	(setq title (match-string 1 contents))
 	(setq begin (match-end 0)))
-       ((or ;; comments and whitespace
-	 (string-match "^#.*$" contents begin)
-	 (string-match "^[[:space:]]+$" contents begin))
+       ((string-match "\\`#.*$" contents begin) ;; line comment
 	(setq begin (match-end 0)))
-       ((string-match "^.+$" contents begin) ;; non-empty line
+       ((string-match "\\`[[:space:]]*\n" contents begin) ;; empty line
+	(setq begin (match-end 0)))
+       ((string-match "\\`[[:blank:]]*[[:print:]].*$" contents begin) ;; non-empty line
 	(unless title
 	  (setq title (match-string 0 contents))
 	  (setq begin (match-end 0)))
 	(setq summary (substring contents begin (length contents)))
 	(setq begin nil))
        (t ;; EOF
+	;;(message "EOF at %S" (substring contents begin (length contents)))
 	(setq begin nil))))
     (list
-     (and title (let ((title (deft-chomp title)))
-		  (and (not (string= "" title)) title)))
+     (and title (deft-chomp title))
      (and summary (let ((summary (deft-chomp summary)))
 		    (replace-regexp-in-string "[\n\t]" " " summary))))))
 
@@ -579,7 +581,7 @@ title."
     ;; Title and Summary
     (let* ((res (deft-parse-contents file contents))
 	   (title (or (car res) ""))
-	   (summary (cadr res)))
+	   (summary (or (cadr res) "")))
       (puthash file title deft-hash-titles)
       (puthash file summary deft-hash-summaries)))
   (kill-buffer "*Deft temp*"))
@@ -660,39 +662,38 @@ title."
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
-  (when file
-    (let* ((text (deft-file-contents file))
-	   (title (deft-file-title file))
-	   (summary (deft-file-summary file))
-	   (mtime (and deft-time-format
-		    (format-time-string deft-time-format
-					(deft-file-mtime file))))
-	   (mtime-width (length mtime))
-	   (line-width (- deft-window-width mtime-width))
-	   (title-width (min line-width (length title)))
-	   (summary-width (min (length summary)
-			       (- line-width
-				  title-width
-				  (length deft-separator)))))
-      (widget-create 'link
-                     :button-prefix ""
-                     :button-suffix ""
-                     :button-face 'deft-title-face
-                     :format "%[%v%]"
-                     :tag file
-                     :help-echo "Edit this file"
-                     :notify (lambda (widget &rest ignore)
-                               (deft-open-file (widget-get widget :tag)))
-                     (if title (substring title 0 title-width) "[Empty file]"))
-      (when (> summary-width 0)
-        (widget-insert (propertize deft-separator 'face 'deft-separator-face))
-        (widget-insert (propertize (substring summary 0 summary-width)
-				   'face 'deft-summary-face)))
-      (when mtime
-	(while (< (current-column) line-width)
-	  (widget-insert " "))
-	(widget-insert (propertize mtime 'face 'deft-time-face)))
-      (widget-insert "\n"))))
+  (let* ((text (deft-file-contents file))
+	 (title (deft-file-title file))
+	 (summary (deft-file-summary file))
+	 (mtime (and deft-time-format
+		     (format-time-string deft-time-format
+					 (deft-file-mtime file))))
+	 (mtime-width (length mtime))
+	 (line-width (- deft-window-width mtime-width))
+	 (title-width (min line-width (length title)))
+	 (summary-width (min (length summary)
+			     (- line-width
+				title-width
+				(length deft-separator)))))
+    (widget-create 'link
+		   :button-prefix ""
+		   :button-suffix ""
+		   :button-face 'deft-title-face
+		   :format "%[%v%]"
+		   :tag file
+		   :help-echo "Edit this file"
+		   :notify (lambda (widget &rest ignore)
+			     (deft-open-file (widget-get widget :tag)))
+		   (if title (substring title 0 title-width) "[Empty file]"))
+    (when (> summary-width 0)
+      (widget-insert (propertize deft-separator 'face 'deft-separator-face))
+      (widget-insert (propertize (substring summary 0 summary-width)
+				 'face 'deft-summary-face)))
+    (when mtime
+      (while (< (current-column) line-width)
+	(widget-insert " "))
+      (widget-insert (propertize mtime 'face 'deft-time-face)))
+    (widget-insert "\n")))
 
 (add-hook 'window-configuration-change-hook
 	  (lambda ()
@@ -928,6 +929,31 @@ directory, but only with a prefix argument."
 	  (deft-refresh)
 	  (message "Archived `%s` into `%s`" moved-file new-root))))))
 
+(defun deft-show-file-info ()
+  "Shows information about the selected note,
+including filename, title, and summary."
+  (interactive)
+  (let ((file (widget-get (widget-at) :tag)))
+    (if (not file)
+	(message "Not on a file")
+      (let* ((title (deft-file-title file))
+	     (summary (deft-file-summary file)))
+	(message "name=%S file=%S title=%S summary=%S"
+		 (deft-notename-from-file file)
+		 file title
+		 (substring summary 0 (min 50 (length summary))))))))
+
+(defun deft-show-file-parse (file)
+  (interactive "F")
+  (let* ((contents
+	  (with-temp-buffer
+	    (insert-file-contents file)
+	    (buffer-string))))
+    (message "name=%S file=%S parse=%S"
+	     (deft-notename-from-file file)
+	     file
+	     (deft-parse-contents file contents))))
+
 ;; File list filtering
 
 (defun deft-sort-files (files)
@@ -1059,6 +1085,8 @@ Otherwise, quick create a new file."
     (define-key map (kbd "C-c C-n") 'deft-new-file)
     (define-key map (kbd "C-c C-m") 'deft-new-file-named)
     ;; File management
+    (define-key map (kbd "C-c i") 'deft-show-file-info)
+    (define-key map (kbd "C-c p") 'deft-show-file-parse)
     (define-key map (kbd "C-c C-d") 'deft-delete-file)
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)

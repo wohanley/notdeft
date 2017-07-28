@@ -112,7 +112,7 @@ static int doIndex(vector<string> subArgs) {
 
 	vector<string> orgFiles;
 	ls_org(orgFiles, dir, ".", ext);
-	for (const string& file : orgFiles) {
+	for (const string& file : orgFiles) { // `dir` relative `file`
 	  //cout << "indexing file " << file << endl;
 	  
 	  ifstream infile(file_join(dir, file));
@@ -162,6 +162,7 @@ static int doSearch(vector<string> subArgs) {
       if (access(dbFile.c_str(), R_OK) != -1) {
 	Xapian::Database dirDb(dbFile);
 	db.add_database(dirDb);
+	//cout << "Added database: " << db.get_description() << endl;
       }
     }
     Xapian::Enquire enquire(db);
