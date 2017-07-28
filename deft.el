@@ -441,12 +441,12 @@ If none exist, returns nil."
 	 (files (directory-files abs-dir nil "^[^._#]" t))
 	 result)
      (while (and files (not result))
-       (let* ((abs-file (concat abd-dir (car files))))
+       (let* ((abs-file (concat abs-dir (car files))))
 	 (setq files (cdr files))
 	 (cond
 	  ((file-directory-p abs-file)
 	   (setq result (deft-root-find-file file-p abs-file)))
-	  ((file-p abs-file)
+	  ((funcall file-p abs-file)
 	   (setq result abs-file)))))
      result)))
 
@@ -980,11 +980,10 @@ including filename, title, and summary."
   "Return FILE if FILE matches the current filter regexp."
   (with-temp-buffer
     (insert file)
-    (insert (deft-file-title file))
     (insert (deft-file-contents file))
     (goto-char (point-min))
     (when (search-forward deft-filter-regexp nil t)
-        file)))
+      file)))
 
 ;; Filters that cause a refresh
 

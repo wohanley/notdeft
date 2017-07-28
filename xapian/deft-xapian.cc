@@ -77,7 +77,10 @@ static void usage()
 }
 
 static int doIndex(vector<string> subArgs) {
-  TCLAP::CmdLine cmdLine("Specify the directories to index.");
+  TCLAP::CmdLine cmdLine
+    ("Specify the directories to index."
+     " Any relative paths are stored as given."
+     " Search results are reported in the same manner, regardless of the search time working directory.");
   TCLAP::ValueArg<string>
     langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
 	    false, "en", "language");
@@ -86,11 +89,20 @@ static int doIndex(vector<string> subArgs) {
     extArg("x", "extension", "filename extension (default: '.org')",
 	    false, ".org", "extension");
   cmdLine.add(extArg);
+  TCLAP::ValueArg<string>
+    chdirArg("c", "chdir", "change working directory first",
+	    false, ".", "directory");
+  cmdLine.add(chdirArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("directory...", "index specified dirs", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
 
+  if (chdirArg.getValue() != ".") {
+    if (chdir(chdirArg.getValue().c_str()) == -1)
+      return errno;
+  }
+  
   auto ext = extArg.getValue();
   
   try {
@@ -114,10 +126,11 @@ static int doIndex(vector<string> subArgs) {
 	ls_org(orgFiles, dir, ".", ext);
 	for (const string& file : orgFiles) { // `dir` relative `file`
 	  //cout << "indexing file " << file << endl;
-	  
-	  ifstream infile(file_join(dir, file));
+
+	  auto filePath = file_join(dir, file);
+	  ifstream infile(filePath);
 	  Xapian::Document doc;
-	  doc.set_data(file);
+	  doc.set_data(filePath);
 	  indexer.set_document(doc);
 	  for (string line; getline(infile, line); ) {
 	    //cout << "line: '" << line << "'" << endl;
@@ -175,8 +188,8 @@ static int doSearch(vector<string> subArgs) {
     //cout << "Parsed query is: " << query.get_description() << endl;
     enquire.set_query(query);
 
-    int count = (maxDocCount || db.get_doccount());
-    Xapian::MSet matches = enquire.get_mset(0, count);
+    int maxItems = (maxDocCount ? maxDocCount : db.get_doccount());
+    Xapian::MSet matches = enquire.get_mset(0, maxItems);
     for (Xapian::MSetIterator i = matches.begin(); i != matches.end(); ++i) {
       cout << i.get_document().get_data() << endl;
     }
