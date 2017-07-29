@@ -76,6 +76,8 @@ static void usage()
   cerr << "  deft-xapian search [options] directory..." << endl;
 }
 
+static constexpr Xapian::valueno DOC_MTIME = 0;
+
 static int doIndex(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine
     ("Specify the directories to index."
@@ -128,15 +130,21 @@ static int doIndex(vector<string> subArgs) {
 	  //cout << "indexing file " << file << endl;
 
 	  auto filePath = file_join(dir, file);
-	  ifstream infile(filePath);
-	  Xapian::Document doc;
-	  doc.set_data(filePath);
-	  indexer.set_document(doc);
-	  for (string line; getline(infile, line); ) {
-	    //cout << "line: '" << line << "'" << endl;
-	    indexer.index_text(line);
+
+	  struct stat sb;
+	  if (stat(filePath.c_str(), &sb) == 0) {
+	    ifstream infile(filePath);
+	    Xapian::Document doc;
+	    doc.set_data(filePath);
+	    doc.add_value(DOC_MTIME,
+			  Xapian::sortable_serialise(sb.st_mtime));
+	    indexer.set_document(doc);
+	    for (string line; getline(infile, line); ) {
+	      //cout << "line: '" << line << "'" << endl;
+	      indexer.index_text(line);
+	    }
+	    db.add_document(doc);
 	  }
-	  db.add_document(doc);
 	}
 	
 	db.commit_transaction();
@@ -162,11 +170,15 @@ static int doSearch(vector<string> subArgs) {
   TCLAP::ValueArg<int>
     countArg("c", "max-count", "maximum number of results", false, 0, "number");
   cmdLine.add(countArg);
+  TCLAP::SwitchArg
+    timeArg("t", "time-sort", "sort by modification time", false);
+  cmdLine.add(timeArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("dir...", "specifies directories to search", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
   auto maxDocCount = countArg.getValue();
+  bool timeSort = timeArg.getValue();
   try {
     Xapian::Database db;
     auto dirs = dirsArg.getValue();
@@ -179,6 +191,8 @@ static int doSearch(vector<string> subArgs) {
       }
     }
     Xapian::Enquire enquire(db);
+    if (timeSort) // by modification time, descending
+      enquire.set_sort_by_value(DOC_MTIME, true);
     Xapian::QueryParser qp;
     Xapian::Stem stemmer(langArg.getValue());
     qp.set_stemmer(stemmer);
