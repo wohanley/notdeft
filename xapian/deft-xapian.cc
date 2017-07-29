@@ -7,7 +7,33 @@
 #include <unistd.h>
 #include <xapian.h>
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 using namespace std;
+
+/** Serializes in a sorting friendly way, similarly to
+    `Xapian::sortable_serialise`. Should be quite portable when the
+    argument is coerced from `time_t`, although C does not actually
+    even guarantee an integer type in that case. */
+string time_serialize(const int64_t v) {
+  char buf[16+1];
+  // format in hexadecimal, zero padded, 64/4 digits
+  if (snprintf(buf, sizeof buf, "%016" PRIx64, v) != 16) {
+    // POSIX requires `errno` to be set, but C does not
+    throw Xapian::AssertionError("unexpected snprintf failure", errno);
+  }
+  return string(buf);
+}
+
+/** The inverse of `time_serialize`. */
+int64_t time_deserialize(const string& s) {
+  int64_t v;
+  if (sscanf(s.c_str(), "%" SCNx64, &v) != 1) {
+    throw Xapian::InvalidArgumentError("bad time_deserialize arg", errno);
+  }
+  return v;
+}
 
 bool string_starts_with(const string& s, const string& pfx) {
   return s.compare(0, pfx.length(), pfx) == 0;
@@ -136,8 +162,7 @@ static int doIndex(vector<string> subArgs) {
 	    ifstream infile(filePath);
 	    Xapian::Document doc;
 	    doc.set_data(filePath);
-	    doc.add_value(DOC_MTIME,
-			  Xapian::sortable_serialise(sb.st_mtime));
+	    doc.add_value(DOC_MTIME, time_serialize(sb.st_mtime));
 	    indexer.set_document(doc);
 	    for (string line; getline(infile, line); ) {
 	      //cout << "line: '" << line << "'" << endl;
