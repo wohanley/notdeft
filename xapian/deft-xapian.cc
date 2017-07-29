@@ -165,7 +165,7 @@ static int doSearch(vector<string> subArgs) {
 	    false, "en", "language");
   cmdLine.add(langArg);
   TCLAP::ValueArg<string>
-    queryArg("q", "query", "specifies a query string", true, "", "string");
+    queryArg("q", "query", "specifies a query string", false, "", "string");
   cmdLine.add(queryArg);
   TCLAP::ValueArg<int>
     countArg("c", "max-count", "maximum number of results", false, 0, "number");
@@ -193,13 +193,19 @@ static int doSearch(vector<string> subArgs) {
     Xapian::Enquire enquire(db);
     if (timeSort) // by modification time, descending
       enquire.set_sort_by_value(DOC_MTIME, true);
+
     Xapian::QueryParser qp;
     Xapian::Stem stemmer(langArg.getValue());
-    qp.set_stemmer(stemmer);
-    qp.set_database(db);
-    qp.set_stemming_strategy(Xapian::QueryParser::STEM_SOME);
-    Xapian::Query query = qp.parse_query(queryArg.getValue());
-    //cout << "Parsed query is: " << query.get_description() << endl;
+    Xapian::Query query;
+    if (queryArg.getValue() == "") {
+      query = Xapian::Query::MatchAll;
+    } else {
+      qp.set_stemmer(stemmer);
+      qp.set_database(db);
+      qp.set_stemming_strategy(Xapian::QueryParser::STEM_SOME);
+      query = qp.parse_query(queryArg.getValue());
+      //cout << "Parsed query is: " << query.get_description() << endl;
+    }
     enquire.set_query(query);
 
     int maxItems = (maxDocCount ? maxDocCount : db.get_doccount());
