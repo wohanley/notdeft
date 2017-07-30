@@ -125,6 +125,9 @@ static int doIndex(vector<string> subArgs) {
   TCLAP::SwitchArg
     resetArg("r", "recreate", "recreate database", false);
   cmdLine.add(resetArg);
+  TCLAP::SwitchArg
+    verboseArg("v", "verbose", "be verbose", false);
+  cmdLine.add(verboseArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("directory...", "index specified dirs", false, "directory");
   cmdLine.add(dirsArg);
@@ -136,6 +139,7 @@ static int doIndex(vector<string> subArgs) {
   }
   
   auto ext = extArg.getValue();
+  auto verbose = verboseArg.getValue();
   
   try {
     Xapian::TermGenerator indexer;
@@ -148,7 +152,8 @@ static int doIndex(vector<string> subArgs) {
       // Whether a readable and writable directory.
       if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode) &&
 	  (access(dir.c_str(), R_OK|W_OK) != -1)) {
-	//cout << "indexing directory " << dir << endl;
+	if (verbose)
+	  cerr << "indexing directory " << dir << endl;
 	
 	string dbFile(file_join(dir, ".xapian-db"));
 	Xapian::WritableDatabase db(dbFile,
@@ -200,20 +205,23 @@ static int doIndex(vector<string> subArgs) {
 	  };
 
 	  auto addFile = [&] (const pair<string, int64_t>& x) {
-	    cerr << "indexing file " << x.first << endl;
+	    if (verbose)
+	      cerr << "indexing file " << x.first << endl;
 	    Xapian::Document doc = makeDoc(x);
 	    db.add_document(doc);
 	  };
 
 	  auto updateFile = [&] (const pair<string, int64_t>& x,
 				 Xapian::docid docId) {
-	    cerr << "re-indexing file " << x.first << endl;
+	    if (verbose)
+	      cerr << "re-indexing file " << x.first << endl;
 	    Xapian::Document doc = makeDoc(x);
 	    db.replace_document(docId, doc);
 	  };
 	  
 	  auto rmFile = [&] (const pair<string, int64_t>& x) {
-	    cerr << "de-indexing file " << x.first << endl;
+	    if (verbose)
+	      cerr << "de-indexing file " << x.first << endl;
 	    auto docId = dbIds[x.first];
 	    db.delete_document(docId);
 	  };
