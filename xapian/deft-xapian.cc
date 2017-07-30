@@ -52,7 +52,7 @@ bool file_directory_p(const string& file) {
 /** Returns an empty list on failure. */
 vector<string> ls(const string& file) {
   vector<string> lst;
-  DIR* dir = opendir(file.c_str()); // might use `unique_ptr` to close
+  DIR* dir = opendir(file.c_str());
   if (dir == NULL)
     return lst;
   struct dirent* entry;
@@ -108,7 +108,8 @@ static int doIndex(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine
     ("Specify the directories to index."
      " Any relative paths are stored as given."
-     " Search results are reported in the same manner, regardless of the search time working directory.");
+     " Search results are reported in the same manner,"
+     " regardless of the search time working directory.");
   TCLAP::ValueArg<string>
     langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
 	    false, "en", "language");
@@ -121,6 +122,9 @@ static int doIndex(vector<string> subArgs) {
     chdirArg("c", "chdir", "change working directory first",
 	    false, ".", "directory");
   cmdLine.add(chdirArg);
+  TCLAP::SwitchArg
+    resetArg("r", "recreate", "recreate database", false);
+  cmdLine.add(resetArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("directory...", "index specified dirs", false, "directory");
   cmdLine.add(dirsArg);
@@ -147,29 +151,107 @@ static int doIndex(vector<string> subArgs) {
 	//cout << "indexing directory " << dir << endl;
 	
 	string dbFile(file_join(dir, ".xapian-db"));
-	Xapian::WritableDatabase db(dbFile, Xapian::DB_CREATE_OR_OVERWRITE);
-	db.begin_transaction(false);
+	Xapian::WritableDatabase db(dbFile,
+				    resetArg.getValue() ?
+				    Xapian::DB_CREATE_OR_OVERWRITE :
+				    Xapian::DB_CREATE_OR_OPEN);
 
+	map<string, int64_t> fsFiles, dbFiles;
+	map<string, Xapian::docid> dbIds;
+	
 	vector<string> orgFiles;
 	ls_org(orgFiles, dir, ".", ext);
 	for (const string& file : orgFiles) { // `dir` relative `file`
-	  //cout << "indexing file " << file << endl;
-
 	  auto filePath = file_join(dir, file);
-
 	  struct stat sb;
 	  if (stat(filePath.c_str(), &sb) == 0) {
+	    fsFiles[filePath] = sb.st_mtime;
+	  }
+	}
+	
+	db.begin_transaction(false);
+	
+	for (Xapian::PostingIterator it = db.postlist_begin("");
+	     it != db.postlist_end(""); ++it) {
+	  auto docId = *it;
+	  auto doc = db.get_document(docId);
+	  auto filePath = doc.get_data();
+	  auto t = time_deserialize(doc.get_value(DOC_MTIME));
+	  // Overwrites any existing value of the same key, and thus
+	  // there will be no dupes in `dbFiles`, even if the database
+	  // should have some.
+	  dbFiles[filePath] = t;
+	  dbIds[filePath] = docId;
+	}
+
+	{
+	  auto makeDoc = [&] (const pair<string, int64_t>& x) {
+	    const string& filePath = x.first;
 	    ifstream infile(filePath);
 	    Xapian::Document doc;
 	    doc.set_data(filePath);
-	    doc.add_value(DOC_MTIME, time_serialize(sb.st_mtime));
+	    doc.add_value(DOC_MTIME, time_serialize(x.second));
 	    indexer.set_document(doc);
 	    for (string line; getline(infile, line); ) {
-	      //cout << "line: '" << line << "'" << endl;
+	      //cerr << "line: '" << line << "'" << endl;
 	      indexer.index_text(line);
 	    }
+	    return doc;
+	  };
+
+	  auto addFile = [&] (const pair<string, int64_t>& x) {
+	    cerr << "indexing file " << x.first << endl;
+	    Xapian::Document doc = makeDoc(x);
 	    db.add_document(doc);
-	  }
+	  };
+
+	  auto updateFile = [&] (const pair<string, int64_t>& x,
+				 Xapian::docid docId) {
+	    cerr << "re-indexing file " << x.first << endl;
+	    Xapian::Document doc = makeDoc(x);
+	    db.replace_document(docId, doc);
+	  };
+	  
+	  auto rmFile = [&] (const pair<string, int64_t>& x) {
+	    cerr << "de-indexing file " << x.first << endl;
+	    auto docId = dbIds[x.first];
+	    db.delete_document(docId);
+	  };
+	  
+	  auto fi = fsFiles.cbegin();
+	  auto di = dbFiles.cbegin();
+	  for (;;) {
+	    if (fi == fsFiles.cend()) {
+	      // The remaining files have been deleted.
+	      for ( ; di != dbFiles.cend(); ++di) {
+		rmFile(*di);
+	      }
+	      break;
+	    } else if (di == dbFiles.cend()) {
+	      // The remaining files are new.
+	      for ( ; fi != fsFiles.cend(); ++fi) {
+		addFile(*fi);
+	      }
+	      break;
+	    } else if ((*fi).first == (*di).first) {
+	      if ((*fi).second != (*di).second) {
+		// The file has been modified.
+		updateFile(*fi, dbIds[(*di).first]);
+	      }
+	      fi++;
+	      di++;
+	    } else if ((*fi).first < (*di).first) {
+	      // The file has been added.
+	      addFile(*fi);
+	      fi++;
+	    } else if ((*fi).first > (*di).first) {
+	      // The file has been deleted.
+	      rmFile(*di);
+	      di++;
+	    } else {
+	      throw Xapian::AssertionError("unexpected condition");
+	    }
+	  } // end `for`
 	}
 	
 	db.commit_transaction();
