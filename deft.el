@@ -254,6 +254,13 @@ the files in the current `deft-directory'."
   :safe 'stringp
   :group 'deft)
 
+(defcustom deft-xapian-max-results 100
+  "Maximum number of Xapian query results.
+(I.e., '--max-count' for `deft-xapian-program'.)
+No limit if nil."
+  :type 'integer
+  :group 'deft)
+
 ;; Faces
 
 (defgroup deft-faces nil
@@ -316,7 +323,7 @@ the files in the current `deft-directory'."
   "List of files matching current filter.")
 
 (defvar deft-all-files nil
-  "List of all files in the data directory.")
+  "List of all files to list or filter.")
 
 (defvar deft-hash-contents nil
   "Hash containing complete cached file contents, keyed by filename.")
@@ -400,21 +407,25 @@ which must be given as an absolute path."
   (and (file-readable-p file)
        (not (file-directory-p file))))
 
+(defun deft-read-file (file)
+  (with-temp-buffer
+    (insert-file-contents file)
+    (buffer-string)))
+
 (defun deft-title-from-file-content (file)
   "Extracts a title from FILE content,
 returning nil on failure."
   (and (deft-file-readable-p file)
        (let* ((contents
-	       (with-temp-buffer
-		 (insert-file-contents file)
-		 (buffer-string)))
+	       (deft-read-file file))
 	      (title
 	       (deft-parse-title file contents)))
 	 title)))
 
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
-  (replace-regexp-in-string "\\(^[[:space:]\n]*\\|[[:space:]\n]*$\\)" "" str))
+  (replace-regexp-in-string "\\(\\`[[:space:]\n]*\\|[[:space:]\n]*\\'\\)"
+			    "" str))
 
 ;;;###autoload
 (defun deft-file-by-notename (name)
@@ -524,39 +535,53 @@ Org comments are skipped, and \"#+TITLE\" syntax is recognized,
 and may also be used to define the title.
 Returns nil if there is no non-empty, not-just-whitespace
 title in CONTENTS."
-  (let ((title (car (deft-parse-contents file contents))))
-    (and title (not (string= "" title)) title)))
+  (let* ((res (with-temp-buffer
+		(insert contents)
+		(deft-parse-buffer)))
+	 (title (car res)))
+    title))
 
-(defun deft-parse-contents (file contents)
-  "Parses the FILE CONTENTS, and extracts a title and summary.
+(defun deft-substring-from (s from max-n)
+  (substring s from (max (length s) (+ from max-n))))
+
+(defun deft-parse-buffer ()
+  "Parses the file contents in the current buffer,
+and extracts a title and summary.
 The summary is a string extracted from the contents following the
 title. The result is a list (TITLE SUMMARY) where either
 component may be nil."
-  (let ((begin 0) title summary)
-    (while (and begin (not (and title summary)))
-      ;;(message "%S" (list begin title (and summary t)))
-      (cond
-       ((string-match "\\`#\\+TITLE:[ \t]*\\(.*\\)$" ;; Org title
-		      contents begin)
-	(setq title (match-string 1 contents))
-	(setq begin (match-end 0)))
-       ((string-match "\\`#.*$" contents begin) ;; line comment
-	(setq begin (match-end 0)))
-       ((string-match "\\`[[:space:]]*\n" contents begin) ;; empty line
-	(setq begin (match-end 0)))
-       ((string-match "\\`[[:blank:]]*[[:print:]].*$" contents begin) ;; non-empty line
-	(unless title
-	  (setq title (match-string 0 contents))
-	  (setq begin (match-end 0)))
-	(setq summary (substring contents begin (length contents)))
-	(setq begin nil))
-       (t ;; EOF
-	;;(message "EOF at %S" (substring contents begin (length contents)))
-	(setq begin nil))))
+  (let (title summary dbg (end (point-max)))
+    (save-match-data
+      (save-excursion
+	(goto-char (point-min))
+	(while (and (< (point) end) (not (and title summary)))
+	  ;;(message "%S" (list (point) title summary))
+	  (cond
+	   ((looking-at "^#\\+TITLE:[ \t]*\\(.*\\)$") ;; Org title
+	    (setq dbg (cons `(TITLE . ,(match-string 0)) dbg))
+	    (setq title (match-string 1))
+	    (goto-char (match-end 0)))
+	   ((looking-at "^#.*$") ;; line comment
+	    (setq dbg (cons `(COMMENT . ,(match-string 0)) dbg))
+	    (goto-char (match-end 0)))
+	   ((looking-at "[[:graph:]].*$") ;; non-whitespace
+	    (setq dbg (cons `(REST . ,(match-string 0)) dbg))
+	    (unless title
+	      (setq title (match-string 0))
+	      (goto-char (match-end 0)))
+	    (setq summary (buffer-substring (point) end))
+	    (goto-char end))
+	   (t
+	    (let* ((b (point)) (e (+ b 1)))
+	      (setq dbg (cons `(SKIP . ,(buffer-substring b e)) dbg))
+	      (goto-char e)))))))
     (list
      (and title (deft-chomp title))
-     (and summary (let ((summary (deft-chomp summary)))
-		    (replace-regexp-in-string "[\n\t]" " " summary))))))
+     (and summary
+	  (let ((summary (deft-chomp summary)))
+	    (unless (string= "" summary)
+	      (replace-regexp-in-string "[[:space:]\n]+" " " summary))))
+     dbg)))
 
 (defun deft-cache-file (file)
   "Update file cache if FILE exists."
@@ -570,21 +595,19 @@ component may be nil."
 
 (defun deft-cache-newer-file (file mtime)
   "Update cached information for FILE with given MTIME."
-  ;; Modification time
-  (puthash file mtime deft-hash-mtimes)
-  (let (contents)
-    ;; Contents
-    (with-current-buffer (get-buffer-create "*Deft temp*")
-      (insert-file-contents file nil nil nil t)
-      (setq contents (concat (buffer-string))))
-    (puthash file contents deft-hash-contents)
-    ;; Title and Summary
-    (let* ((res (deft-parse-contents file contents))
-	   (title (car res))
-	   (summary (cadr res)))
-      (puthash file title deft-hash-titles)
-      (puthash file summary deft-hash-summaries)))
-  (kill-buffer "*Deft temp*"))
+  (let* ((res (with-temp-buffer
+		(insert-file-contents file)
+		(deft-parse-buffer)))
+	 (title (car res))
+	 (summary (cadr res))
+	 (contents
+	  (concat file
+		  (or title "")
+		  (or summary ""))))
+    (puthash file mtime deft-hash-mtimes)
+    (puthash file title deft-hash-titles)
+    (puthash file summary deft-hash-summaries)
+    (puthash file contents deft-hash-contents)))
 
 (defun deft-file-newer-p (file1 file2)
   "Return non-nil if FILE1 was modified since FILE2 and nil otherwise."
@@ -946,16 +969,21 @@ including filename, title, and summary."
 		 (and summary
 		      (substring summary 0 (min 50 (length summary)))))))))
 
-(defun deft-show-file-parse (file)
+(defun deft-show-find-file-parse (file)
   (interactive "F")
-  (let* ((contents
-	  (with-temp-buffer
-	    (insert-file-contents file)
-	    (buffer-string))))
+  (let ((res (with-temp-buffer
+	       (insert-file-contents file)
+	       (deft-parse-buffer))))
     (message "name=%S file=%S parse=%S"
 	     (deft-notename-from-file file)
-	     file
-	     (deft-parse-contents file contents))))
+	     file res)))
+
+(defun deft-show-file-parse ()
+  (interactive)
+  (let ((file (widget-get (widget-at) :tag)))
+    (if (not file)
+	(message "Not on a file")
+      (deft-show-find-file-parse file))))
 
 ;; File list filtering
 
@@ -978,12 +1006,8 @@ including filename, title, and summary."
 
 (defun deft-filter-match-file (file)
   "Return FILE if FILE matches the current filter regexp."
-  (with-temp-buffer
-    (insert file)
-    (insert (deft-file-contents file))
-    (goto-char (point-min))
-    (when (search-forward deft-filter-regexp nil t)
-      file)))
+  (and (string-match-p deft-filter-regexp (deft-file-contents file))
+       file))
 
 ;; Filters that cause a refresh
 
@@ -1089,6 +1113,7 @@ Otherwise, quick create a new file."
     ;; File management
     (define-key map (kbd "C-c i") 'deft-show-file-info)
     (define-key map (kbd "C-c p") 'deft-show-file-parse)
+    (define-key map (kbd "C-c P") 'deft-show-find-file-parse)
     (define-key map (kbd "C-c C-d") 'deft-delete-file)
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)
