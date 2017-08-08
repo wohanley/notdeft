@@ -898,10 +898,17 @@ a prefix argument, rather than the old file name."
 
 (defun deft-rename-file/mkdir (old-file new-file &optional exist-ok)
   "Like `rename-file', but creates target directory as required.
-(Does not create its parent directories.)"
+(Does not create its parent directories.)
+Additionally, any OLD-FILE buffer is renamed as NEW-FILE,
+and its visited file is also set as NEW-FILE."
   (ignore-errors
     (make-directory (file-name-directory new-file) nil))
-  (rename-file old-file new-file exist-ok))
+  (rename-file old-file new-file exist-ok)
+  (let ((buf (get-file-buffer old-file)))
+    (when buf
+      (save-current-buffer
+        (set-buffer buf)
+        (set-visited-file-name new-file nil t)))))
 
 (defun deft-move-file (old-file new-root &optional whole-dir)
   "Moves the OLD-FILE note file into the NEW-ROOT directory.
