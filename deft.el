@@ -793,19 +793,19 @@ based on the filter string if it is non-nil."
    (file-in-directory-p file dir)
    (not (file-equal-p file dir))))
 
-(defun deft-file-under-deft-dir (file)
+(defun deft-dir-of-deft-file (file)
   "Returns the `deft-path' directory under which FILE is,
 or nil if FILE is not under any Deft root."
   (some (lambda (dir)
-	  (deft-file-under-dir-p dir file)
-	  dir)
+	  (when (deft-file-under-dir-p dir file)
+	    dir))
 	deft-path))
 
 (defun deft-direct-file-p (file)
   "Whether the absolute path FILE names a file or directory
 that a direct child of one of the directories of `deft-path'.
 FILE need not actually exist for this predicate to hold."
-  (let ((root (deft-file-under-deft-dir file)))
+  (let ((root (deft-dir-of-deft-file file)))
     (and root
 	 (file-equal-p file
 		       (expand-file-name
@@ -816,7 +816,7 @@ FILE need not actually exist for this predicate to hold."
   "Whether the absolute path FILE names a file or directory
 that is in a sub-directory of one of the `deft-path' directories.
 FILE need not actually exist for this predicate to hold."
-  (let ((root (deft-file-under-deft-dir file)))
+  (let ((root (deft-dir-of-deft-file file)))
     (and root
 	 (let ((dir (file-name-directory file)))
 	   (not (file-equal-p dir root))))))
