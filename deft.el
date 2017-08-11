@@ -245,22 +245,6 @@ Set to nil to hide."
 		 (const :tag "Hide" nil))
   :group 'deft)
 
-(defcustom deft-xapian-program nil
-  "Xapian backend's executable program path,
-as an absolute path.
-If nil, then incremental search is limited to
-the files in the current `deft-directory'."
-  :type 'string
-  :safe 'stringp
-  :group 'deft)
-
-(defcustom deft-xapian-max-results 100
-  "Maximum number of Xapian query results.
-(I.e., '--max-count' for `deft-xapian-program'.)
-No limit if nil."
-  :type 'integer
-  :group 'deft)
-
 ;; Faces
 
 (defgroup deft-faces nil
@@ -342,6 +326,8 @@ No limit if nil."
 
 (defvar deft-window-width nil
   "Width of Deft buffer.")
+
+(require 'deft-xapian)
 
 ;; File processing
 
