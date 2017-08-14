@@ -1,7 +1,6 @@
 (defcustom deft-xapian-program nil
-  "Xapian backend's executable program path,
-as an absolute path.
-If nil, then incremental search is limited to
+  "Xapian backend's executable program path.
+When nil, incremental search is limited to
 the files in the current `deft-directory'."
   :type 'string
   :safe 'stringp
@@ -9,7 +8,7 @@ the files in the current `deft-directory'."
 
 (defcustom deft-xapian-max-results 100
   "Maximum number of Xapian query results.
-(I.e., '--max-count' for `deft-xapian-program'.)
+\(I.e., '--max-count' for `deft-xapian-program'.)
 No limit if nil."
   :type 'integer
   :group 'deft)
@@ -20,9 +19,10 @@ No limit if nil."
   :safe 'stringp
   :group 'deft)
 
-(defun deft-xapian-index-dirs (dirs)
-  "Creates or updates a Xapian index for DIRS.
-Any errors are reported in a separate buffer."
+(defun deft-xapian-index-dirs (dirs &optional async)
+  "Create or update a Xapian index for DIRS.
+Report any errors in a separate buffer.
+With ASYNC, do the indexing asynchronously."
   (shell-command
    (concat
     (shell-quote-argument deft-xapian-program) " index"
@@ -33,17 +33,18 @@ Any errors are reported in a separate buffer."
 	 (lambda (dir)
 	   (shell-quote-argument
 	    (file-relative-name dir "~")))
-	 dirs " "))
+	 dirs " ")
+    (if async " &" ""))
    nil "*Deft indexing errors*"))
 
 (defun deft-xapian-search (dirs &optional query)
-  "Performs the Xapian QUERY in terms of the indexes
+  "Perform the Xapian QUERY on the indexes in DIRS.
+I.e., perform the query in terms of the Xapian indexes
 in the specified DIRS. Where a query is not specified,
-uses a query that matches any file.
-At most `deft-xapian-max-results' are returned, as
-pathnames of the matching files. The results are
-sorted based on file modification time, most recent
-first."
+use a query that matches any file.
+Return at most `deft-xapian-max-results' results, as
+pathnames of the matching files. Sort the results
+based on file modification time, most recent first."
   (let ((s (shell-command-to-string
 	    (concat
 	     (shell-quote-argument deft-xapian-program) " search --time-sort"
