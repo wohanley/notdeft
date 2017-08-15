@@ -19,14 +19,16 @@ No limit if nil."
   :safe 'stringp
   :group 'deft)
 
-(defun deft-xapian-index-dirs (dirs &optional async)
+(defun deft-xapian-index-dirs (dirs &optional async recreate)
   "Create or update a Xapian index for DIRS.
 Report any errors in a separate buffer.
-With ASYNC, do the indexing asynchronously."
+With ASYNC, do the indexing asynchronously.
+With RECREATE, truncate any existing index files."
   (shell-command
    (concat
     (shell-quote-argument deft-xapian-program) " index"
     " --chdir ~"
+    (if recreate " --recreate" "")
     " --extension " (shell-quote-argument (concat "." deft-extension))
     " --lang " (shell-quote-argument deft-xapian-language)
     " " (mapconcat
