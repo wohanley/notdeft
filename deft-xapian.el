@@ -19,6 +19,23 @@ No limit if nil."
   :safe 'stringp
   :group 'deft)
 
+(defvar deft-xapian-query nil
+  "Current Xapian query string.")
+
+(defvar deft-xapian-query-history nil
+  "Xapian query string history.
+Used and updated by `deft-xapian-read-query'.")
+
+(defun deft-xapian-read-query ()
+  (let ((s (read-string
+	    "Query: " ;; PROMPT
+	    nil ;; INITIAL-INPUT
+	    deft-xapian-query-history ;; HISTORY
+	    nil ;; DEFAULT-VALUE
+	    )))
+    (when (and s (not (string= s "")))
+      s)))
+
 (defun deft-xapian-index-dirs (dirs &optional async recreate)
   "Create or update a Xapian index for DIRS.
 Report any errors in a separate buffer.
@@ -37,7 +54,7 @@ With RECREATE, truncate any existing index files."
 	    (file-relative-name dir "~")))
 	 dirs " ")
     (if async " &" ""))
-   nil "*Deft indexing errors*"))
+   "*Deft output*" "*Deft indexing errors*"))
 
 (defun deft-xapian-search (dirs &optional query)
   "Perform the Xapian QUERY on the indexes in DIRS.

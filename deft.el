@@ -722,15 +722,17 @@ The DIR argument must be a Deft root directory."
 (defun deft-refresh-internal (what &optional lst)
   "Refresh state as specified by WHAT and file LST.
 Refresh both file information cache and any Xapian indexes.
-Update `deft-all-files' and `deft-current-file' to reflect
-the changes.
-WHAT is one of `all', `dirs', and `files'."
+Update `deft-all-files' and `deft-current-file'
+to reflect the changes.
+WHAT is one of `none', `all', `dirs', and `files'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
     (cond
      (deft-xapian-program
-       (deft-xapian-index-dirs deft-path)
-       (setq deft-all-files (deft-xapian-search deft-path))
+       (cl-case what
+	 ((none) nil)
+	 (t (deft-xapian-index-dirs deft-path)))
+       (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
        (deft-cache-update deft-all-files))
      (t
       (setq deft-all-files (deft-files-under-root deft-directory))
@@ -739,6 +741,19 @@ WHAT is one of `all', `dirs', and `files'."
     ;;(message "%S" deft-all-files)
     (deft-filter-update)
     (deft-buffer-setup)))
+
+(defun deft-xapian-query-edit ()
+  (interactive)
+  (deft-xapian-query-set (deft-xapian-read-query)))
+
+(defun deft-xapian-query-clear ()
+  (interactive)
+  (deft-xapian-query-set nil))
+
+(defun deft-xapian-query-set (new-query)
+  (unless (equal deft-xapian-query new-query)
+    (setq deft-xapian-query new-query)
+    (deft-refresh-internal 'none)))
 
 (defun deft-refresh ()
   "Refresh the `deft-buffer' in the background.
@@ -1143,9 +1158,10 @@ Otherwise, quick create a new file."
     ;; Widgets
     (define-key map [down-mouse-1] 'widget-button-click)
     (define-key map [down-mouse-2] 'widget-button-click)
-    (define-key map (kbd "<tab>") 'widget-forward)
-    (define-key map (kbd "<backtab>") 'widget-backward)
-    (define-key map (kbd "<S-tab>") 'widget-backward)
+    ;; Xapian
+    (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
+    (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
+    (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear)
     map)
   "Keymap for Deft mode.")
 
