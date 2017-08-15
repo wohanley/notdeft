@@ -1,3 +1,8 @@
+;; Copyright (C) 2017 by the author.
+;; All rights reserved.
+;; Author: Tero Hasu <tero@hasu.is>
+;; See "deft.el" for licensing information.
+
 (defcustom deft-xapian-program nil
   "Xapian backend's executable program path.
 When nil, incremental search is limited to

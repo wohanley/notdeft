@@ -1,3 +1,8 @@
+;; Copyright (C) 2017 by the author.
+;; All rights reserved.
+;; Author: Tero Hasu <tero@hasu.is>
+;; See "deft.el" for licensing information.
+
 ;; For Org mode version 9 and higher.
 
 ;; The `org-link-set-parameters` API is available since Org version 9.

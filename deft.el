@@ -1,6 +1,7 @@
 ;;; deft.el --- quickly browse, filter, and edit plain text notes
 
 ;; Copyright (C) 2011 Jason R. Blevins <jrblevin@sdf.org>
+;; Copyright (C) 2011-2017 Tero Hasu <tero@hasu.is>
 ;; All rights reserved.
 
 ;; Redistribution and use in source and binary forms, with or without
@@ -27,8 +28,8 @@
 ;; POSSIBILITY OF SUCH DAMAGE.
 
 ;; Author: Jason R. Blevins <jrblevin@sdf.org>
+;; Author: Tero Hasu <tero@hasu.is>
 ;; Keywords: plain text, notes, Simplenote, Notational Velocity
-;; URL: http://jblevins.org/projects/deft/
 
 ;; This file is not part of GNU Emacs.
 
@@ -42,37 +43,29 @@
 ;; creating new files and saving files.
 
 ;; Deft is open source software and may be freely distributed and
-;; modified under the BSD license.  Version 0.3 is the latest stable
-;; version, released on September 11, 2011.  You may download it
-;; directly here:
-
-;;   * [deft.el](http://jblevins.org/projects/deft/deft.el)
-
-;; To follow or contribute to Deft development, you can either
-;; [browse](http://jblevins.org/git/deft.git) or clone the Git
-;; repository:
-
-;;     git clone git://jblevins.org/git/deft.git
+;; modified under the BSD license.  This version is a fork of
+;; Deft version 0.3, which was released on September 11, 2011.
 
 ;; ![File Browser](http://jblevins.org/projects/deft/browser.png)
 
 ;; The Deft buffer is simply a file browser which lists the titles of
-;; all text files in the Deft directory followed by short summaries
-;; and last modified times.  The title is taken to be the first line
-;; of the file and the summary is extracted from the text that
-;; follows.  Files are sorted in terms of the last modified date, from
-;; newest to oldest.
+;; all text files in the Deft directory (or directories) followed by
+;; short summaries and last modified times. The title is taken to be
+;; the first line of the file (or as specified by an Org "TITLE" file
+;; property) and the summary is extracted from the text that follows.
+;; Files are sorted in terms of the last modified date, from newest to
+;; oldest.
 
-;; All Deft files or notes are simple plain text files where the first
-;; line contains a title.  As an example, the following directory
-;; structure generated the screenshot above.
+;; All Deft files or notes are simple plain text files (or Org markup
+;; files). As an example, the following directory structure generated
+;; the screenshot above.
 ;;
 ;;     % ls ~/.deft
-;;     about.txt    browser.txt     directory.txt   operations.txt
-;;     ack.txt      completion.txt  extensions.txt  text-mode.txt
-;;     binding.txt  creation.txt    filtering.txt
+;;     about.org    browser.org     directory.org   operations.org
+;;     ack.org      completion.org  extensions.org  text-mode.org
+;;     binding.org  creation.org    filtering.org
 ;;
-;;     % cat ~/.deft/about.txt
+;;     % cat ~/.deft/about.org
 ;;     About
 ;;
 ;;     An Emacs mode for slicing and dicing plain text files.
@@ -111,11 +104,12 @@
 
 ;; Archiving unused files can be carried out by pressing `C-c C-a`.
 ;; Files will be moved to `deft-archive-directory' within your
-;; `deft-directory'.
+;; chosen `deft-directory'.
 
-;; Files opened with deft are automatically saved after Emacs has been
-;; idle for a customizable number of seconds.  This value is a floating
-;; point number given by `deft-auto-save-interval'.
+;; Files opened with Deft can be automatically saved after Emacs has
+;; been idle for a customizable number of seconds. To enable this
+;; feature, configure `deft-auto-save-interval' with the desired
+;; floating point value.
 
 ;; Getting Started
 ;; ---------------
@@ -140,13 +134,13 @@
 ;; Customize the `deft` group to change the functionality.
 
 ;; By default, Deft looks for notes by searching for files with the
-;; extension `.txt` in the `~/.deft` directory.  You can customize
-;; both the file extension and the Deft directory by running
+;; extension `.org` in the `~/.deft` directory.  You can customize
+;; both the file extension and the Deft note search path by running
 ;; `M-x customize-group` and typing `deft`.  Alternatively, you can
 ;; configure them in your `.emacs` file:
 
 ;;     (setq deft-extension "txt")
-;;     (setq deft-directory "~/Dropbox/notes")
+;;     (setq deft-path '("~/.deft/" "~/Dropbox/notes/"))
 
 ;; You can also customize the major mode that Deft uses to edit files,
 ;; either through `M-x customize-group` or by adding something like
@@ -157,11 +151,8 @@
 ;; Note that the mode need not be a traditional text mode.  If you
 ;; prefer to write notes as LaTeX fragments, for example, you could
 ;; set `deft-extension' to "tex" and `deft-text-mode' to `latex-mode'.
-
-;; If you prefer `org-mode', then simply use
-
-;;     (setq deft-extension "org")
-;;     (setq deft-text-mode 'org-mode)
+;; However, this fork of Deft is somewhat optimized to working with
+;; files in Org format.
 
 ;; You can easily set up a global keyboard binding for Deft.  For
 ;; example, to bind it to F8, add the following code to your `.emacs`
@@ -185,6 +176,11 @@
 
 ;; History
 ;; -------
+
+;; Version 0.3x:
+
+;; * Most notably, add a Xapian-based query engine.
+;; * Add support for multiple notes directories.
 
 ;; Version 0.3 (2011-09-11):
 
@@ -1100,8 +1096,8 @@ Modify the variable `deft-current-files' to set the result."
 If there is a widget at the point, press it.  If a filter is
 applied and there is at least one match, open the first matching
 file.  If there is an active filter but there are no matches,
-quick create a new file using the filter string as the title.
-Otherwise, quick create a new file."
+quickly create a new file using the filter string as the title.
+Otherwise, quickly create a new file."
   (interactive)
   (cond
    ;; Activate widget
