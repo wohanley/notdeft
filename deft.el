@@ -487,17 +487,6 @@ Returns the files' absolute paths if FULL is true."
       (deft-glob/absolute directory)
     (deft-glob directory)))
 
-(defun deft-find-all-readable-files ()
-  "Return a list of all readable Deft files under
-the `deft-directory' root directory, as absolute paths."
-  (let ((files (deft-find-all-files-in-dir deft-directory t))
-	result)
-    ;; Filter out files that are not readable or are directories.
-    (dolist (file files)
-      (when (deft-file-readable-p file)
-	(setq result (cons file result))))
-    result))
-
 ;;;###autoload
 (defun deft-make-notename-list ()
   "Returns the names of all Deft files in all of
@@ -569,15 +558,23 @@ component may be nil."
 	      (replace-regexp-in-string "[[:space:]\n]+" " " summary))))
      dbg)))
 
+(defun deft-cache-remove-file (file)
+  "Remove FILE from the cache.
+Do nothing if FILE is not in the cache."
+  (remhash file deft-hash-mtimes)
+  (remhash file deft-hash-titles)
+  (remhash file deft-hash-summaries)
+  (remhash file deft-hash-contents))
+
 (defun deft-cache-file (file)
-  "Update file cache if FILE exists."
+  "Update file cache for FILE.
+Keep any information for a non-existing file."
   (when (file-exists-p file)
     (let ((mtime-cache (deft-file-mtime file))
           (mtime-file (nth 5 (file-attributes file))))
       (when (or (not mtime-cache)
 		(time-less-p mtime-cache mtime-file))
-          (deft-cache-newer-file file mtime-file)
-	  ))))
+	(deft-cache-newer-file file mtime-file)))))
 
 (defun deft-cache-newer-file (file mtime)
   "Update cached information for FILE with given MTIME."
@@ -608,13 +605,6 @@ component may be nil."
   (setq deft-hash-mtimes (make-hash-table :test 'equal))
   (setq deft-hash-titles (make-hash-table :test 'equal))
   (setq deft-hash-summaries (make-hash-table :test 'equal)))
-
-(defun deft-cache-update ()
-  "Update cached file information."
-  (setq deft-all-files (deft-find-all-readable-files))
-  ;;(message "%S" deft-all-files)
-  (mapc 'deft-cache-file deft-all-files)                  ; Cache contents
-  (setq deft-all-files (deft-sort-files deft-all-files))) ; Sort by mtime
 
 ;; Cache access
 
@@ -649,7 +639,7 @@ component may be nil."
   (widget-insert "\n\n"))
 
 (defun deft-buffer-setup ()
-  "Render the file browser in the *Deft* buffer."
+  "Render the file browser in the `deft-buffer'."
   (setq deft-window-width (window-width))
   (let ((inhibit-read-only t))
     (erase-buffer))
@@ -712,14 +702,52 @@ component may be nil."
                        (not (eq deft-window-width (window-width))))
               (deft-buffer-setup))))
 
-(defun deft-refresh ()
-  "Refresh the *Deft* buffer in the background."
-  (interactive)
+(defun deft-keep-readable (files)
+  "Filter out unreadable FILES."
+  (let (result)
+    (dolist (file files result)
+      (when (file-readable-p file)
+	(setq result (cons file result))))))
+
+(defun deft-files-under-root (dir)
+  "Return a list of all readable Deft files under DIR.
+Return the results as absolute paths.
+The DIR argument must be a Deft root directory."
+  (deft-keep-readable (deft-find-all-files-in-dir dir t)))
+
+(defun deft-cache-update (files)
+  "Update cached information for FILES."
+  (mapc 'deft-cache-file files))
+
+(defun deft-refresh-internal (what &optional lst)
+  "Refresh state as specified by WHAT and file LST.
+Refresh both file information cache and any Xapian indexes.
+Update `deft-all-files' and `deft-current-file' to reflect
+the changes.
+WHAT is one of `all', `dirs', and `files'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
-    (deft-cache-update)
+    (cond
+     (deft-xapian-program
+       (deft-xapian-index-dirs deft-path)
+       (setq deft-all-files (deft-xapian-search deft-path))
+       (deft-cache-update deft-all-files))
+     (t
+      (setq deft-all-files (deft-files-under-root deft-directory))
+      (deft-cache-update deft-all-files)
+      (setq deft-all-files (deft-sort-files deft-all-files))))
+    ;;(message "%S" deft-all-files)
     (deft-filter-update)
     (deft-buffer-setup)))
+
+(defun deft-refresh ()
+  "Refresh the `deft-buffer' in the background.
+\(That is, do not display the buffer.)
+Do nothing if there is no `deft-buffer'.
+You may invoke \[deft-refresh] manually if Deft
+files change outside of `deft-mode'."
+  (interactive)
+  (deft-refresh-internal 'all))
 
 (defun deft-no-directory-message ()
   "Return a short message to display when the Deft directory does not exist."
@@ -917,9 +945,9 @@ Returns the pathname of the file/directory that was moved."
       old-file))))
 
 (defun deft-move-elsewhere (pfx)
-  "Moves the selected file under selected Deft root.
-If it resides in a subdirectory, moves the entire
-directory, but only with a prefix argument."
+  "Move the selected file under selected Deft root.
+If it resides in a subdirectory, move the entire
+directory, but only if given a prefix argument."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
     (if (not old-file)
@@ -932,8 +960,8 @@ directory, but only with a prefix argument."
 	    (message "Moved `%s` under root `%s`" moved-file new-root)))))))
 
 (defun deft-archive-file (pfx)
-  "Archives the file represented by the widget at point.
-If it resides in a subdirectory, archives the entire
+  "Archive the file represented by the widget at point.
+If it resides in a subdirectory, archive the entire
 directory, but only with a prefix argument."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
@@ -948,7 +976,7 @@ directory, but only with a prefix argument."
 	  (message "Archived `%s` into `%s`" moved-file new-root))))))
 
 (defun deft-show-file-info ()
-  "Shows information about the selected note,
+  "Show information about the selected note,
 including filename, title, and summary."
   (interactive)
   (let ((file (widget-get (widget-at) :tag)))
@@ -981,17 +1009,13 @@ including filename, title, and summary."
 ;; File list filtering
 
 (defun deft-sort-files (files)
-  "Sort FILES in reverse order by modified time."
+  "Sort FILES in reverse order by modification time."
   (sort files (lambda (f1 f2) (deft-file-newer-p f1 f2))))
 
-(defun deft-filter-initialize ()
-  "Initialize the filter string (nil) and files list (all files)."
-  (interactive)
-  (setq deft-filter-regexp nil)
-  (setq deft-current-files deft-all-files))
-
 (defun deft-filter-update ()
-  "Update the filtered files list using the current filter regexp."
+  "Update the filtered files list using the current filter regexp.
+Refer to `deft-filter-regexp' for the regular expression.
+Modify the variable `deft-current-files' to set the result."
   (if (not deft-filter-regexp)
       (setq deft-current-files deft-all-files)
     (setq deft-current-files (mapcar 'deft-filter-match-file deft-all-files))
@@ -1136,11 +1160,10 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (setq default-directory deft-directory)
   (use-local-map deft-mode-map)
   (deft-cache-initialize)
-  (deft-cache-update)
-  (deft-filter-initialize)
+  (setq deft-filter-regexp nil)
+  (deft-refresh-internal 'all)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
-  (deft-buffer-setup)
   (when (> deft-auto-save-interval 0)
     (run-with-idle-timer deft-auto-save-interval t 'deft-auto-save))
   (run-mode-hooks 'deft-mode-hook))
