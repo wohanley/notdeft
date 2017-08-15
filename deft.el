@@ -519,13 +519,23 @@ title in CONTENTS."
 (defun deft-substring-from (s from max-n)
   (substring s from (max (length s) (+ from max-n))))
 
+(defun deft-condense-whitespace (s)
+  (replace-regexp-in-string "[[:space:]\n]+" " " s))
+
+(defun deft-chomp-nullify (s &optional trim)
+  (when s
+    (let ((s (deft-chomp s)))
+      (unless (string= "" s)
+	(if trim (funcall trim s) s)))))
+
 (defun deft-parse-buffer ()
-  "Parses the file contents in the current buffer,
-and extracts a title and summary.
+  "Parse the file contents in the current buffer.
+Extract a title and summary.
 The summary is a string extracted from the contents following the
-title. The result is a list (TITLE SUMMARY) where either
-component may be nil."
-  (let (title summary dbg (end (point-max)))
+title. The result is a list (TITLE SUMMARY KEYWORDS) where any
+component may be nil. The result list may include additional,
+undefined components."
+  (let (title summary keywords dbg (end (point-max)))
     (save-match-data
       (save-excursion
 	(goto-char (point-min))
@@ -533,8 +543,12 @@ component may be nil."
 	  ;;(message "%S" (list (point) title summary))
 	  (cond
 	   ((looking-at "^#\\+TITLE:[ \t]*\\(.*\\)$") ;; Org title
-	    (setq dbg (cons `(TITLE . ,(match-string 0)) dbg))
+	    (setq dbg (cons `(TITLE . ,(match-string 1)) dbg))
 	    (setq title (match-string 1))
+	    (goto-char (match-end 0)))
+	   ((looking-at "^#\\+KEYWORDS:[ \t]*\\(.*\\)$")
+	    (setq dbg (cons `(KEYWORDS . ,(match-string 1)) dbg))
+	    (setq keywords (match-string 1))
 	    (goto-char (match-end 0)))
 	   ((looking-at "^#.*$") ;; line comment
 	    (setq dbg (cons `(COMMENT . ,(match-string 0)) dbg))
@@ -551,11 +565,9 @@ component may be nil."
 	      (setq dbg (cons `(SKIP . ,(buffer-substring b e)) dbg))
 	      (goto-char e)))))))
     (list
-     (and title (deft-chomp title))
-     (and summary
-	  (let ((summary (deft-chomp summary)))
-	    (unless (string= "" summary)
-	      (replace-regexp-in-string "[[:space:]\n]+" " " summary))))
+     (deft-chomp-nullify title)
+     (deft-chomp-nullify summary 'deft-condense-whitespace)
+     (deft-chomp-nullify keywords)
      dbg)))
 
 (defun deft-cache-remove-file (file)
@@ -584,8 +596,9 @@ Keep any information for a non-existing file."
 	 (title (car res))
 	 (summary (cadr res))
 	 (contents
-	  (concat file
-		  (or title "")
+	  (concat file " "
+		  (or title "") " "
+		  (or (caddr res) "") " "
 		  (or summary ""))))
     (puthash file mtime deft-hash-mtimes)
     (puthash file title deft-hash-titles)
