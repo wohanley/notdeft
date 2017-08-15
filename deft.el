@@ -628,14 +628,15 @@ Keep any information for a non-existing file."
 
 (defun deft-print-header ()
   "Prints the *Deft* buffer header."
-  (if deft-filter-regexp
-      (progn
-        (widget-insert
-         (propertize "Deft: " 'face 'deft-header-face))
-        (widget-insert
-         (propertize deft-filter-regexp 'face 'deft-filter-string-face)))
+  (widget-insert
+   (propertize "Deft: " 'face 'deft-header-face))
+  (when deft-xapian-query
     (widget-insert
-         (propertize "Deft" 'face 'deft-header-face)))
+     (propertize (concat deft-xapian-query ": ")
+		 'face 'deft-xapian-query-face)))
+  (when deft-filter-regexp
+    (widget-insert
+     (propertize deft-filter-regexp 'face 'deft-filter-string-face)))
   (widget-insert "\n\n"))
 
 (defun deft-buffer-setup ()

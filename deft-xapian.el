@@ -19,6 +19,11 @@ No limit if nil."
   :safe 'stringp
   :group 'deft)
 
+(defface deft-xapian-query-face
+  '((t :inherit font-lock-string-face :bold t))
+  "Face for Deft Xapian queries."
+  :group 'deft-faces)
+
 (defvar deft-xapian-query nil
   "Current Xapian query string.")
 
