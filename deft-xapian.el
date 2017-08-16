@@ -5,6 +5,7 @@
 
 (defcustom deft-xapian-program nil
   "Xapian backend's executable program path.
+Specified as an absolute path.
 When nil, incremental search is limited to
 the files in the current `deft-directory'."
   :type 'string
@@ -48,23 +49,24 @@ Used and updated by `deft-xapian-read-query'.")
 
 (defun deft-xapian-index-dirs (dirs &optional async recreate)
   "Create or update a Xapian index for DIRS.
-Report any errors in a separate buffer.
 With ASYNC, do the indexing asynchronously.
-With RECREATE, truncate any existing index files."
-  (shell-command
-   (concat
-    (shell-quote-argument deft-xapian-program) " index"
-    " --chdir ~"
-    (if recreate " --recreate" "")
-    " --extension " (shell-quote-argument (concat "." deft-extension))
-    " --lang " (shell-quote-argument deft-xapian-language)
-    " " (mapconcat
-	 (lambda (dir)
-	   (shell-quote-argument
-	    (file-relative-name dir "~")))
-	 dirs " ")
-    (if async " &" ""))
-   "*Deft output*" "*Deft indexing errors*"))
+With RECREATE, truncate any existing index files.
+The return value is as for `call-process'."
+  (apply
+   'call-process
+   deft-xapian-program ;; PROGRAM
+   nil ;; INFILE
+   (if async 0 nil) ;; DESTINATION
+   nil ;; DISPLAY
+   `("index"
+     "--chdir" ,(expand-file-name "." "~")
+     ,@(if recreate '("--recreate") nil)
+     "--extension" ,(concat "." deft-extension)
+     "--lang" ,deft-xapian-language
+     ,@(mapcar
+	(lambda (dir)
+	  (file-relative-name dir "~"))
+	dirs))))
 
 (defun deft-xapian-search (dirs &optional query)
   "Perform the Xapian QUERY on the indexes in DIRS.

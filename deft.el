@@ -734,20 +734,21 @@ The DIR argument must be a Deft root directory."
 Refresh both file information cache and any Xapian indexes.
 Update `deft-all-files' and `deft-current-file'
 to reflect the changes.
-WHAT is one of `none', `all', `dirs', and `files'."
+WHAT is either `none' or `all'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
     (cond
      (deft-xapian-program
        (cl-case what
-	 ((none) nil)
-	 (t (deft-xapian-index-dirs deft-path)))
+	 ((all) (deft-xapian-index-dirs deft-path)))
        (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
        (deft-cache-update deft-all-files))
      (t
-      (setq deft-all-files (deft-files-under-root deft-directory))
-      (deft-cache-update deft-all-files)
-      (setq deft-all-files (deft-sort-files deft-all-files))))
+      (cl-case what
+	((all)
+	 (setq deft-all-files (deft-files-under-root deft-directory))
+	 (deft-cache-update deft-all-files)
+	 (setq deft-all-files (deft-sort-files deft-all-files))))))
     ;;(message "%S" deft-all-files)
     (deft-filter-update)
     (deft-buffer-setup)))
