@@ -729,27 +729,31 @@ The DIR argument must be a Deft root directory."
   "Update cached information for FILES."
   (mapc 'deft-cache-file files))
 
-(defun deft-refresh-internal (what &optional lst)
-  "Refresh state as specified by WHAT and file LST.
-Refresh both file information cache and any Xapian indexes.
-Update `deft-all-files' and `deft-current-file'
-to reflect the changes.
-WHAT is either `none' or `all'."
+(defun deft-changed (&optional fs-what)
+  "Refresh Deft file list, cache, and search index state.
+The arguments hint at what may need refreshing.
+
+FS-WHAT is a symbolic hint for purposes of optimization.
+FS-WHAT is one of:
+- `nothing' to assume no filesystem changes; or
+- nil to make no assumptions about filesystem changes.
+
+As appropriate, refresh both file information cache and
+any Xapian indexes, and update `deft-all-files' and
+`deft-current-file' lists to reflect those changes,
+or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
     (cond
      (deft-xapian-program
-       (cl-case what
-	 ((all) (deft-xapian-index-dirs deft-path)))
+       (unless fs-what
+	 (deft-xapian-index-dirs deft-path))
        (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
        (deft-cache-update deft-all-files))
-     (t
-      (cl-case what
-	((all)
-	 (setq deft-all-files (deft-files-under-root deft-directory))
-	 (deft-cache-update deft-all-files)
-	 (setq deft-all-files (deft-sort-files deft-all-files))))))
-    ;;(message "%S" deft-all-files)
+     ((not fs-what)
+      (setq deft-all-files (deft-files-under-root deft-directory))
+      (deft-cache-update deft-all-files)
+      (setq deft-all-files (deft-sort-files deft-all-files))))
     (deft-filter-update)
     (deft-buffer-setup)))
 
@@ -764,16 +768,17 @@ WHAT is either `none' or `all'."
 (defun deft-xapian-query-set (new-query)
   (unless (equal deft-xapian-query new-query)
     (setq deft-xapian-query new-query)
-    (deft-refresh-internal 'none)))
+    (deft-changed 'nothing)))
 
 (defun deft-refresh ()
   "Refresh the `deft-buffer' in the background.
 \(That is, do not display the buffer.)
 Do nothing if there is no `deft-buffer'.
-You may invoke \[deft-refresh] manually if Deft
-files change outside of `deft-mode'."
+You may invoke this command manually if Deft files change
+outside of `deft-mode', as such changes are not detected
+automatically."
   (interactive)
-  (deft-refresh-internal 'all))
+  (deft-changed))
 
 (defun deft-no-directory-message ()
   "Return a short message to display when the Deft directory does not exist."
@@ -793,7 +798,8 @@ files change outside of `deft-mode'."
     (funcall deft-text-mode)
     (add-to-list 'deft-auto-save-buffers (buffer-name))
     (add-hook 'after-save-hook
-              (lambda () (save-excursion (deft-refresh)))
+              (lambda ()
+		(save-excursion (deft-refresh)))
               nil t)))
 
 (defun deft-find-file (file)
@@ -1054,24 +1060,25 @@ Modify the variable `deft-current-files' to set the result."
 
 ;; Filters that cause a refresh
 
-(defun deft-filter-clear ()
-  "Clear the current filter string and refresh the file browser."
-  (interactive)
-  (when deft-filter-regexp
+(defun deft-filter-clear (pfx)
+  "Clear the current filter string and refresh the file browser.
+With a prefix argument, also clear any Xapian query."
+  (interactive "P")
+  (when (or deft-filter-regexp (and pfx deft-xapian-query))
     (setq deft-filter-regexp nil)
-    (setq deft-current-files deft-all-files)
-    (deft-refresh))
-  (message "Filter cleared."))
+    (when pfx
+      (setq deft-xapian-query nil))
+    (deft-changed 'nothing)))
 
 (defun deft-filter (str)
   "Set the filter string to STR and update the file browser."
   (interactive "sFilter: ")
-  (if (= (length str) 0)
-      (setq deft-filter-regexp nil)
-    (setq deft-filter-regexp str)
-    (setq deft-current-files (mapcar 'deft-filter-match-file deft-all-files))
-    (setq deft-current-files (delq nil deft-current-files)))
-  (deft-refresh))
+  (let ((old-regexp deft-filter-regexp))
+    (if (string= "" str)
+	(setq deft-filter-regexp nil)
+      (setq deft-filter-regexp str))
+    (unless (equal old-regexp deft-filter-regexp)
+      (deft-changed 'nothing))))
 
 (defun deft-filter-increment ()
   "Append character to the filter regexp and update `deft-current-files'."
@@ -1170,9 +1177,10 @@ Otherwise, quickly create a new file."
     (define-key map [down-mouse-1] 'widget-button-click)
     (define-key map [down-mouse-2] 'widget-button-click)
     ;; Xapian
-    (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
-    (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
-    (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear)
+    (when deft-xapian-program
+      (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
+      (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
+      (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear))
     map)
   "Keymap for Deft mode.")
 
@@ -1188,7 +1196,7 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (use-local-map deft-mode-map)
   (deft-cache-initialize)
   (setq deft-filter-regexp nil)
-  (deft-refresh-internal 'all)
+  (deft-changed)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
   (when (> deft-auto-save-interval 0)
