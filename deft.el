@@ -729,12 +729,12 @@ The DIR argument must be a Deft root directory."
   "Update cached information for FILES."
   (mapc 'deft-cache-file files))
 
-(defun deft-changed (&optional fs-what)
+(defun deft-changed (&optional what)
   "Refresh Deft file list, cache, and search index state.
 The arguments hint at what may need refreshing.
 
-FS-WHAT is a symbolic hint for purposes of optimization.
-FS-WHAT is one of:
+WHAT is a symbolic hint for purposes of optimization.
+WHAT is one of:
 - `nothing' to assume no filesystem changes; or
 - nil to make no assumptions about filesystem changes.
 
@@ -746,11 +746,11 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
     (set-buffer deft-buffer)
     (cond
      (deft-xapian-program
-       (unless fs-what
+       (unless what
 	 (deft-xapian-index-dirs deft-path))
        (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
        (deft-cache-update deft-all-files))
-     ((not fs-what)
+     ((not what)
       (setq deft-all-files (deft-files-under-root deft-directory))
       (deft-cache-update deft-all-files)
       (setq deft-all-files (deft-sort-files deft-all-files))))
@@ -1251,7 +1251,7 @@ Non-existing directories are not available for selecting."
 		d))))))))
 
 (defun deft-mode-with-directory (dir)
-  "Sets `deft-directory' to DIR, and opens that directory in Deft."
+  "Set `deft-directory' to DIR, and open that directory in Deft."
   (setq deft-directory (file-name-as-directory (expand-file-name dir)))
   (message "Using Deft data directory '%s'" dir)
   (switch-to-buffer deft-buffer)
@@ -1267,10 +1267,30 @@ Non-existing directories are not available for selecting."
       (deft-open-file fn))))
 
 ;;;###autoload
-(defun deft ()
-  "Switch to *Deft* buffer and load files."
-  (interactive)
-  (deft-mode-with-directory (deft-select-directory)))
+(defun deft (pfx)
+  "Switch to `deft-buffer' and load files.
+With a prefix argument, always query for
+the initial `deft-directory' choice."
+  (interactive "P")
+  (cond
+   (pfx
+    (deft-mode-with-directory (deft-select-directory)))
+   ((null deft-path)
+    (message "Empty `deft-path'"))
+   ((= 1 (length deft-path))
+    (let ((dir (car deft-path)))
+      (unless (file-exists-p dir)
+	(make-directory dir t))
+      (deft-mode-with-directory dir)))
+   (deft-xapian-program
+     (let ((dir (some (lambda (dir)
+			(when (file-exists-p dir)
+			  dir)) deft-path)))
+       (if dir
+	   (deft-mode-with-directory dir)
+	 (message "No existing directory on `deft-path'"))))
+   (t
+    (deft-mode-with-directory (deft-select-directory)))))
 
 (provide 'deft)
 
