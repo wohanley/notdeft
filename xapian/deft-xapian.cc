@@ -76,6 +76,11 @@ string file_join(const string& x, const string& y) {
   return x + "/" + y;
 }
   
+string file_basename(const string& s) {
+  auto found = s.find_last_of('/');
+  return string(s.substr(found + 1));
+}
+
 void ls_org(vector<string>& res, const string& root,
 	    const string& dir, const string ext) {
   auto absDir = file_join(root, dir);
@@ -197,6 +202,7 @@ static int doIndex(vector<string> subArgs) {
 	    doc.set_data(filePath);
 	    doc.add_value(DOC_MTIME, time_serialize(x.second));
 	    indexer.set_document(doc);
+	    indexer.index_text(file_basename(filePath), 1, "F");
 	    for (string line; getline(infile, line); ) {
 	      //cerr << "line: '" << line << "'" << endl;
 	      indexer.index_text(line);
@@ -288,12 +294,18 @@ static int doSearch(vector<string> subArgs) {
   TCLAP::SwitchArg
     timeArg("t", "time-sort", "sort by modification time", false);
   cmdLine.add(timeArg);
+  TCLAP::SwitchArg
+    verboseArg("v", "verbose", "be verbose", false);
+  cmdLine.add(verboseArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("dir...", "specifies directories to search", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
+  
   auto maxDocCount = countArg.getValue();
   bool timeSort = timeArg.getValue();
+  auto verbose = verboseArg.getValue();
+  
   try {
     Xapian::Database db;
     auto dirs = dirsArg.getValue();
@@ -310,6 +322,7 @@ static int doSearch(vector<string> subArgs) {
       enquire.set_sort_by_value(DOC_MTIME, true);
 
     Xapian::QueryParser qp;
+    qp.add_prefix("file", "F");
     Xapian::Stem stemmer(langArg.getValue());
     Xapian::Query query;
     if (queryArg.getValue() == "") {
@@ -318,8 +331,13 @@ static int doSearch(vector<string> subArgs) {
       qp.set_stemmer(stemmer);
       qp.set_database(db);
       qp.set_stemming_strategy(Xapian::QueryParser::STEM_SOME);
-      query = qp.parse_query(queryArg.getValue());
-      //cout << "Parsed query is: " << query.get_description() << endl;
+      unsigned flags =
+	Xapian::QueryParser::FLAG_DEFAULT |
+	Xapian::QueryParser::FLAG_PURE_NOT |
+	Xapian::QueryParser::FLAG_BOOLEAN_ANY_CASE;
+      query = qp.parse_query(queryArg.getValue(), flags);
+      if (verbose)
+	cerr << "parsed query is: " << query.get_description() << endl;
     }
     enquire.set_query(query);
 
@@ -396,3 +414,25 @@ int main(int argc, const char* argv[])
     return 1;
   }
 }
+
+/*
+
+  Copyright (C) 2017 Tero Hasu
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+  See the file GPL-2 for the full text of the GNU GPL.
+
+  */
