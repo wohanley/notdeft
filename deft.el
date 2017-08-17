@@ -736,6 +736,12 @@ The DIR argument must be a Deft root directory."
 	  (mapcar 'deft-dir-of-deft-file files))))
     (deft-xapian-index-dirs dirs)))
 
+(defun deft-xapian-re-index ()
+  (interactive)
+  (when deft-xapian-program
+    (deft-xapian-index-dirs deft-path nil t)
+    (deft-changed 'nothing)))
+
 (defun deft-changed (what &optional things)
   "Refresh Deft file list, cache, and search index state.
 The arguments hint at what may need refreshing.
@@ -1192,6 +1198,7 @@ Otherwise, quickly create a new file."
     (define-key map [down-mouse-2] 'widget-button-click)
     ;; Xapian
     (when deft-xapian-program
+      (define-key map (kbd "C-c r") 'deft-xapian-re-index)
       (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
       (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
       (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear))
