@@ -1171,6 +1171,7 @@ Otherwise, quickly create a new file."
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
     (define-key map (kbd "C-c C-x C-m") 'deft-move-elsewhere)
     ;; Miscellaneous
+    (define-key map (kbd "C-c C-j") 'deft-chdir)
     (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
@@ -1249,6 +1250,14 @@ Non-existing directories are not available for selecting."
 	      (if (not (file-directory-p d))
 		  (error "Not a directory.")
 		d))))))))
+
+(defun deft-chdir ()
+  "Change `deft-directory' according to interactive selection."
+  (interactive)
+  (let ((dir (deft-select-directory)))
+    (setq deft-directory (file-name-as-directory (expand-file-name dir)))
+    (unless deft-xapian-program
+      (deft-changed))))
 
 (defun deft-mode-with-directory (dir)
   "Set `deft-directory' to DIR, and open that directory in Deft."
