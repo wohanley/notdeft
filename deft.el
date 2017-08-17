@@ -729,14 +729,23 @@ The DIR argument must be a Deft root directory."
   "Update cached information for FILES."
   (mapc 'deft-cache-file files))
 
-(defun deft-changed (&optional what)
+(defun deft-xapian-index-files (files)
+  "Update Xapian index for FILES (at least)."
+  (let ((dirs
+	 (delete-dups
+	  (mapcar 'deft-dir-of-deft-file files))))
+    (deft-xapian-index-dirs dirs)))
+
+(defun deft-changed (what &optional things)
   "Refresh Deft file list, cache, and search index state.
 The arguments hint at what may need refreshing.
 
 WHAT is a symbolic hint for purposes of optimization.
-WHAT is one of:
-- `nothing' to assume no filesystem changes; or
-- nil to make no assumptions about filesystem changes.
+It is one of:
+- `nothing' to assume no filesystem changes;
+- `dirs' to assume changes in THINGS Deft directories;
+- `files' to assume changes in THINGS Deft files; or
+- `anything' to make no assumptions about filesystem changes.
 
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `deft-all-files' and
@@ -744,16 +753,17 @@ any Xapian indexes, and update `deft-all-files' and
 or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
-    (cond
-     (deft-xapian-program
-       (unless what
-	 (deft-xapian-index-dirs deft-path))
-       (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
-       (deft-cache-update deft-all-files))
-     ((not what)
-      (setq deft-all-files (deft-files-under-root deft-directory))
-      (deft-cache-update deft-all-files)
-      (setq deft-all-files (deft-sort-files deft-all-files))))
+    (if (not deft-xapian-program)
+	(unless (eq what 'nothing)
+	  (setq deft-all-files (deft-files-under-root deft-directory))
+	  (deft-cache-update deft-all-files)
+	  (setq deft-all-files (deft-sort-files deft-all-files)))
+      (case what
+	(anything (deft-xapian-index-dirs deft-path))
+	(dirs (deft-xapian-index-dirs things))
+	(files (deft-xapian-index-files things)))
+      (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
+      (deft-cache-update deft-all-files))
     (deft-filter-update)
     (deft-buffer-setup)))
 
@@ -778,7 +788,7 @@ You may invoke this command manually if Deft files change
 outside of `deft-mode', as such changes are not detected
 automatically."
   (interactive)
-  (deft-changed))
+  (deft-changed 'anything))
 
 (defun deft-no-directory-message ()
   "Return a short message to display when the Deft directory does not exist."
@@ -793,13 +803,12 @@ automatically."
 ;; File list file management actions
 
 (defun deft-open-file (file)
-  "Open FILE in a new buffer and setting its mode."
+  "Open FILE in a new buffer and set its mode."
   (prog1 (find-file file)
     (funcall deft-text-mode)
     (add-to-list 'deft-auto-save-buffers (buffer-name))
     (add-hook 'after-save-hook
-              (lambda ()
-		(save-excursion (deft-refresh)))
+              (lambda () (save-excursion (deft-refresh)))
               nil t)))
 
 (defun deft-find-file (file)
@@ -840,16 +849,20 @@ based on the filter string if it is non-nil."
    (not (file-equal-p file dir))))
 
 (defun deft-dir-of-deft-file (file)
-  "Returns the `deft-path' directory under which FILE is,
-or nil if FILE is not under any Deft root."
+  "Return the containing `deft-path' directory for FILE.
+Return nil if FILE is not under any Deft root."
   (some (lambda (dir)
 	  (when (deft-file-under-dir-p dir file)
 	    dir))
 	deft-path))
 
 (defun deft-direct-file-p (file)
-  "Whether the absolute path FILE names a file or directory
-that a direct child of one of the directories of `deft-path'.
+  "Whether FILE is directly in a Deft directory.
+
+More specifically, return non-nil if FILE names
+a file or directory that is a direct child of
+one of the directories of `deft-path'.
+
 FILE need not actually exist for this predicate to hold."
   (let ((root (deft-dir-of-deft-file file)))
     (and root
@@ -904,7 +917,7 @@ invoke with a prefix argument."
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
 	(deft-rename-file/mkdir old-file new-file)
-	(deft-refresh)
+	(deft-changed 'dirs (list (deft-dir-of-deft-file new-file)))
 	(message "Renamed as `%s`" new-file))))))
 
 (defun deft-rename-file (pfx)
@@ -1197,7 +1210,7 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (use-local-map deft-mode-map)
   (deft-cache-initialize)
   (setq deft-filter-regexp nil)
-  (deft-changed)
+  (deft-changed 'anything)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
   (when (> deft-auto-save-interval 0)
@@ -1257,7 +1270,7 @@ Non-existing directories are not available for selecting."
   (let ((dir (deft-select-directory)))
     (setq deft-directory (file-name-as-directory (expand-file-name dir)))
     (unless deft-xapian-program
-      (deft-changed))))
+      (deft-changed 'anything))))
 
 (defun deft-mode-with-directory (dir)
   "Set `deft-directory' to DIR, and open that directory in Deft."
