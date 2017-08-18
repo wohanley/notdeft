@@ -297,6 +297,13 @@ static int doSearch(vector<string> subArgs) {
   TCLAP::SwitchArg
     verboseArg("v", "verbose", "be verbose", false);
   cmdLine.add(verboseArg);
+  TCLAP::SwitchArg
+    flag_pure_not("n", "pure-not", "allow NOT", false);
+  cmdLine.add(flag_pure_not);
+  TCLAP::SwitchArg
+    flag_boolean_any_case("a", "boolean-any-case",
+			  "allow lowercase operators", false);
+  cmdLine.add(flag_boolean_any_case);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("dir...", "specifies directories to search", false, "directory");
   cmdLine.add(dirsArg);
@@ -333,8 +340,10 @@ static int doSearch(vector<string> subArgs) {
       qp.set_stemming_strategy(Xapian::QueryParser::STEM_SOME);
       unsigned flags =
 	Xapian::QueryParser::FLAG_DEFAULT |
-	Xapian::QueryParser::FLAG_PURE_NOT |
-	Xapian::QueryParser::FLAG_BOOLEAN_ANY_CASE;
+	(flag_pure_not.getValue() ?
+	 Xapian::QueryParser::FLAG_PURE_NOT : 0) |
+	(flag_boolean_any_case.getValue() ?
+	 Xapian::QueryParser::FLAG_BOOLEAN_ANY_CASE : 0);
       query = qp.parse_query(queryArg.getValue(), flags);
       if (verbose)
 	cerr << "parsed query is: " << query.get_description() << endl;

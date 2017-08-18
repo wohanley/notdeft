@@ -32,6 +32,21 @@ No limit if nil."
   :safe 'booleanp
   :group 'deft)
 
+(defcustom deft-xapian-boolean-any-case t
+  "Whether to allow query operators in any case.
+That is, whether the operator syntax also allows
+lowercase characters (e.g., \"and\" and \"or\")."
+  :type 'boolean
+  :safe 'booleanp
+  :group 'deft)
+
+(defcustom deft-xapian-pure-not t
+  "Whether to allow \"NOT\" in queries.
+Using such queries is costly on performance."
+  :type 'boolean
+  :safe 'booleanp
+  :group 'deft)
+
 (defface deft-xapian-query-face
   '((t :inherit font-lock-string-face :bold t))
   "Face for Deft Xapian queries."
@@ -88,6 +103,10 @@ based on file modification time, most recent first."
 	     (shell-quote-argument deft-xapian-program) " search"
 	     (if deft-xapian-order-by-time " --time-sort" "")
 	     " --lang " (shell-quote-argument deft-xapian-language)
+	     (if deft-xapian-boolean-any-case
+		 " --boolean-any-case" "")
+	     (if deft-xapian-pure-not
+		 " --pure-not" "")
 	     (if deft-xapian-max-results
 		 (format " --max-count %d" deft-xapian-max-results)
 	       "")
