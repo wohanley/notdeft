@@ -15,12 +15,11 @@
 
 (defun org-deft-open (name)
   "Visit the Deft note with the specified NAME.
-Defines the behavior of C-c C-o on `deft:` links."
+This defines the opening of Org \"deft:\" links."
   (deft-open-file-by-notename name))
 
 (defun org-deft-complete-link (&optional pfx)
-  "Defines the behavior of `deft:` link completion in Org.
-(Initiate completion with Tab after C-c C-l.)
+  "Define completion for an Org \"deft:\" link.
 The optional PFX argument is ignored."
   (let ((fn-lst (deft-make-notename-list)))
     ;; `ido` has been a part of Emacs since version 22
