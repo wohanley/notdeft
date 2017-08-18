@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -42,6 +43,13 @@ bool string_starts_with(const string& s, const string& pfx) {
 bool string_ends_with(const string& s, const string& sfx) {
   const int pos = s.length() - sfx.length();
   return (pos >= 0) && (s.compare(pos, sfx.length(), sfx) == 0);
+}
+
+bool whitespace_p(const string& s) {
+  for (auto p = s.c_str(); *p; p++)
+    if (!isspace(*p))
+      return false;
+  return true;
 }
 
 bool file_directory_p(const string& file) {
@@ -203,9 +211,37 @@ static int doIndex(vector<string> subArgs) {
 	    doc.add_value(DOC_MTIME, time_serialize(x.second));
 	    indexer.set_document(doc);
 	    indexer.index_text(file_basename(filePath), 1, "F");
-	    for (string line; getline(infile, line); ) {
-	      //cerr << "line: '" << line << "'" << endl;
-	      indexer.index_text(line);
+	    {
+	      string line;
+	      bool titleDone = false;
+	      while (getline(infile, line)) {
+		if (whitespace_p(line)) {
+		  // skip blank line
+		} if (!string_starts_with(line, "#")) {
+		  // non Org header mode
+		  if (!titleDone) {
+		    indexer.index_text(line, 1, "S");
+		  }
+		  do {
+		    //cerr << "body line: '" << line << "'" << endl;
+		    indexer.index_text(line);
+		  } while (getline(infile, line));
+		  break;
+		} else if (string_starts_with(line, "#+TITLE:")) {
+		  string s = line.substr(8);
+		  indexer.index_text(s, 1, "S");
+		  indexer.index_text(s);
+		  indexer.increase_termpos();
+		  titleDone = true;
+		} else if (string_starts_with(line, "#+KEYWORDS:")) {
+		  string s = line.substr(11);
+		  indexer.index_text_without_positions(s, 0, "K");
+		  indexer.index_text(s);
+		  indexer.increase_termpos();
+		} else {
+		  // skip comment (or unknown property) line
+		}
+	      }
 	    }
 	    return doc;
 	  };
@@ -330,6 +366,8 @@ static int doSearch(vector<string> subArgs) {
 
     Xapian::QueryParser qp;
     qp.add_prefix("file", "F");
+    qp.add_prefix("title", "S");
+    qp.add_prefix("keyword", "K");
     Xapian::Stem stemmer(langArg.getValue());
     Xapian::Query query;
     if (queryArg.getValue() == "") {
