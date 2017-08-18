@@ -17,12 +17,19 @@ the files in the current `deft-directory'."
 \(I.e., '--max-count' for `deft-xapian-program'.)
 No limit if nil."
   :type 'integer
+  :safe 'integerp
   :group 'deft)
 
 (defcustom deft-xapian-language "en"
   "Stemming language to use in Xapian indexing and searching."
   :type 'string
   :safe 'stringp
+  :group 'deft)
+
+(defcustom deft-xapian-order-by-time t
+  "Whether to order file list by decreasing modification time."
+  :type 'boolean
+  :safe 'booleanp
   :group 'deft)
 
 (defface deft-xapian-query-face
@@ -78,7 +85,8 @@ pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
   (let ((s (shell-command-to-string
 	    (concat
-	     (shell-quote-argument deft-xapian-program) " search --time-sort"
+	     (shell-quote-argument deft-xapian-program) " search"
+	     (if deft-xapian-order-by-time " --time-sort" "")
 	     " --lang " (shell-quote-argument deft-xapian-language)
 	     (if deft-xapian-max-results
 		 (format " --max-count %d" deft-xapian-max-results)
