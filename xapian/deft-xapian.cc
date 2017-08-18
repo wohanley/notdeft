@@ -367,7 +367,7 @@ static int doSearch(vector<string> subArgs) {
     Xapian::QueryParser qp;
     qp.add_prefix("file", "F");
     qp.add_prefix("title", "S");
-    qp.add_prefix("keyword", "K");
+    qp.add_prefix("tag", "K");
     Xapian::Stem stemmer(langArg.getValue());
     Xapian::Query query;
     if (queryArg.getValue() == "") {

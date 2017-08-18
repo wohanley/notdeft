@@ -816,14 +816,16 @@ does not exist."
 
 ;; File list file management actions
 
+(defun deft-refresh-after-save ()
+  (save-excursion
+    (deft-changed 'anything)))
+
 (defun deft-open-file (file)
   "Open FILE in a new buffer and set its mode."
   (prog1 (find-file file)
     (funcall deft-text-mode)
     (add-to-list 'deft-auto-save-buffers (buffer-name))
-    (add-hook 'after-save-hook
-              (lambda () (save-excursion (deft-refresh)))
-              nil t)))
+    (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
 
 (defun deft-find-file (file)
   "Find FILE interactively using the minibuffer."
@@ -913,7 +915,7 @@ Prompt before proceeding."
 	  (delete-file filename)
 	  (delq filename deft-current-files)
 	  (delq filename deft-all-files)
-	  (deft-refresh)
+	  (deft-changed 'files (list filename))
 	  (message (concat "Deleted " filename-nd))))))))
 
 (defun deft-move-into-subdir (pfx)
@@ -986,25 +988,18 @@ and its visited file is also set as NEW-FILE."
         (set-buffer buf)
         (set-visited-file-name new-file nil t)))))
 
-(defun deft-move-file (old-file new-root &optional whole-dir)
-  "Move the OLD-FILE note file into the NEW-ROOT directory.
+(defun deft-move-file (old-file new-dir &optional whole-dir)
+  "Move the OLD-FILE note file into the NEW-DIR directory.
 If OLD-FILE has its own subdirectory, then move the entire
 subdirectory, but only if WHOLE-DIR is true.
 Return the pathname of the file/directory that was moved."
-  (cond
-   ((and whole-dir (deft-file-in-subdir-p old-file))
-    (let* ((old-file (directory-file-name
-		      (file-name-directory old-file)))
-	   (new-file (concat (file-name-as-directory new-root)
-			     (file-name-nondirectory old-file))))
-      (deft-rename-file/mkdir old-file new-file)
-      old-file))
-   (t
-    (let ((new-file
-	   (concat (file-name-as-directory new-root)
-		   (file-name-nondirectory old-file))))
-      (deft-rename-file/mkdir old-file new-file)
-      old-file))))
+  (when (and whole-dir (deft-file-in-subdir-p old-file))
+    (setq old-file (directory-file-name
+		    (file-name-directory old-file))))
+  (let ((new-file (concat (file-name-as-directory new-dir)
+			  (file-name-nondirectory old-file))))
+    (deft-rename-file/mkdir old-file new-file)
+    old-file))
 
 (defun deft-move-elsewhere (pfx)
   "Move the selected file under selected Deft root.
@@ -1014,12 +1009,12 @@ directory, but only if given a prefix argument."
   (let ((old-file (widget-get (widget-at) :tag)))
     (if (not old-file)
 	(message "Not on a file")
-      (let ((new-root (file-name-as-directory
-		       (deft-select-directory))))
-	(unless (file-equal-p new-root deft-directory)
+      (let ((new-root (file-name-as-directory (deft-select-directory)))
+	    (old-root (deft-dir-of-deft-file old-file)))
+	(unless (file-equal-p new-root old-root)
 	  (let ((moved-file (deft-move-file old-file new-root pfx)))
-	    (deft-refresh)
-	    (message "Moved `%s` under root `%s`" moved-file new-root)))))))
+	    (deft-changed 'dirs (list old-root new-root))
+	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
 (defun deft-archive-file (pfx)
   "Archive the file represented by the widget at point.
@@ -1029,13 +1024,12 @@ directory, but only with a prefix argument."
   (let ((old-file (widget-get (widget-at) :tag)))
     (if (not old-file)
 	(message "Not on a file")
-      (let ((new-root
+      (let ((new-dir
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory deft-archive-directory))))
-	(let ((moved-file (deft-move-file old-file new-root pfx)))
-	  (deft-move-file old-file new-root pfx)
-	  (deft-refresh)
-	  (message "Archived `%s` into `%s`" moved-file new-root))))))
+	(let ((moved-file (deft-move-file old-file new-dir pfx)))
+	  (deft-changed 'files (list old-file))
+	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
 (defun deft-show-file-info ()
   "Show information about the selected note,
@@ -1198,7 +1192,7 @@ Otherwise, quickly create a new file."
     (define-key map (kbd "C-c C-f") 'deft-find-file)
     (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
-    (define-key map (kbd "C-c C-x C-m") 'deft-move-elsewhere)
+    (define-key map (kbd "C-c x m") 'deft-move-elsewhere)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-j") 'deft-chdir)
     (define-key map (kbd "C-c C-g") 'deft-refresh)
