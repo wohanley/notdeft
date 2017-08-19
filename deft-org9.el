@@ -11,9 +11,10 @@
 
 ;;; Code:
 
-;; The `org-link-set-parameters` API is available since Org version 9.
-;; For this functionality to work, ensure you have autoloads set for
-;; `deft-open-file-by-notename` and `deft-make-notename-list`.
+;; The `org-link-set-parameters' API is available since Org version 9,
+;; in the `org' feature. For the `deft-org9' feature to work, ensure
+;; you have autoloads set for `deft-open-file-by-notename' and
+;; `deft-make-notename-list'.
 (org-link-set-parameters
  "deft"
  :follow 'org-deft-open
@@ -25,7 +26,7 @@ This defines the opening of Org \"deft:\" links."
   (deft-open-file-by-notename name))
 
 (defun org-deft-complete-link (&optional pfx)
-  "Define completion for an Org \"deft:\" link.
+  "Define completion for Org \"deft:\" links.
 The optional PFX argument is ignored."
   (let ((fn-lst (deft-make-notename-list)))
     ;; `ido` has been a part of Emacs since version 22

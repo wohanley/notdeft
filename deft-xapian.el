@@ -1,4 +1,5 @@
 ;;; deft-xapian.el --- Xapian backend for Deft
+;; -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 by the author.
 ;; All rights reserved.
@@ -74,6 +75,8 @@ Return the read string."
 	    )))
     (when (and s (not (string= s "")))
       s)))
+
+(eval-when-compile (defvar deft-extension))
 
 (defun deft-xapian-index-dirs (dirs &optional async recreate)
   "Create or update a Xapian index for DIRS.

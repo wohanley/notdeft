@@ -1,4 +1,5 @@
 ;;; deft.el --- quickly browse, filter, and edit plain text notes
+;; -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2011 Jason R. Blevins <jrblevin@sdf.org>
 ;; Copyright (C) 2011-2017 Tero Hasu <tero@hasu.is>
@@ -197,7 +198,10 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'widget)
+(require 'wid-edit)
+(require 'deft-xapian)
 
 ;; Customization
 
@@ -327,8 +331,6 @@ Set to nil to hide."
 (defvar deft-window-width nil
   "Width of Deft buffer.")
 
-(require 'deft-xapian)
-
 ;; File processing
 
 (defun deft-notename-p (str)
@@ -432,11 +434,11 @@ Resolve it to the path of a file under a `deft-path'
 directory, if such a note file does exist.
 If multiple such files exist, return one of them.
 If none exist, return nil."
-  (let ((filename (concat name "." deft-extension))
-	(file-p (lambda (pn)
-		  (string= filename (file-name-nondirectory pn))))
-	(cand-roots deft-path)
-        result)
+  (let* ((fn (concat name "." deft-extension))
+	 (file-p (lambda (pn)
+		   (string= fn (file-name-nondirectory pn))))
+	 (cand-roots deft-path)
+	 result)
     (while (and cand-roots (not result))
       (let ((abs-root (expand-file-name (car cand-roots))))
 	(setq cand-roots (cdr cand-roots))
@@ -624,7 +626,7 @@ Keep any information for a non-existing file."
 	 (contents
 	  (concat file " "
 		  (or title "") " "
-		  (or (caddr res) "") " "
+		  (or (car (cddr res)) "") " "
 		  (or summary ""))))
     (puthash file mtime deft-hash-mtimes)
     (puthash file title deft-hash-titles)
@@ -677,6 +679,9 @@ Keep any information for a non-existing file."
     (widget-insert
      (propertize deft-filter-regexp 'face 'deft-filter-string-face)))
   (widget-insert "\n\n"))
+
+(eval-when-compile
+  (defvar deft-mode-map))
 
 (defun deft-buffer-setup ()
   "Render the file browser in the `deft-buffer'."
@@ -795,7 +800,7 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
 	  (setq deft-all-files (deft-files-under-root deft-directory))
 	  (deft-cache-update deft-all-files)
 	  (setq deft-all-files (deft-sort-files deft-all-files)))
-      (case what
+      (cl-case what
 	(anything (deft-xapian-index-dirs deft-path))
 	(dirs (deft-xapian-index-dirs things))
 	(files (deft-xapian-index-files things)))
@@ -849,7 +854,8 @@ does not exist."
 (defun deft-refresh-after-save ()
   "Refresh Deft state after saving a Deft note file."
   (save-excursion
-    (deft-changed 'anything)))
+    (let ((file (buffer-file-name)))
+      (deft-changed 'files (list file)))))
 
 (defun deft-open-file (file)
   "Open FILE in a new buffer and set its mode."
@@ -900,10 +906,10 @@ if it is non-nil."
 (defun deft-dir-of-deft-file (file)
   "Return the containing `deft-path' directory for FILE.
 Return nil if FILE is not under any Deft root."
-  (some (lambda (dir)
-	  (when (deft-file-under-dir-p dir file)
-	    dir))
-	deft-path))
+  (cl-some (lambda (dir)
+	     (when (deft-file-under-dir-p dir file)
+	       dir))
+	   deft-path))
 
 (defun deft-direct-file-p (file)
   "Whether FILE is directly in a Deft directory.
@@ -1297,7 +1303,7 @@ Return the selected directory, or error out."
       (if (not lst)
 	  (error "No existing Deft data directories")
 	(if (= (length lst) 1)
-	    (first lst)
+	    (car lst)
 	  (let* ((ix
 		  (cl-position-if
 		   (lambda (x) (file-equal-p default-directory x))
@@ -1358,9 +1364,10 @@ the initial `deft-directory' choice."
 	(make-directory dir t))
       (deft-mode-with-directory dir)))
    (deft-xapian-program
-     (let ((dir (some (lambda (dir)
-			(when (file-exists-p dir)
-			  dir)) deft-path)))
+     (let ((dir (cl-some (lambda (dir)
+			   (when (file-exists-p dir)
+			     dir))
+			 deft-path)))
        (if dir
 	   (deft-mode-with-directory dir)
 	 (message "No existing directory on `deft-path'"))))
