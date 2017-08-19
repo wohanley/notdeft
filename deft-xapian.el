@@ -1,7 +1,14 @@
+;;; deft-xapian.el --- Xapian backend for Deft
+
 ;; Copyright (C) 2017 by the author.
 ;; All rights reserved.
 ;; Author: Tero Hasu <tero@hasu.is>
 ;; See "deft.el" for licensing information.
+
+;;; Commentary:
+;; Xapian-specific functionality for Deft.
+
+;;; Code:
 
 (defcustom deft-xapian-program nil
   "Xapian backend's executable program path.
@@ -52,14 +59,13 @@ Using such queries is costly on performance."
   "Face for Deft Xapian queries."
   :group 'deft-faces)
 
-(defvar deft-xapian-query nil
-  "Current Xapian query string.")
-
 (defvar deft-xapian-query-history nil
-  "Xapian query string history.
-Used and updated by `deft-xapian-read-query'.")
+  "Xapian query string history.")
 
 (defun deft-xapian-read-query ()
+  "Read a Xapian query string, interactively.
+Use and update `deft-xapian-query-history' in querying.
+Return the read string."
   (let ((s (read-string
 	    "Query: " ;; PROMPT
 	    nil ;; INITIAL-INPUT
@@ -91,7 +97,7 @@ The return value is as for `call-process'."
 	dirs))))
 
 (defun deft-xapian-search (dirs &optional query)
-  "Perform the Xapian QUERY on the indexes in DIRS.
+  "On the Xapian indexes in DIRS, perform the search QUERY.
 I.e., perform the query in terms of the Xapian indexes
 in the specified DIRS. Where a query is not specified,
 use a query that matches any file.
@@ -124,3 +130,5 @@ based on file modification time, most recent first."
      (split-string s "\n" t))))
 
 (provide 'deft-xapian)
+
+;;; deft-xapian.el ends here

@@ -297,6 +297,9 @@ Set to nil to hide."
 (defvar deft-mode-hook nil
   "Hook run when entering Deft mode.")
 
+(defvar deft-xapian-query nil
+  "Current Xapian query string.")
+
 (defvar deft-filter-regexp nil
   "Current filter regexp used by Deft.")
 
@@ -328,22 +331,23 @@ Set to nil to hide."
 
 ;; File processing
 
-(defun deft-notename-p (s)
-  (string-match-p "^[a-zA-Z0-9-]+$" s))
+(defun deft-notename-p (str)
+  "Whether STR could be a Deft note name string."
+  (string-match-p "^[a-zA-Z0-9-]+$" str))
 
-(defun deft-title-to-notename (s)
-  "Turn a title string to a note name string."
-  (when (string-match "^[^a-zA-Z0-9-]+" s)
-    (setq s (replace-match "" t t s)))
-  (when (string-match "[^a-zA-Z0-9-]+$" s)
-    (setq s (replace-match "" t t s)))
-  (while (string-match "[^a-zA-Z0-9-]+" s)
-    (setq s (replace-match "-" t t s)))
-  (setq s (downcase s))
-  s)
+(defun deft-title-to-notename (str)
+  "Turn a title string STR to a note name string."
+  (when (string-match "^[^a-zA-Z0-9-]+" str)
+    (setq str (replace-match "" t t str)))
+  (when (string-match "[^a-zA-Z0-9-]+$" str)
+    (setq str (replace-match "" t t str)))
+  (while (string-match "[^a-zA-Z0-9-]+" str)
+    (setq str (replace-match "-" t t str)))
+  (setq str (downcase str))
+  str)
 
 (defun deft-format-time-for-filename (tm)
-  "Format a time suitably for filenames."
+  "Format time TM suitably for filenames."
   (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ; UTC
 
 (defun deft-generate-filename ()
@@ -360,15 +364,22 @@ note title or content."
     filename))
 
 (defun deft-make-filename (notename &optional dir in-subdir)
+  "Derive a filename from Deft note name NOTENAME.
+The file shall reside in the directory DIR,
+defaulting to `deft-directory', except that
+IN-SUBDIR indicates that the file should be given
+its own subdirectory."
   (let ((root (or dir deft-directory)))
     (concat (file-name-as-directory root)
 	    (if in-subdir (file-name-as-directory notename) "")
 	    notename "." deft-extension)))
 
 (defun deft-make-file-re ()
+  "Return a regexp matching strings with a Deft extension."
   (concat "\\." (regexp-quote deft-extension) "$"))
 
 (defun deft-strip-extension (file)
+  "Strip any Deft filename extension from FILE."
   (replace-regexp-in-string (deft-make-file-re) "" file))
   
 (defun deft-base-filename (file)
@@ -384,14 +395,17 @@ The argument must be given as an absolute path."
   (deft-base-filename file))
 
 (defun deft-filename-from-title (title)
+  "Derive a filename from TITLE."
   (let ((notename (deft-title-to-notename title)))
     (deft-make-filename notename)))
 
 (defun deft-file-readable-p (file)
+  "Whether FILE is a readable non-directory."
   (and (file-readable-p file)
        (not (file-directory-p file))))
 
 (defun deft-read-file (file)
+  "Return the contents of FILE as a string."
   (with-temp-buffer
     (insert-file-contents file)
     (buffer-string)))
@@ -430,6 +444,9 @@ If none exist, return nil."
     result))
 
 (defun deft-root-find-file (file-p abs-dir)
+  "Find a file matching predicate FILE-P under ABS-DIR.
+ABS-DIR is assumed to be a Deft root.
+Return nil if no matching file is found."
   (and
    (file-readable-p abs-dir)
    (file-directory-p abs-dir)
@@ -448,11 +465,13 @@ If none exist, return nil."
 
 (defun deft-glob (root &optional dir result file-re)
   "Return a list of all Deft files in a directory tree.
-List the Deft files under the specified directory DIR,
-given as a path relative to the Deft directory ROOT.
+List the Deft files under the specified Deft ROOT and
+its directory DIR, with DIR given as a path relative
+to the directory ROOT.
 If DIR is nil, then list Deft files under ROOT.
 Add to the RESULT list in an undefined order,
-and return the resulting value."
+and return the resulting value.
+Only include files matching regexp FILE-RE."
   (let* ((root (file-name-as-directory (expand-file-name root)))
 	 (dir (file-name-as-directory (or dir ".")))
 	 (abs-dir (expand-file-name dir root)))
@@ -473,25 +492,26 @@ and return the resulting value."
 	     (setq result (cons rel-file result))))))))))
 
 (defun deft-glob/absolute (root &optional dir result file-re)
-  "Like `deft-glob', but return the results as absolute paths."
+  "Like `deft-glob', but return the results as absolute paths.
+The arguments ROOT, DIR, RESULT, and FILE-RE are the same."
   (mapcar
    (lambda (rel)
      (expand-file-name rel root))
    (deft-glob root dir result file-re)))
 
 (defun deft-find-all-files-in-dir (directory full)
-  "Returns a list of all Deft files under the specified
-Deft root DIRECTORY.
-Returns an empty list if there is no readable DIRECTORY.
-Returns the files' absolute paths if FULL is true."
+  "Return a list of all Deft files under DIRECTORY.
+The specified DIRECTORY must be a Deft root.
+Return an empty list if there is no readable DIRECTORY.
+Return the files' absolute paths if FULL is true."
   (if full
       (deft-glob/absolute directory)
     (deft-glob directory)))
 
 ;;;###autoload
 (defun deft-make-notename-list ()
-  "Returns the names of all Deft files in all of
-the existing `deft-path' directories.
+  "Return the names of all Deft notes.
+Search all existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation.
 It may contain duplicates."
   (let ((dir-lst deft-path)
@@ -517,17 +537,22 @@ title in CONTENTS."
 	 (title (car res)))
     title))
 
-(defun deft-substring-from (s from max-n)
-  (substring s from (max (length s) (+ from max-n))))
+(defun deft-substring-from (str from max-n)
+  "Extract a substring from STR.
+Extract it from position FROM, and up to MAX-N characters."
+  (substring str from (max (length str) (+ from max-n))))
 
-(defun deft-condense-whitespace (s)
-  (replace-regexp-in-string "[[:space:]\n]+" " " s))
+(defun deft-condense-whitespace (str)
+  "Condense whitespace in STR into a single space."
+  (replace-regexp-in-string "[[:space:]\n]+" " " str))
 
-(defun deft-chomp-nullify (s &optional trim)
-  (when s
-    (let ((s (deft-chomp s)))
-      (unless (string= "" s)
-	(if trim (funcall trim s) s)))))
+(defun deft-chomp-nullify (str &optional trim)
+  "Return string STR if non-empty, otherwise return nil.
+Optionally, use function TRIM to trim any result string."
+  (when str
+    (let ((str (deft-chomp str)))
+      (unless (string= "" str)
+	(if trim (funcall trim str) str)))))
 
 (defun deft-parse-buffer ()
   "Parse the file contents in the current buffer.
@@ -742,6 +767,7 @@ The DIR argument must be a Deft root directory."
     (deft-xapian-index-dirs dirs)))
 
 (defun deft-xapian-re-index ()
+  "Recreate all Xapian indexes on `deft-path'."
   (interactive)
   (when deft-xapian-program
     (deft-xapian-index-dirs deft-path nil t)
@@ -779,14 +805,18 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
     (deft-buffer-setup)))
 
 (defun deft-xapian-query-edit ()
+  "Enter a Xapian query string, and make it current."
   (interactive)
   (deft-xapian-query-set (deft-xapian-read-query)))
 
 (defun deft-xapian-query-clear ()
+  "Clear current Xapian query string."
   (interactive)
   (deft-xapian-query-set nil))
 
 (defun deft-xapian-query-set (new-query)
+  "Set NEW-QUERY string as the current Xapian query.
+Refresh `deft-all-files' and other state accordingly."
   (unless (equal deft-xapian-query new-query)
     (setq deft-xapian-query new-query)
     (deft-changed 'nothing)))
@@ -817,6 +847,7 @@ does not exist."
 ;; File list file management actions
 
 (defun deft-refresh-after-save ()
+  "Refresh Deft state after saving a Deft note file."
   (save-excursion
     (deft-changed 'anything)))
 
@@ -861,8 +892,8 @@ if it is non-nil."
       (goto-char (point-max)))))
 
 (defun deft-file-under-dir-p (dir file)
-  "Whether FILE is strictly under directory DIR."
-  (and 
+  "Whether DIR is strictly the parent of FILE."
+  (and
    (file-in-directory-p file dir)
    (not (file-equal-p file dir))))
 
@@ -876,11 +907,9 @@ Return nil if FILE is not under any Deft root."
 
 (defun deft-direct-file-p (file)
   "Whether FILE is directly in a Deft directory.
-
 More specifically, return non-nil if FILE names
 a file or directory that is a direct child of
 one of the directories of `deft-path'.
-
 FILE need not actually exist for this predicate to hold."
   (let ((root (deft-dir-of-deft-file file)))
     (and root
@@ -921,7 +950,7 @@ Prompt before proceeding."
 (defun deft-move-into-subdir (pfx)
   "Move the file at point into a subdirectory of the same name.
 To nest more than one level (which is allowed but perhaps atypical),
-invoke with a prefix argument."
+invoke with a prefix argument PFX."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
     (cond
@@ -942,7 +971,7 @@ invoke with a prefix argument."
 (defun deft-rename-file (pfx)
   "Rename the file represented by the widget at point.
 Defaults to a content-derived file name (rather than the old one)
-if called with a prefix argument."
+if called with a prefix argument PFX."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
     (cond
@@ -975,10 +1004,11 @@ if called with a prefix argument."
 	(message "Renamed as `%s`" new-file))))))
 
 (defun deft-rename-file/mkdir (old-file new-file &optional exist-ok)
-  "Like `rename-file', but creates target directory as required.
-(Does not create its parent directories.)
-Additionally, any OLD-FILE buffer is renamed as NEW-FILE,
-and its visited file is also set as NEW-FILE."
+  "Like `rename-file', but create target directory as required.
+\(Do not create its parent directories.)
+Additionally, rename any OLD-FILE buffer as NEW-FILE,
+and also set its visited file as NEW-FILE.
+EXIST-OK is as the third argument of `rename-file'."
   (ignore-errors
     (make-directory (file-name-directory new-file) nil))
   (rename-file old-file new-file exist-ok)
@@ -1004,7 +1034,7 @@ Return the pathname of the file/directory that was moved."
 (defun deft-move-elsewhere (pfx)
   "Move the selected file under selected Deft root.
 If it resides in a subdirectory, move the entire
-directory, but only if given a prefix argument."
+directory, but only if given a prefix argument PFX."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
     (if (not old-file)
@@ -1019,7 +1049,7 @@ directory, but only if given a prefix argument."
 (defun deft-archive-file (pfx)
   "Archive the file represented by the widget at point.
 If it resides in a subdirectory, archive the entire
-directory, but only with a prefix argument."
+directory, but only with a prefix argument PFX."
   (interactive "P")
   (let ((old-file (widget-get (widget-at) :tag)))
     (if (not old-file)
@@ -1032,8 +1062,8 @@ directory, but only with a prefix argument."
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
 (defun deft-show-file-info ()
-  "Show information about the selected note,
-including filename, title, and summary."
+  "Show information about the selected note.
+Show filename, title, summary, etc."
   (interactive)
   (let ((file (widget-get (widget-at) :tag)))
     (if (not file)
@@ -1047,6 +1077,7 @@ including filename, title, and summary."
 		      (substring summary 0 (min 50 (length summary)))))))))
 
 (defun deft-show-find-file-parse (file)
+  "Query for a FILE, and show its parse information."
   (interactive "F")
   (let ((res (with-temp-buffer
 	       (insert-file-contents file)
@@ -1056,6 +1087,7 @@ including filename, title, and summary."
 	     file res)))
 
 (defun deft-show-file-parse ()
+  "Show parse information for the file at point."
   (interactive)
   (let ((file (widget-get (widget-at) :tag)))
     (if (not file)
@@ -1078,15 +1110,15 @@ Modify the variable `deft-current-files' to set the result."
     (setq deft-current-files (delq nil deft-current-files))))
 
 (defun deft-filter-match-file (file)
-  "Return FILE if FILE matches the current filter regexp."
-  (and (string-match-p deft-filter-regexp (deft-file-contents file))
-       file))
+  "Return FILE if it passes the current filter regexp."
+  (when (string-match-p deft-filter-regexp (deft-file-contents file))
+    file))
 
 ;; Filters that cause a refresh
 
 (defun deft-filter-clear (&optional pfx)
   "Clear the current filter string and refresh the file browser.
-With a prefix argument, also clear any Xapian query."
+With a prefix argument PFX, also clear any Xapian query."
   (interactive "P")
   (when (or deft-filter-regexp (and pfx deft-xapian-query))
     (setq deft-filter-regexp nil)
@@ -1105,7 +1137,9 @@ With a prefix argument, also clear any Xapian query."
       (deft-changed 'nothing))))
 
 (defun deft-filter-increment ()
-  "Append character to the filter regexp and update `deft-current-files'."
+  "Append character to the filter regexp and update state.
+In particular, update `deft-current-files'.
+Get the character from the variable `last-command-event'."
   (interactive)
   (let ((char last-command-event))
     (when (= char ?\S-\ )
@@ -1115,8 +1149,8 @@ With a prefix argument, also clear any Xapian query."
     (deft-changed 'nothing)))
 
 (defun deft-filter-decrement ()
-  "Remove last character from the filter regexp.
-Update `deft-current-files' accordingly."
+  "Remove last character from the filter regexp and update state.
+In particular, update `deft-current-files'."
   (interactive)
   (if (> (length deft-filter-regexp) 1)
       (deft-filter (substring deft-filter-regexp 0 -1))
@@ -1144,6 +1178,7 @@ Otherwise, quickly create a new file."
 ;;; Automatic File Saving
 
 (defun deft-auto-save ()
+  "Save any modified files in `deft-auto-save-buffers'."
   (save-excursion
     (dolist (buf deft-auto-save-buffers)
       (if (get-buffer buf)
@@ -1231,8 +1266,9 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 (put 'deft-mode 'mode-class 'special)
 
 (defun deft-filter-existing-dirs (in-lst)
-  "Filters the given IN-LST, rejecting anything except for names
-of existing directories."
+  "Pick existing directories in IN-LST.
+That is, filter the argument list, rejecting anything
+except for names of existing directories."
   (let (lst)
     (mapc (lambda (d)
 	    (when (file-directory-p d)
@@ -1241,22 +1277,25 @@ of existing directories."
     lst))
 
 (defun drop-nth-cons (n lst)
+  "Make list element at position N the first one of LST.
+That is, functionally move that element to position 0."
   (let* ((len (length lst))
 	 (rst (- len n)))
     (cons (nth n lst) (append (butlast lst rst) (last lst (- rst 1))))))
 
 ;;;###autoload
 (defun deft-select-directory ()
-  "Tries to select a Deft directory according to the configured
-list of directories, possibly user assisted. If `default-directory'
-is a Deft one, then uses that as the default choice.
-Returns a selected directory, or errors out.
-Non-existing directories are not available for selecting."
+  "Select a Deft directory, possibly interactively.
+Select from the configured list of directories (i.e., `deft-path'),
+possibly user assisted.
+\(Non-existing directories are not available for selecting.)
+If `default-directory' is a Deft one, use that as the default choice.
+Return the selected directory, or error out."
   (if (not deft-path)
-      (error "No configured Deft data directories.")
+      (error "No configured Deft data directories")
     (let ((lst (deft-filter-existing-dirs deft-path)))
       (if (not lst)
-	  (error "No existing Deft data directories.")
+	  (error "No existing Deft data directories")
 	(if (= (length lst) 1)
 	    (first lst)
 	  (let* ((ix
@@ -1270,9 +1309,9 @@ Non-existing directories are not available for selecting."
 		     nil 'confirm-after-completion
 		     nil nil nil t)))
 	    (if (not d)
-		(error "Nothing selected.")
+		(error "Nothing selected")
 	      (if (not (file-directory-p d))
-		  (error "Not a directory.")
+		  (error "Not a directory")
 		d))))))))
 
 (defun deft-chdir ()
@@ -1294,6 +1333,7 @@ Also set `default-directory' to match."
 
 ;;;###autoload
 (defun deft-open-file-by-notename (notename)
+  "Open the file for a Deft note named NOTENAME."
   (let* ((notename ;; conversion for backward compatibility
 	  (deft-strip-extension notename))
 	 (fn (deft-file-by-notename notename)))
@@ -1304,7 +1344,7 @@ Also set `default-directory' to match."
 ;;;###autoload
 (defun deft (pfx)
   "Switch to `deft-buffer' and load files.
-With a prefix argument, always query for
+With a prefix argument PFX, always query for
 the initial `deft-directory' choice."
   (interactive "P")
   (cond
