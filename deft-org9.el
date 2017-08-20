@@ -9,12 +9,17 @@
 ;; Support for managing "deft:" links in `org-mode'.
 ;; For Org mode version 9 and higher.
 
+;; The `org-link-set-parameters' API is available since Org version 9,
+;; in the `org' feature. You probably want to load this `deft-org9'
+;; feature when you (auto)load Org itself. Deft can be loaded later,
+;; as there are autoloads for `deft-open-file-by-notename' and
+;; `deft-make-notename-list'.
+
 ;;; Code:
 
-;; The `org-link-set-parameters' API is available since Org version 9,
-;; in the `org' feature. For the `deft-org9' feature to work, ensure
-;; you have autoloads set for `deft-open-file-by-notename' and
-;; `deft-make-notename-list'.
+(require 'org)
+(require 'deft-autoloads)
+
 (org-link-set-parameters
  "deft"
  :follow 'org-deft-open

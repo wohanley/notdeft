@@ -5,3 +5,4 @@
 .DS_Store
 /xapian/deft-xapian
 *.elc
+local.mk
