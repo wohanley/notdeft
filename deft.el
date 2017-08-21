@@ -1262,6 +1262,7 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (use-local-map deft-mode-map)
   (deft-cache-initialize)
   (setq deft-filter-regexp nil)
+  (setq deft-xapian-query nil)
   (deft-changed 'anything)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
