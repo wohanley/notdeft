@@ -103,11 +103,13 @@ The return value is as for `call-process'."
   "On the Xapian indexes in DIRS, perform the search QUERY.
 I.e., perform the query in terms of the Xapian indexes
 in the specified DIRS. Where a query is not specified,
-use a query that matches any file.
+use a query that matches any file, and in that case
+results are ordered by file timestamp regardless of
+the value of the variable `deft-xapian-order-by-time'.
 Return at most `deft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
-  (let ((time-sort deft-xapian-order-by-time)
+  (let ((time-sort (if query t deft-xapian-order-by-time))
 	(max-results deft-xapian-max-results))
     (when query
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
