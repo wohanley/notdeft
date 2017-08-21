@@ -107,14 +107,17 @@ use a query that matches any file.
 Return at most `deft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
-  (let ((time-sort deft-xapian-order-by-time))
+  (let ((time-sort deft-xapian-order-by-time)
+	(max-results deft-xapian-max-results))
     (when query
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
 	(let ((opt (match-string 1 query)))
 	  (setq query (substring query (match-end 0)))
 	  (pcase opt
 	    ("time" (setq time-sort t))
-	    ("rank" (setq time-sort nil))))))
+	    ("rank" (setq time-sort nil))
+	    ("all" (setq max-results nil))
+	    ))))
     (let ((s (shell-command-to-string
 	      (concat
 	       (shell-quote-argument deft-xapian-program) " search"
@@ -124,7 +127,7 @@ based on file modification time, most recent first."
 		   " --boolean-any-case" "")
 	       (if deft-xapian-pure-not
 		   " --pure-not" "")
-	       (if deft-xapian-max-results
+	       (if max-results
 		   (format " --max-count %d" deft-xapian-max-results)
 		 "")
 	       (if query
