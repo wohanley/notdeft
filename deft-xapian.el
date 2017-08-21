@@ -115,7 +115,7 @@ based on file modification time, most recent first."
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
 	(let ((opt (match-string 1 query)))
 	  (setq query (substring query (match-end 0)))
-	  (pcase opt
+	  (pcase (downcase opt)
 	    ("time" (setq time-sort t))
 	    ("rank" (setq time-sort nil))
 	    ("all" (setq max-results nil))
