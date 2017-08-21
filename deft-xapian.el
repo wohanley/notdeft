@@ -107,30 +107,38 @@ use a query that matches any file.
 Return at most `deft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
-  (let ((s (shell-command-to-string
-	    (concat
-	     (shell-quote-argument deft-xapian-program) " search"
-	     (if deft-xapian-order-by-time " --time-sort" "")
-	     " --lang " (shell-quote-argument deft-xapian-language)
-	     (if deft-xapian-boolean-any-case
-		 " --boolean-any-case" "")
-	     (if deft-xapian-pure-not
-		 " --pure-not" "")
-	     (if deft-xapian-max-results
-		 (format " --max-count %d" deft-xapian-max-results)
-	       "")
-	     (if query
-		 (concat " --query " (shell-quote-argument query))
-	       "")
-	     " " (mapconcat
-		  (lambda (dir)
-		    (shell-quote-argument
-		     (expand-file-name dir "~")))
-		  dirs " ")))))
-    (mapcar
-     (lambda (file)
-       (expand-file-name file "~"))
-     (split-string s "\n" t))))
+  (let ((time-sort deft-xapian-order-by-time))
+    (when query
+      (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
+	(let ((opt (match-string 1 query)))
+	  (setq query (substring query (match-end 0)))
+	  (pcase opt
+	    ("time" (setq time-sort t))
+	    ("rank" (setq time-sort nil))))))
+    (let ((s (shell-command-to-string
+	      (concat
+	       (shell-quote-argument deft-xapian-program) " search"
+	       (if time-sort " --time-sort" "")
+	       " --lang " (shell-quote-argument deft-xapian-language)
+	       (if deft-xapian-boolean-any-case
+		   " --boolean-any-case" "")
+	       (if deft-xapian-pure-not
+		   " --pure-not" "")
+	       (if deft-xapian-max-results
+		   (format " --max-count %d" deft-xapian-max-results)
+		 "")
+	       (if query
+		   (concat " --query " (shell-quote-argument query))
+		 "")
+	       " " (mapconcat
+		    (lambda (dir)
+		      (shell-quote-argument
+		       (expand-file-name dir "~")))
+		    dirs " ")))))
+      (mapcar
+       (lambda (file)
+	 (expand-file-name file "~"))
+       (split-string s "\n" t)))))
 
 (provide 'deft-xapian)
 
