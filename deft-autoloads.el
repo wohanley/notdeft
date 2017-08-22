@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22937 44646 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22940 44949 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-file-by-notename "deft" "\
@@ -41,11 +41,21 @@ Open the file for a Deft note named NOTENAME.
 \(fn NOTENAME)" nil nil)
 
 (autoload 'deft "deft" "\
-Switch to `deft-buffer' and load files.
+Create `deft-buffer' and initialize Deft.
+Switch to the buffer.
+Reset state even if the buffer already exists.
 With a prefix argument PFX, always query for
-the initial `deft-directory' choice.
+the initial `deft-directory' choice, and otherwise
+query only as necessary.
 
-\(fn PFX)" t nil)
+\(fn &optional PFX)" t nil)
+
+(autoload 'deft-open-query "deft" "\
+Open Deft with the specified Xapian search QUERY.
+Start Deft up if no `deft-buffer' yet exists,
+otherwise merely switch to the existing buffer.
+
+\(fn QUERY)" t nil)
 
 ;;;***
 

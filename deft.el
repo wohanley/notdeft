@@ -1349,10 +1349,13 @@ Also set `default-directory' to match."
       (deft-open-file fn))))
 
 ;;;###autoload
-(defun deft (pfx)
-  "Switch to `deft-buffer' and load files.
+(defun deft (&optional pfx)
+  "Create `deft-buffer' and initialize Deft.
+Switch to the buffer.
+Reset state even if the buffer already exists.
 With a prefix argument PFX, always query for
-the initial `deft-directory' choice."
+the initial `deft-directory' choice, and otherwise
+query only as necessary."
   (interactive "P")
   (cond
    (pfx
@@ -1374,6 +1377,18 @@ the initial `deft-directory' choice."
 	 (message "No existing directory on `deft-path'"))))
    (t
     (deft-mode-with-directory (deft-select-directory)))))
+
+;;;###autoload
+(defun deft-open-query (query)
+  "Open Deft with the specified Xapian search QUERY.
+Start Deft up if no `deft-buffer' yet exists,
+otherwise merely switch to the existing buffer."
+  (interactive "MQuery: ")
+  (let ((buf (get-buffer deft-buffer)))
+    (if buf
+	(switch-to-buffer buf)
+      (deft))
+    (deft-xapian-query-set query)))
 
 (provide 'deft)
 

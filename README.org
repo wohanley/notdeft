@@ -150,6 +150,19 @@ This is body text.
   : ~/phone/notes
   becomes available after Emacs has already started, you may want to re-evaluate the =setq= expression in order to get the newly available directory included on the =deft-path=.
 
+* Invoking Deft from Another Mode
+
+  To quickly find relevant notes when in another buffer, you might use
+  : M-x deft-open-query
+  which then interactively asks for a search query for opening up in a Deft buffer. That command can of course be bound onto a key.
+
+  You might also implement additional commands in terms of the above, for example for quickly listing documents tagged in a certain way:
+  #+BEGIN_SRC emacs-lisp
+(defun my-open-todo-notes ()
+  (interactive)
+  (deft-open-query "tag:todo"))
+  #+END_SRC
+
 * See Also
 
   The file “deft.el” has some more documentation.
