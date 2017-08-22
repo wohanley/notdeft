@@ -1,0 +1,155 @@
+#+TITLE: Deft 0.3x
+#+AUTHOR: Tero Hasu
+
+This is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]], an “Emacs mode for quickly browsing, filtering, and editing directories of plain text notes.” This variant is somewhat less configurable than [[https://github.com/jrblevin/deft][mainline Deft]], but (like the [[http://notmuchmail.org/][Notmuch]] Emacs mode for managing email) it features a Xapian backend for efficient free-text search over potentially very large numbers of note files.
+
+The key differences of this Deft variant are:
+  1. Rather than supporting a single, customizable =deft-directory= (tree) of note files, it supports a customizable =deft-path= search path of directory trees.
+  2. It supports optional invocation of a =deft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =deft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in mainline Deft).
+That is, the file browser of Deft 0.3x lists Xapian search results instead of listing the contents of a =deft-directory=.
+
+* Installation and Customization
+
+  Optionally, byte-compile the Emacs Lisp files with the command
+  : make compile
+
+  Add the directory containing those files to the Emacs search path by adding
+  : (add-to-list 'load-path "/path/to/deft/repository")
+  to your Emacs startup file (e.g., “~/.emacs”). Also add
+  : (require 'deft-autoloads)
+  to the startup file, to cause Deft to be loaded when you execute
+  : M-x deft
+
+  Once the =deft= feature has been loaded, you can see and edit all of its configuration options and their documentation with the command
+  : M-x customize-group RET deft RET
+
+  If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =deft-path= in your startup file. For example:
+  : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
+
+** Org Mode Integration
+
+   This Deft variant is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, and your Org mode is version 9, you may want to include
+   : (require 'deft-org9)
+   in your Org startup code, to set up support for “deft:” links in =org-mode=.
+   
+** Note File Format
+
+   The default is to have the note filename =deft-extension= set to "org", and its =deft-text-mode= set to ='org-mode=. If you use some other note format, you should change those settings, which can be done with
+   : M-x customize-variable RET deft-extension RET
+   : M-x customize-variable RET deft-text-mode RET
+
+** Xapian Backend
+
+   To enable Xapian search queries, you should build the =deft-xapian= C++ program in the “xapian” directory. On some systems simply typing
+   : make
+   should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
+
+   To have Deft use the program, you will have to specify its absolute path in the =deft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
+   : (setq deft-xapian-program "/path/to/deft-xapian")
+   
+   See the other =deft-xapian-*= customization variables for configuring the Xapian indexing and searching behavior. Most notably:
+   - The configuration variable =deft-xapian-max-results= controls the maximum number of files to list in a =deft-mode= buffer. You may set it to =nil= to always have all results displayed.
+   - The default is to order the results so that most recently edited files are listed first, but you may change this behavior by setting =deft-xapian-order-by-time= to =nil=, in which case Xapian's ranking mechanism is used instead.
+
+* Search Query Syntax
+
+  The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =deft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =deft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in Deft 0.3x).
+
+** Prefixes
+
+   The following prefixes are supported by Deft 0.3x:
+   - =file:= :: Indicates that the search term must appear in the (non-directory, non-extension) filename.
+   - =title:= :: Indicates that the search term must appear in the title.
+     - Title is specified either as the first non-empty non-comment line, or as the file property (or Org mode “in-buffer setting”) =#+TITLE=. (Multiple =#+TITLE= lines are not supported.)
+   - =tag:= :: Indicates that the search term must appear among the tags given to the document.
+     - The tags for a note are specified either with the standard Org file property =#+FILETAGS=, or the custom file property =#+KEYWORDS=.
+
+** Query Modifiers
+
+   The following custom query syntax is supported:
+   - =!max= :: Prefix a query with =!max= to show all matching results.
+   - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =deft-xapian-order-by-time= setting.
+   A space character must be used to separate the above keywords from the rest of the query string.
+
+* Example Notes
+
+  No special markup is necessarily required:
+  #+BEGIN_SRC org
+this is a title
+
+This is body text.
+  #+END_SRC
+
+  Comments can be included, and they are ignored when searching:
+  #+BEGIN_SRC org
+# this is a comment
+this is a title
+
+This is body text.
+  #+END_SRC
+
+  Org mode's =#+TITLE= syntax is supported:
+  #+BEGIN_SRC org
+# this is a comment
+#+TITLE: this is a title
+# this is a comment
+
+This is body text.
+  #+END_SRC
+
+  A note can be tagged, e.g., with the tags “some” and “tags”:
+  #+BEGIN_SRC org
+#+TITLE: this is a title
+#+KEYWORDS: some tags
+
+This is body text.
+  #+END_SRC
+  Instead of the =#+KEYWORDS= syntax, we can use the Org standard =#+FILETAGS= syntax:
+  #+BEGIN_SRC org
+#+FILETAGS: :some:tags:
+this is a title
+
+This is body text.
+  #+END_SRC
+  Stemming is used also on tags, and so the query “tag:tag” will find these two notes (assuming English stemming---see =deft-xapian-language=).
+
+* Example Search Queries
+
+  It is simple to find all notes containing both the words Emacs and Org:
+  : Emacs AND Org
+
+  If you have a lot of notes about Org mode, and few about other Emacs matters, it may be interesting to use
+  : Emacs AND NOT Org
+  which works if the =deft-xapian-pure-not= option is set.
+
+  While you're often likely to be more interested in recent (or best maintained) notes, sorting by relevance can be useful particularly when there are multiple search terms: you may be more interested in seeing notes that contain /all/ the terms instead of just /one/ of them. You may use “!rank” to enable relevance-based ranking for a specific query:
+  : !rank Emacs Org Deft
+
+  If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =deft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
+  : !max Emacs
+  to list /all/ documents mentioning Emacs.
+
+  If, unlike in the above case, you just want to see all documents that are about Emacs specifically, you may get more useful results with the query
+  : title:Emacs
+  to only find documents whose title indicates that they concern Emacs. Or, to be more thorough, you might want to make sure you also find notes with the word Emacs in the filename:
+  : title:Emacs OR file:Emacs
+
+  You can combine prefixes and “bracketed subexpressions”:
+  : title:(Ayn AND Rand)
+  which will match both “Ayn Rand” and “Rand, Ayn” in a title.
+
+  Phrase searches are not expected to be useful for tags, and hence the query
+  : tag:"some tags"
+  will not yield any results, regardless of the sets of tags in your notes, or the way they have been declared.
+
+* Transient Directories
+
+  It is acceptable for the =deft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they will be included in subsequent searches. Note, however, that =deft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
+  : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
+  and the directory
+  : ~/phone/notes
+  becomes available after Emacs has already started, you may want to re-evaluate the =setq= expression in order to get the newly available directory included on the =deft-path=.
+
+* See Also
+
+  The file “deft.el” has some more documentation.

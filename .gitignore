@@ -6,3 +6,4 @@
 /xapian/deft-xapian
 *.elc
 local.mk
+/README.html
