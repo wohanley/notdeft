@@ -233,7 +233,8 @@ static int doIndex(vector<string> subArgs) {
 		  indexer.index_text(s);
 		  indexer.increase_termpos();
 		  titleDone = true;
-		} else if (string_starts_with(line, "#+KEYWORDS:")) {
+		} else if (string_starts_with(line, "#+KEYWORDS:") ||
+			   string_starts_with(line, "#+FILETAGS:")) {
 		  string s = line.substr(11);
 		  indexer.index_text_without_positions(s, 0, "K");
 		  indexer.index_text(s);

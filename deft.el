@@ -574,7 +574,7 @@ undefined components."
 	    (setq dbg (cons `(TITLE . ,(match-string 1)) dbg))
 	    (setq title (match-string 1))
 	    (goto-char (match-end 0)))
-	   ((looking-at "^#\\+KEYWORDS:[ \t]*\\(.*\\)$")
+	   ((looking-at "^#\\+\\(?:KEYWORDS\\|FILETAGS\\):[ \t]*\\(.*\\)$")
 	    (setq dbg (cons `(KEYWORDS . ,(match-string 1)) dbg))
 	    (setq keywords (match-string 1))
 	    (goto-char (match-end 0)))
