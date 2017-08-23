@@ -11,7 +11,7 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
 * Installation and Customization
 
   Optionally, byte-compile the Emacs Lisp files with the command
-  : make compile
+  : make
 
   Add the directory containing those files to the Emacs search path by adding
   : (add-to-list 'load-path "/path/to/deft/repository")
@@ -67,7 +67,7 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
 ** Query Modifiers
 
    The following custom query syntax is supported:
-   - =!max= :: Prefix a query with =!max= to show all matching results.
+   - =!all= :: Prefix a query with =!all= to show all matching results.
    - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =deft-xapian-order-by-time= setting.
    A space character must be used to separate the above keywords from the rest of the query string.
 
@@ -126,7 +126,7 @@ This is body text.
   : !rank Emacs Org Deft
 
   If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =deft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
-  : !max Emacs
+  : !all Emacs
   to list /all/ documents mentioning Emacs.
 
   If, unlike in the above case, you just want to see all documents that are about Emacs specifically, you may get more useful results with the query

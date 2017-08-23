@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22940 44949 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22941 57882 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-file-by-notename "deft" "\
@@ -24,6 +24,13 @@ The result list is sorted by the `string-lessp' relation.
 It may contain duplicates.
 
 \(fn)" nil nil)
+
+(autoload 'deft-rename-current-file "deft" "\
+Rename current buffer file in a Deft-aware manner.
+Query for a new name, using any parsed title to derive
+the default name; otherwise default to the old basename.
+
+\(fn)" t nil)
 
 (autoload 'deft-select-directory "deft" "\
 Select a Deft directory, possibly interactively.

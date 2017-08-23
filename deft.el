@@ -970,7 +970,7 @@ invoke with a prefix argument PFX."
 	      (file-name-directory old-file)
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
-	(deft-rename-file/mkdir old-file new-file)
+	(deft-rename-file+buffer old-file new-file nil t)
 	(deft-changed 'dirs (list (deft-dir-of-deft-file new-file)))
 	(message "Renamed as `%s`" new-file))))))
 
@@ -993,30 +993,55 @@ if called with a prefix argument PFX."
 		      (and title
 			   (deft-title-to-notename title))))
 		   old-name))
-	     (history (list def-name))
-	     (new-name
-	      (read-string
-	       (concat "Rename " old-name " to (without extension): ")
-	       (car history) ;; INITIAL-INPUT
-	       '(history . 1) ;; HISTORY
-	       nil ;; DEFAULT-VALUE
-	       ))
 	     (new-file
-	      (deft-make-filename new-name
-		(file-name-directory old-file))))
-	;; Fails if `new-file` already exists.
-	(rename-file old-file new-file nil)
-	(deft-changed 'dirs (list (deft-dir-of-deft-file new-file)))
+	      (deft-sub-rename-file old-file old-name def-name)))
 	(message "Renamed as `%s`" new-file))))))
 
-(defun deft-rename-file/mkdir (old-file new-file &optional exist-ok)
-  "Like `rename-file', but create target directory as required.
-\(Do not create its parent directories.)
+;;;###autoload
+(defun deft-rename-current-file ()
+  "Rename current buffer file in a Deft-aware manner.
+Query for a new name, using any parsed title to derive
+the default name; otherwise default to the old basename."
+  (interactive)
+  (let ((old-file (buffer-file-name)))
+    (when old-file
+      (let* ((title (deft-parse-title old-file (buffer-string)))
+	     (old-name (deft-base-filename old-file))
+	     (def-name (if title
+			   (deft-title-to-notename title)
+			 old-name)))
+	(deft-sub-rename-file old-file old-name def-name)))))
+
+(defun deft-sub-rename-file (old-file old-name def-name)
+  "Rename OLD-FILE with the OLD-NAME Deft name.
+Query for a new name, defaulting to DEF-NAME.
+Used by `deft-rename-file' and `deft-rename-current-file'."
+  (let* ((history (list def-name))
+	 (new-name
+	  (read-string
+	   (concat "Rename " old-name " to (without extension): ")
+	   (car history) ;; INITIAL-INPUT
+	   '(history . 1) ;; HISTORY
+	   nil ;; DEFAULT-VALUE
+	   ))
+	 (new-file
+	  (deft-make-filename new-name
+	    (file-name-directory old-file))))
+    (deft-rename-file+buffer old-file new-file)
+    (when (get-buffer deft-buffer)
+      (deft-changed 'dirs (list (deft-dir-of-deft-file new-file))))
+    new-file))
+
+(defun deft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
+  "Like `rename-file', rename OLD-FILE as NEW-FILE.
 Additionally, rename any OLD-FILE buffer as NEW-FILE,
 and also set its visited file as NEW-FILE.
-EXIST-OK is as the third argument of `rename-file'."
-  (ignore-errors
-    (make-directory (file-name-directory new-file) nil))
+EXIST-OK is as the third argument of `rename-file'.
+If MKDIR is non-nil, also create any missing target directory,
+but do not create its parent directories."
+  (when mkdir
+    (ignore-errors
+      (make-directory (file-name-directory new-file) nil)))
   (rename-file old-file new-file exist-ok)
   (let ((buf (get-file-buffer old-file)))
     (when buf
@@ -1034,7 +1059,7 @@ Return the pathname of the file/directory that was moved."
 		    (file-name-directory old-file))))
   (let ((new-file (concat (file-name-as-directory new-dir)
 			  (file-name-nondirectory old-file))))
-    (deft-rename-file/mkdir old-file new-file)
+    (deft-rename-file+buffer old-file new-file)
     old-file))
 
 (defun deft-move-elsewhere (pfx)
@@ -1361,7 +1386,7 @@ query only as necessary."
    (pfx
     (deft-mode-with-directory (deft-select-directory)))
    ((null deft-path)
-    (message "Empty `deft-path'"))
+    (error "Empty `deft-path'"))
    ((= 1 (length deft-path))
     (let ((dir (car deft-path)))
       (unless (file-exists-p dir)
@@ -1374,7 +1399,7 @@ query only as necessary."
 			 deft-path)))
        (if dir
 	   (deft-mode-with-directory dir)
-	 (message "No existing directory on `deft-path'"))))
+	 (error "No existing directory on `deft-path'"))))
    (t
     (deft-mode-with-directory (deft-select-directory)))))
 

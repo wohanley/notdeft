@@ -1,6 +1,8 @@
-all : autoloads compile
+default : compile
 
 -include local.mk
+
+all : autoloads compile
 
 compile :
 	emacs --batch -L . -f batch-byte-compile *.el
