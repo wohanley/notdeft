@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22945 13028 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22945 14652 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -82,6 +82,14 @@ query only as necessary.
 Open Deft with the specified Xapian search QUERY.
 Start Deft up if no `deft-buffer' yet exists,
 otherwise merely switch to the existing buffer.
+
+\(fn QUERY)" t nil)
+
+(autoload 'deft-open-lucky-query-file "deft" "\
+Open the highest-ranked note matching the search QUERY.
+Open the file directly, without switching to any `deft-buffer'.
+Do not modify the `deft-buffer', or modify Deft state (other
+than caches).
 
 \(fn QUERY)" t nil)
 

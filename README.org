@@ -163,6 +163,10 @@ This is body text.
   (deft-open-query "tag:todo"))
   #+END_SRC
 
+  A command similar to =deft-open-query= is
+  : M-x deft-open-lucky-query-file
+  which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*Deft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
+
 * See Also
 
   The file “deft.el” has some more documentation.
