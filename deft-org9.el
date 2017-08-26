@@ -26,8 +26,8 @@
  :complete 'org-deft-complete-link)
 
 (defun org-deft-open (name)
-  "Visit the Deft note with the specified NAME.
-This defines the opening of Org \"deft:\" links."
+  "Visit the Deft note with the specified non-directory
+file NAME. This defines the opening of Org \"deft:\" links."
   (deft-open-file-by-notename name))
 
 (defun org-deft-complete-link (&optional pfx)

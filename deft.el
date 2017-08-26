@@ -392,9 +392,8 @@ Use `file-name-directory' to get the directory component."
     file))
 
 (defun deft-notename-from-file (file)
-  "Extract the name of the note FILE.
-The argument must be given as an absolute path."
-  (deft-base-filename file))
+  "Extract the name of the note FILE."
+  (file-name-nondirectory file))
 
 (defun deft-filename-from-title (title)
   "Derive a filename from TITLE."
@@ -430,13 +429,13 @@ Return nil on failure."
 ;;;###autoload
 (defun deft-file-by-notename (name)
   "Resolve a Deft note NAME to a full pathname.
+NAME is a non-directory filename, with extension.
 Resolve it to the path of a file under a `deft-path'
 directory, if such a note file does exist.
 If multiple such files exist, return one of them.
 If none exist, return nil."
-  (let* ((fn (concat name "." deft-extension))
-	 (file-p (lambda (pn)
-		   (string= fn (file-name-nondirectory pn))))
+  (let* ((file-p (lambda (pn)
+		   (string= name (file-name-nondirectory pn))))
 	 (cand-roots deft-path)
 	 result)
     (while (and cand-roots (not result))
@@ -1365,10 +1364,10 @@ Also set `default-directory' to match."
 
 ;;;###autoload
 (defun deft-open-file-by-notename (notename)
-  "Open the file for a Deft note named NOTENAME."
-  (let* ((notename ;; conversion for backward compatibility
-	  (deft-strip-extension notename))
-	 (fn (deft-file-by-notename notename)))
+  "Open the file for a Deft note named NOTENAME.
+NOTENAME is a non-directory filename, with an extension
+\(it is not necessarily unique)."
+  (let ((fn (deft-file-by-notename notename)))
     (if (not fn)
 	(message "No Deft note '%s'" notename)
       (deft-open-file fn))))
