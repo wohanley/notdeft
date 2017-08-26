@@ -411,15 +411,14 @@ Use `file-name-directory' to get the directory component."
     (insert-file-contents file)
     (buffer-string)))
 
+;;;###autoload
 (defun deft-title-from-file-content (file)
   "Extract a title from FILE content.
 Return nil on failure."
-  (and (deft-file-readable-p file)
-       (let* ((contents
-	       (deft-read-file file))
-	      (title
-	       (deft-parse-title file contents)))
-	 title)))
+  (when (deft-file-readable-p file)
+    (let* ((contents (deft-read-file file))
+	   (title (deft-parse-title file contents)))
+      title)))
 
 (defun deft-chomp (str)
   "Trim leading and trailing whitespace from STR."
@@ -547,6 +546,7 @@ Extract it from position FROM, and up to MAX-N characters."
   "Condense whitespace in STR into a single space."
   (replace-regexp-in-string "[[:space:]\n]+" " " str))
 
+;;;###autoload
 (defun deft-chomp-nullify (str &optional trim)
   "Return string STR if non-empty, otherwise return nil.
 Optionally, use function TRIM to trim any result string."
@@ -791,7 +791,9 @@ It is one of:
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `deft-all-files' and
 `deft-current-file' lists to reflect those changes,
-or changes to `deft-filter-regexp' or `deft-xapian-query'."
+or changes to `deft-filter-regexp' or `deft-xapian-query'.
+
+Do nothing if there is no `deft-buffer'."
   (when (get-buffer deft-buffer)
     (set-buffer deft-buffer)
     (if (not deft-xapian-program)
@@ -856,8 +858,10 @@ does not exist."
     (let ((file (buffer-file-name)))
       (deft-changed 'files (list file)))))
 
+;;;###autoload
 (defun deft-open-file (file)
-  "Open FILE in a new buffer and set its mode."
+  "Open FILE in a new buffer and set its mode.
+Set up a hook for refreshing Deft state on save."
   (prog1 (find-file file)
     (funcall deft-text-mode)
     (add-to-list 'deft-auto-save-buffers (buffer-name))

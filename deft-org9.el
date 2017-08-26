@@ -6,7 +6,8 @@
 ;; See "deft.el" for licensing information.
 
 ;;; Commentary:
-;; Support for managing "deft:" links in `org-mode'.
+;; Some Deft-specific support for `org-mode',
+;; including support for managing "deft:" links.
 ;; For Org mode version 9 and higher.
 
 ;; The `org-link-set-parameters' API is available since Org version 9,
@@ -37,6 +38,32 @@ The optional PFX argument is ignored."
     ;; `ido` has been a part of Emacs since version 22
     (let ((fn (and fn-lst (ido-completing-read "Deft note: " fn-lst))))
       (concat "deft:" (or fn "")))))
+
+(defun deft-insert-org-link (pfx)
+  "Insert an Org \"deft:\" link, interactively.
+Offer a list of notes from which to choose the link target.
+Without a prefix argument, query for a description.
+With one prefix argument PFX, include no description.
+With two prefix arguments, insert any note title
+as the link description. (If multiple notes have the same
+name, pick any one of them for title extraction.)"
+  (interactive "p")
+  (let ((name-lst (deft-make-notename-list)))
+    (let ((name (when name-lst
+		  (ido-completing-read "Deft note: " name-lst))))
+      (when name
+	(let* ((file (deft-file-by-notename name))
+	       (desc
+		(pcase pfx
+		  (1 (deft-chomp-nullify
+		       (read-string "Description: "
+				    (deft-title-from-file-content file)
+				    nil nil t)))
+		  (4 nil)
+		  (16 (deft-title-from-file-content file)))))
+	  (if desc
+	      (insert "[[deft:" name "][" desc "]]")
+	    (insert "[[deft:" name "]]")))))))
 
 (provide 'deft-org9)
 

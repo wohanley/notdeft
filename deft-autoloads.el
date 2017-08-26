@@ -5,11 +5,18 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22941 57882 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22945 13028 0 0))
 ;;; Generated autoloads from deft.el
+
+(autoload 'deft-title-from-file-content "deft" "\
+Extract a title from FILE content.
+Return nil on failure.
+
+\(fn FILE)" nil nil)
 
 (autoload 'deft-file-by-notename "deft" "\
 Resolve a Deft note NAME to a full pathname.
+NAME is a non-directory filename, with extension.
 Resolve it to the path of a file under a `deft-path'
 directory, if such a note file does exist.
 If multiple such files exist, return one of them.
@@ -24,6 +31,18 @@ The result list is sorted by the `string-lessp' relation.
 It may contain duplicates.
 
 \(fn)" nil nil)
+
+(autoload 'deft-chomp-nullify "deft" "\
+Return string STR if non-empty, otherwise return nil.
+Optionally, use function TRIM to trim any result string.
+
+\(fn STR &optional TRIM)" nil nil)
+
+(autoload 'deft-open-file "deft" "\
+Open FILE in a new buffer and set its mode.
+Set up a hook for refreshing Deft state on save.
+
+\(fn FILE)" nil nil)
 
 (autoload 'deft-rename-current-file "deft" "\
 Rename current buffer file in a Deft-aware manner.
@@ -44,6 +63,8 @@ Return the selected directory, or error out.
 
 (autoload 'deft-open-file-by-notename "deft" "\
 Open the file for a Deft note named NOTENAME.
+NOTENAME is a non-directory filename, with an extension
+\(it is not necessarily unique).
 
 \(fn NOTENAME)" nil nil)
 
