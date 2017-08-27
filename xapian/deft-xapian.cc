@@ -45,6 +45,15 @@ bool string_ends_with(const string& s, const string& sfx) {
   return (pos >= 0) && (s.compare(pos, sfx.length(), sfx) == 0);
 }
 
+bool string_ends_with_one_of(const string& s, const vector<string>& sfxs) {
+  for (const string& sfx : sfxs) {
+    if (string_ends_with(s, sfx)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool whitespace_p(const string& s) {
   for (auto p = s.c_str(); *p; p++)
     if (!isspace(*p))
@@ -90,15 +99,15 @@ string file_basename(const string& s) {
 }
 
 void ls_org(vector<string>& res, const string& root,
-	    const string& dir, const string ext) {
+	    const string& dir, const vector<string>& exts) {
   auto absDir = file_join(root, dir);
   for (const string& file : ls(absDir)) {
     auto relFile = file_join(dir, file);
     auto absFile = file_join(absDir, file);
-    if (string_ends_with(file, ext)) {
+    if (string_ends_with_one_of(file, exts)) {
       res.push_back(relFile);
     } else if (file_directory_p(absFile)) {
-      ls_org(res, root, relFile, ext);
+      ls_org(res, root, relFile, exts);
     }
   }
 }
@@ -127,9 +136,9 @@ static int doIndex(vector<string> subArgs) {
     langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
 	    false, "en", "language");
   cmdLine.add(langArg);
-  TCLAP::ValueArg<string>
+  TCLAP::MultiArg<string>
     extArg("x", "extension", "filename extension (default: '.org')",
-	    false, ".org", "extension");
+	    false, "extension");
   cmdLine.add(extArg);
   TCLAP::ValueArg<string>
     chdirArg("c", "chdir", "change working directory first",
@@ -151,7 +160,9 @@ static int doIndex(vector<string> subArgs) {
       return errno;
   }
   
-  auto ext = extArg.getValue();
+  vector<string> exts = extArg.getValue();
+  if (exts.empty())
+    exts.push_back(".org");
   auto verbose = verboseArg.getValue();
   
   try {
@@ -178,7 +189,7 @@ static int doIndex(vector<string> subArgs) {
 	map<string, Xapian::docid> dbIds;
 	
 	vector<string> orgFiles;
-	ls_org(orgFiles, dir, ".", ext);
+	ls_org(orgFiles, dir, ".", exts);
 	for (const string& file : orgFiles) { // `dir` relative `file`
 	  auto filePath = file_join(dir, file);
 	  struct stat sb;
