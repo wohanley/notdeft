@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22947 11075 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22947 17154 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\

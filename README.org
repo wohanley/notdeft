@@ -34,9 +34,8 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
    
 ** Note File Format
 
-   The default is to have the note filename =deft-extension= set to "org", and its =deft-text-mode= set to ='org-mode=. If you use some other note format, you should change those settings, which can be done with
+   The default is to have the note filename =deft-extension= set to "org", as used with files in the Org format. If you prefer some other note format, you should change that setting, which can be done with
    : M-x customize-variable RET deft-extension RET
-   : M-x customize-variable RET deft-text-mode RET
 
 ** Xapian Backend
 

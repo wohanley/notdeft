@@ -17,7 +17,7 @@ Specified as an absolute path.
 When nil, incremental search is limited to
 the files in the current `deft-directory'."
   :type '(choice (const :tag "None" nil)
-		 (string :tag "Path"))
+		 (file :tag "Path"))
   :safe 'string-or-null-p
   :group 'deft)
 

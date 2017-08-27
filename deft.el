@@ -143,16 +143,8 @@
 ;;     (setq deft-extension "txt")
 ;;     (setq deft-path '("~/.deft/" "~/Dropbox/notes/"))
 
-;; You can also customize the major mode that Deft uses to edit files,
-;; either through `M-x customize-group` or by adding something like
-;; the following to your `.emacs` file:
-
-;;     (setq deft-text-mode 'markdown-mode)
-
-;; Note that the mode need not be a traditional text mode.  If you
-;; prefer to write notes as LaTeX fragments, for example, you could
-;; set `deft-extension' to "tex" and `deft-text-mode' to `latex-mode'.
-;; However, this fork of Deft is somewhat optimized to working with
+;; While you can choose a `deft-extension' that is not ".org",
+;; this fork of Deft is somewhat optimized to working with
 ;; files in Org format.
 
 ;; You can easily set up a global keyboard binding for Deft.  For
@@ -225,11 +217,6 @@ A list of directories which may or may not exist on startup."
   "Sub-directory name for archived notes."
   :type 'string
   :safe 'stringp
-  :group 'deft)
-
-(defcustom deft-text-mode 'org-mode
-  "Default mode used for editing files."
-  :type 'function
   :group 'deft)
 
 (defcustom deft-auto-save-interval 0.0
@@ -863,7 +850,6 @@ does not exist."
   "Open FILE in a new buffer and set its mode.
 Set up a hook for refreshing Deft state on save."
   (prog1 (find-file file)
-    (funcall deft-text-mode)
     (add-to-list 'deft-auto-save-buffers (buffer-name))
     (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
 
