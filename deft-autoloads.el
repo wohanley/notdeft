@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22945 14652 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22947 11075 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -88,8 +88,7 @@ otherwise merely switch to the existing buffer.
 (autoload 'deft-open-lucky-query-file "deft" "\
 Open the highest-ranked note matching the search QUERY.
 Open the file directly, without switching to any `deft-buffer'.
-Do not modify the `deft-buffer', or modify Deft state (other
-than caches).
+Do not modify the `deft-buffer', or modify Deft state.
 
 \(fn QUERY)" t nil)
 

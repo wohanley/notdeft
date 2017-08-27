@@ -1422,8 +1422,7 @@ otherwise merely switch to the existing buffer."
 (defun deft-open-lucky-query-file (query)
   "Open the highest-ranked note matching the search QUERY.
 Open the file directly, without switching to any `deft-buffer'.
-Do not modify the `deft-buffer', or modify Deft state (other
-than caches)."
+Do not modify the `deft-buffer', or modify Deft state."
   (interactive "MQuery: ")
   (when deft-xapian-program
     (let* ((deft-xapian-order-by-time nil)
@@ -1431,7 +1430,6 @@ than caches)."
 	   (files (deft-xapian-search deft-path query)))
       (if (not files)
 	  (message "No matching notes found")
-	(deft-cache-update files)
 	(deft-open-file (car files))))))
 
 (provide 'deft)

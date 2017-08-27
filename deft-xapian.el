@@ -16,8 +16,9 @@
 Specified as an absolute path.
 When nil, incremental search is limited to
 the files in the current `deft-directory'."
-  :type 'string
-  :safe 'stringp
+  :type '(choice (const :tag "None" nil)
+		 (string :tag "Path"))
+  :safe 'string-or-null-p
   :group 'deft)
 
 (defcustom deft-xapian-max-results 100
