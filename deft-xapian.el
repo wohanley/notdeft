@@ -77,7 +77,9 @@ Return the read string."
     (when (and s (not (string= s "")))
       s)))
 
-(eval-when-compile (defvar deft-extension))
+(eval-when-compile
+  (defvar deft-extension)
+  (defvar deft-secondary-extensions))
 
 (defun deft-xapian-index-dirs (dirs &optional async recreate)
   "Create or update a Xapian index for DIRS.
@@ -93,7 +95,10 @@ The return value is as for `call-process'."
    `("index"
      "--chdir" ,(expand-file-name "." "~")
      ,@(if recreate '("--recreate") nil)
-     "--extension" ,(concat "." deft-extension)
+     ,@(apply 'append (mapcar
+		       (lambda (ext)
+			 `("--extension" ,(concat "." ext)))
+		       (cons deft-extension deft-secondary-extensions)))
      "--lang" ,deft-xapian-language
      ,@(mapcar
 	(lambda (dir)

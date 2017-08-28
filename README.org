@@ -36,6 +36,8 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
 
    The default is to have the note filename =deft-extension= set to "org", as used with files in the Org format. If you prefer some other note format, you should change that setting, which can be done with
    : M-x customize-variable RET deft-extension RET
+   That =deft-extension= is used by default when creating new notes, but a note collection can also use other extensions. There are none by default, but you can define such secondary extensions with
+   : M-x customize-variable RET deft-secondary-extensions RET
 
 ** Xapian Backend
 

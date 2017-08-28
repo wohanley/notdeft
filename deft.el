@@ -141,7 +141,12 @@
 ;; configure them in your `.emacs` file:
 
 ;;     (setq deft-extension "txt")
+;;     (setq deft-secondary-extensions '("md" "scrbl"))
 ;;     (setq deft-path '("~/.deft/" "~/Dropbox/notes/"))
+
+;; The variable `deft-extension' specifies the default extension
+;; for new notes. There can be `deft-secondary-extensions' for
+;; files that are also considered to be Deft notes.
 
 ;; While you can choose a `deft-extension' that is not ".org",
 ;; this fork of Deft is somewhat optimized to working with
@@ -208,9 +213,15 @@ A list of directories which may or may not exist on startup."
   :group 'deft)
 
 (defcustom deft-extension "org"
-  "Deft file extension."
+  "Default Deft file extension."
   :type 'string
   :safe 'stringp
+  :group 'deft)
+
+(defcustom deft-secondary-extensions nil
+  "Additional Deft file extensions."
+  :type '(repeat string)
+  :safe (lambda (lst) (cl-every 'stringp lst))
   :group 'deft)
 
 (defcustom deft-archive-directory "_archive"
@@ -352,8 +363,10 @@ note title or content."
 	(setq filename (deft-make-filename base-filename))))
     filename))
 
-(defun deft-make-filename (notename &optional dir in-subdir)
+(defun deft-make-filename (notename &optional ext dir in-subdir)
   "Derive a filename from Deft note name NOTENAME.
+The filename shall have the extension EXT,
+defaulting to `deft-extension'.
 The file shall reside in the directory DIR,
 defaulting to `deft-directory', except that
 IN-SUBDIR indicates that the file should be given
@@ -361,19 +374,23 @@ its own subdirectory."
   (let ((root (or dir deft-directory)))
     (concat (file-name-as-directory root)
 	    (if in-subdir (file-name-as-directory notename) "")
-	    notename "." deft-extension)))
+	    notename "." (or ext deft-extension))))
 
 (defun deft-make-file-re ()
   "Return a regexp matching strings with a Deft extension."
-  (concat "\\." (regexp-quote deft-extension) "$"))
+  (let ((exts (cons deft-extension deft-secondary-extensions)))
+    (concat "\\.\\(?:"
+	    (mapconcat 'regexp-quote exts "\\|")
+	    "\\)$")))
 
 (defun deft-strip-extension (file)
   "Strip any Deft filename extension from FILE."
   (replace-regexp-in-string (deft-make-file-re) "" file))
   
 (defun deft-base-filename (file)
-  "Strip the leading path and `deft-extension' from filename FILE.
-Use `file-name-directory' to get the directory component."
+  "Strip the leading path and Deft extension from filename FILE.
+Use `file-name-directory' to get the directory component.
+Strip any extension with `deft-strip-extension'."
   (let* ((file (file-name-nondirectory file))
 	 (file (deft-strip-extension file)))
     file))
@@ -1004,6 +1021,7 @@ the default name; otherwise default to the old basename."
 (defun deft-sub-rename-file (old-file old-name def-name)
   "Rename OLD-FILE with the OLD-NAME Deft name.
 Query for a new name, defaulting to DEF-NAME.
+Use OLD-FILE's filename extension in the new name.
 Used by `deft-rename-file' and `deft-rename-current-file'."
   (let* ((history (list def-name))
 	 (new-name
@@ -1015,6 +1033,7 @@ Used by `deft-rename-file' and `deft-rename-current-file'."
 	   ))
 	 (new-file
 	  (deft-make-filename new-name
+	    (file-name-extension old-file)
 	    (file-name-directory old-file))))
     (deft-rename-file+buffer old-file new-file)
     (when (get-buffer deft-buffer)
