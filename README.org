@@ -54,7 +54,7 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
 
 * Search Query Syntax
 
-  The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =deft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =deft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in Deft 0.3x).
+  Press Tab in a =*Deft*= buffer to enter a search query. The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =deft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =deft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in Deft 0.3x).
 
 ** Prefixes
 

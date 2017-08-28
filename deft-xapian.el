@@ -62,7 +62,8 @@ Using such queries is costly on performance."
   :group 'deft-faces)
 
 (defvar deft-xapian-query-history nil
-  "Xapian query string history.")
+  "Xapian query string history.
+Not cleared between invocations of `deft-mode'.")
 
 (defun deft-xapian-read-query ()
   "Read a Xapian query string, interactively.
@@ -70,8 +71,8 @@ Use and update `deft-xapian-query-history' in querying.
 Return the read string."
   (let ((s (read-string
 	    "Query: " ;; PROMPT
-	    nil ;; INITIAL-INPUT
-	    deft-xapian-query-history ;; HISTORY
+	    (car deft-xapian-query-history) ;; INITIAL-INPUT
+	    '(deft-xapian-query-history . 1) ;; HISTORY
 	    nil ;; DEFAULT-VALUE
 	    )))
     (when (and s (not (string= s "")))

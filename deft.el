@@ -1412,16 +1412,23 @@ query only as necessary."
     (deft-mode-with-directory (deft-select-directory)))))
 
 ;;;###autoload
+(defun deft-switch-to-buffer ()
+  (interactive)
+  "Switch to `deft-buffer'.
+Create it if it does not exist."
+  (let ((buf (get-buffer deft-buffer)))
+    (if buf
+	(switch-to-buffer buf)
+      (deft))))
+
+;;;###autoload
 (defun deft-open-query (query)
   "Open Deft with the specified Xapian search QUERY.
 Start Deft up if no `deft-buffer' yet exists,
 otherwise merely switch to the existing buffer."
   (interactive "MQuery: ")
-  (let ((buf (get-buffer deft-buffer)))
-    (if buf
-	(switch-to-buffer buf)
-      (deft))
-    (deft-xapian-query-set query)))
+  (deft-switch-to-buffer)
+  (deft-xapian-query-set query))
 
 ;;;###autoload
 (defun deft-open-lucky-query-file (query)
