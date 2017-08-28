@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22948 31846 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22948 39676 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -14,7 +14,7 @@ Return nil on failure.
 
 \(fn FILE)" nil nil)
 
-(autoload 'deft-file-by-notename "deft" "\
+(autoload 'deft-file-by-basename "deft" "\
 Resolve a Deft note NAME to a full pathname.
 NAME is a non-directory filename, with extension.
 Resolve it to the path of a file under a `deft-path'
@@ -24,7 +24,7 @@ If none exist, return nil.
 
 \(fn NAME)" nil nil)
 
-(autoload 'deft-make-notename-list "deft" "\
+(autoload 'deft-make-basename-list "deft" "\
 Return the names of all Deft notes.
 Search all existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation.
@@ -61,12 +61,12 @@ Return the selected directory, or error out.
 
 \(fn)" nil nil)
 
-(autoload 'deft-open-file-by-notename "deft" "\
-Open the file for a Deft note named NOTENAME.
-NOTENAME is a non-directory filename, with an extension
+(autoload 'deft-open-file-by-basename "deft" "\
+Open a Deft file named FILENAME.
+FILENAME is a non-directory filename, with an extension
 \(it is not necessarily unique).
 
-\(fn NOTENAME)" nil nil)
+\(fn FILENAME)" nil nil)
 
 (autoload 'deft "deft" "\
 Create `deft-buffer' and initialize Deft.

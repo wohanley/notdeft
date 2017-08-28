@@ -6,15 +6,14 @@
 ;; See "deft.el" for licensing information.
 
 ;;; Commentary:
-;; Some Deft-specific support for `org-mode',
-;; including support for managing "deft:" links.
+;; Some Deft-specific support for `org-mode'.
+;; Includes support for managing "deft:" links.
 ;; For Org mode version 9 and higher.
 
 ;; The `org-link-set-parameters' API is available since Org version 9,
 ;; in the `org' feature. You probably want to load this `deft-org9'
 ;; feature when you (auto)load Org itself. Deft can be loaded later,
-;; as there are autoloads for `deft-open-file-by-notename' and
-;; `deft-make-notename-list'.
+;; as there are autoloads for the required Deft functions.
 
 ;;; Code:
 
@@ -27,14 +26,15 @@
  :complete 'org-deft-complete-link)
 
 (defun org-deft-open (name)
-  "Visit the Deft note with the specified non-directory
-file NAME. This defines the opening of Org \"deft:\" links."
-  (deft-open-file-by-notename name))
+  "Visit the Deft note with the specified base file NAME.
+The argument is a non-directory filename.
+This defines the opening of Org \"deft:\" links."
+  (deft-open-file-by-basename name))
 
 (defun org-deft-complete-link (&optional pfx)
   "Define completion for Org \"deft:\" links.
 The optional PFX argument is ignored."
-  (let ((fn-lst (deft-make-notename-list)))
+  (let ((fn-lst (deft-make-basename-list)))
     ;; `ido` has been a part of Emacs since version 22
     (let ((fn (and fn-lst (ido-completing-read "Deft note: " fn-lst))))
       (concat "deft:" (or fn "")))))
@@ -48,11 +48,11 @@ With two prefix arguments, insert any note title
 as the link description. (If multiple notes have the same
 name, pick any one of them for title extraction.)"
   (interactive "p")
-  (let ((name-lst (deft-make-notename-list)))
+  (let ((name-lst (deft-make-basename-list)))
     (let ((name (when name-lst
 		  (ido-completing-read "Deft note: " name-lst))))
       (when name
-	(let* ((file (deft-file-by-notename name))
+	(let* ((file (deft-file-by-basename name))
 	       (desc
 		(pcase pfx
 		  (1 (deft-chomp-nullify

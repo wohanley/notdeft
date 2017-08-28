@@ -331,10 +331,6 @@ Set to nil to hide."
 
 ;; File processing
 
-(defun deft-notename-p (str)
-  "Whether STR could be a Deft note name string."
-  (string-match-p "^[a-zA-Z0-9-]+$" str))
-
 (defun deft-title-to-notename (str)
   "Turn a title string STR to a note name string."
   (when (string-match "^[^a-zA-Z0-9-]+" str)
@@ -350,17 +346,19 @@ Set to nil to hide."
   "Format time TM suitably for filenames."
   (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ; UTC
 
-(defun deft-generate-filename ()
+(defun deft-generate-filename (&optional ext dir)
   "Generate a new unique filename.
 Do so without being given any information about
-note title or content."
+note title or content.
+Have the file have the extension EXT, and
+be in directory DIR."
   (let (filename)
     (while (or (not filename)
 	       (file-exists-p filename))
       (let* ((ctime (current-time))
 	     (ctime-s (deft-format-time-for-filename ctime))
 	     (base-filename (format "Deft--%s" ctime-s)))
-	(setq filename (deft-make-filename base-filename))))
+	(setq filename (deft-make-filename base-filename ext dir))))
     filename))
 
 (defun deft-make-filename (notename &optional ext dir in-subdir)
@@ -395,14 +393,9 @@ Strip any extension with `deft-strip-extension'."
 	 (file (deft-strip-extension file)))
     file))
 
-(defun deft-notename-from-file (file)
-  "Extract the name of the note FILE."
+(defun deft-basename-from-file (file)
+  "Extract the basename of the note FILE."
   (file-name-nondirectory file))
-
-(defun deft-filename-from-title (title)
-  "Derive a filename from TITLE."
-  (let ((notename (deft-title-to-notename title)))
-    (deft-make-filename notename)))
 
 (defun deft-file-readable-p (file)
   "Whether FILE is a readable non-directory."
@@ -430,7 +423,7 @@ Return nil on failure."
 			    "" str))
 
 ;;;###autoload
-(defun deft-file-by-notename (name)
+(defun deft-file-by-basename (name)
   "Resolve a Deft note NAME to a full pathname.
 NAME is a non-directory filename, with extension.
 Resolve it to the path of a file under a `deft-path'
@@ -513,7 +506,7 @@ Return the files' absolute paths if FULL is true."
     (deft-glob directory)))
 
 ;;;###autoload
-(defun deft-make-notename-list ()
+(defun deft-make-basename-list ()
   "Return the names of all Deft notes.
 Search all existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation.
@@ -525,7 +518,7 @@ It may contain duplicates."
 	    (append fn-lst
 		    (deft-find-all-files-in-dir dir t))))
     ;; `sort` may modify `name-lst`
-    (let ((name-lst (mapcar 'deft-notename-from-file fn-lst)))
+    (let ((name-lst (mapcar 'deft-basename-from-file fn-lst)))
       (sort name-lst 'string-lessp))))
 
 (defun deft-parse-title (file contents)
@@ -875,33 +868,52 @@ Set up a hook for refreshing Deft state on save."
   (interactive "F")
   (deft-open-file file))
 
-(defun deft-new-file-named (title)
-  "Create a new file named based on TITLE.
-Prompt for a title when called interactively."
-  (interactive "sNew title: ")
-  (if (not (string-match "[a-zA-Z0-9]" title))
-      (message "Aborting, unsuitable title: '%s'" title)
-    (let ((file (deft-filename-from-title title)))
-      (write-region title nil file nil nil nil 'excl)
-      (deft-open-file file))))
+(defun deft-sub-new-file (data notename pfx)
+  "Create a new file containing the string DATA.
+Save into a file with the specified NOTENAME
+\(if NOTENAME is nil, generate a name).
+With PFX, query for a filename extension;
+otherwise default to `deft-extension'."
+  (let* ((ext (if (and pfx deft-secondary-extensions)
+		  (ido-completing-read
+		   "Extension: "
+		   (cons deft-extension deft-secondary-extensions)
+		   nil t)
+		  deft-extension))
+	 (file (if notename
+		   (deft-make-filename notename ext)
+		 (deft-generate-filename ext))))
+    (if (not data)
+	(deft-open-file file)
+      (write-region data nil file nil nil nil 'excl)
+      (deft-changed 'files (list file))
+      (deft-open-file file)
+      (with-current-buffer (get-file-buffer file)
+	(goto-char (point-max))))))
 
-(defun deft-new-file ()
+(defun deft-new-file-named (pfx title)
+  "Create a new file, prompting for a title.
+With a prefix argument PFX, offer a choice of filename extensions
+when `deft-secondary-extensions' is non-empty.
+Query for a TITLE when invoked as a command."
+  (interactive "P\nsNew title: ")
+  (if (not (string-match "[a-zA-Z0-9]" title))
+      (error "Aborting, unsuitable title: %S" title)
+    (deft-sub-new-file title (deft-title-to-notename title) pfx)))
+
+(defun deft-new-file (&optional pfx)
   "Create a new file quickly.
-The file is created with an automatically generated name.
-The name is based on the `deft-filter-regexp' filter string
-if it is non-nil."
-  (interactive)
-  (let ((file
-	 (if deft-filter-regexp
-	     (deft-filename-from-title deft-filter-regexp)
-	   (deft-generate-filename))))
-    (when (and deft-filter-regexp
-	       (not (file-exists-p file)))
-      (write-region (concat deft-filter-regexp "\n\n")
-		    nil file nil nil nil 'excl))
-    (deft-open-file file)
-    (with-current-buffer (get-file-buffer file)
-      (goto-char (point-max)))))
+Create it with an automatically generated name, one based
+on the `deft-filter-regexp' filter string if it is non-nil.
+With a prefix argument PFX, offer a choice of filename extensions
+when `deft-secondary-extensions' is non-empty."
+  (interactive "P")
+  (let ((data (and deft-filter-regexp
+		   (concat deft-filter-regexp "\n\n")))
+	(notename
+	 (when deft-filter-regexp
+	   (deft-title-to-notename deft-filter-regexp))))
+    (deft-sub-new-file data notename pfx)))
 
 (defun deft-file-under-dir-p (dir file)
   "Whether DIR is strictly the parent of FILE."
@@ -1110,7 +1122,7 @@ Show filename, title, summary, etc."
       (let* ((title (deft-file-title file))
 	     (summary (deft-file-summary file)))
 	(message "name=%S file=%S title=%S summary=%S"
-		 (deft-notename-from-file file)
+		 (deft-basename-from-file file)
 		 file title
 		 (and summary
 		      (substring summary 0 (min 50 (length summary)))))))))
@@ -1122,7 +1134,7 @@ Show filename, title, summary, etc."
 	       (insert-file-contents file)
 	       (deft-parse-buffer))))
     (message "name=%S file=%S parse=%S"
-	     (deft-notename-from-file file)
+	     (deft-basename-from-file file)
 	     file res)))
 
 (defun deft-show-file-parse ()
@@ -1372,13 +1384,13 @@ Also set `default-directory' to match."
   (deft-mode))
 
 ;;;###autoload
-(defun deft-open-file-by-notename (notename)
-  "Open the file for a Deft note named NOTENAME.
-NOTENAME is a non-directory filename, with an extension
+(defun deft-open-file-by-basename (filename)
+  "Open a Deft file named FILENAME.
+FILENAME is a non-directory filename, with an extension
 \(it is not necessarily unique)."
-  (let ((fn (deft-file-by-notename notename)))
+  (let ((fn (deft-file-by-basename filename)))
     (if (not fn)
-	(message "No Deft note '%s'" notename)
+	(message "No Deft note '%s'" filename)
       (deft-open-file fn))))
 
 ;;;###autoload
