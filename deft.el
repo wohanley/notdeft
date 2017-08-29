@@ -346,9 +346,18 @@ May not have been initialized if nil.")
   "Whether X is a safe `deft-path' element."
   (or (stringp x)
       (symbolp x)
-      (and (listp x)
-	   (cl-case (car x)
-	     ((file-expand-wildcards) t))
+      (and x (listp x)
+	   (memq (car x)
+		 '(append
+		   car cdr concat cons
+		   expand-file-name
+		   file-name-as-directory
+		   file-name-directory
+		   file-name-extension
+		   file-name-nondirectory
+		   file-name-sans-extension
+		   file-expand-wildcards
+		   format list reverse))
 	   (cl-every 'deft-safe-path-element-p (cdr x)))))
 
 (defun deft-resolve-directories ()
@@ -1497,22 +1506,26 @@ Create it if it does not exist."
       (deft))))
 
 ;;;###autoload
-(defun deft-open-query (query)
-  "Open Deft with the specified Xapian search QUERY.
+(defun deft-open-query ()
+  "Open Deft with an interactively read Xapian search QUERY.
 Start Deft up if no `deft-buffer' yet exists,
 otherwise merely switch to the existing buffer."
-  (interactive "MQuery: ")
-  (deft-switch-to-buffer)
-  (deft-xapian-query-set query))
+  (interactive)
+  (when deft-xapian-program
+    (let ((query (deft-xapian-read-query)))
+      (deft-switch-to-buffer)
+      (deft-xapian-query-set query))))
 
 ;;;###autoload
-(defun deft-open-lucky-query-file (query)
-  "Open the highest-ranked note matching the search QUERY.
+(defun deft-open-lucky-query-file ()
+  "Open the highest-ranked note matching a search query.
+Read the query interactively, accounting for `deft-xapian-query-history'.
 Open the file directly, without switching to any `deft-buffer'.
 Do not modify the `deft-buffer', or modify Deft state."
-  (interactive "MQuery: ")
+  (interactive)
   (when deft-xapian-program
-    (let* ((deft-xapian-order-by-time nil)
+    (let* ((query (deft-xapian-read-query))
+	   (deft-xapian-order-by-time nil)
 	   (deft-xapian-max-results 1)
 	   (files (deft-xapian-search (deft-get-directories) query)))
       (if (not files)

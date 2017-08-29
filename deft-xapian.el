@@ -68,12 +68,13 @@ Not cleared between invocations of `deft-mode'.")
 (defun deft-xapian-read-query ()
   "Read a Xapian query string, interactively.
 Use and update `deft-xapian-query-history' in querying.
-Return the read string."
-  (let ((s (read-string
+Return the read string, or nil if no query is given."
+  (let ((s (read-from-minibuffer
 	    "Query: " ;; PROMPT
-	    (car deft-xapian-query-history) ;; INITIAL-INPUT
-	    '(deft-xapian-query-history . 1) ;; HISTORY
+	    nil nil nil ;; INITIAL-CONTENTS KEYMAP READ
+	    'deft-xapian-query-history ;; HIST
 	    nil ;; DEFAULT-VALUE
+	    t ;; INHERIT-INPUT-METHOD
 	    )))
     (when (and s (not (string= s "")))
       s)))
