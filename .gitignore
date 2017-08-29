@@ -7,3 +7,4 @@
 *.elc
 local.mk
 /README.html
+.dir-locals.el

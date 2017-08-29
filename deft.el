@@ -872,14 +872,14 @@ Set up a hook for refreshing Deft state on save."
   "Create a new file containing the string DATA.
 Save into a file with the specified NOTENAME
 \(if NOTENAME is nil, generate a name).
-With a PFX >= 4, query for a filename extension;
-otherwise default to `deft-extension'.
-With a PFX >= 16, query for a target directory;
-otherwise default to `deft-directory'."
-  (let* ((ext (if (and deft-secondary-extensions (>= pfx 4))
+With a PFX >= 4, query for a target directory;
+otherwise default to `deft-directory'.
+With a PFX >= 16, query for a filename extension;
+otherwise default to `deft-extension'."
+  (let* ((ext (if (and deft-secondary-extensions (>= pfx 16))
 		  (deft-read-extension)
 		deft-extension))
-	 (dir (if (and (>= pfx 16) (> (length deft-path) 1))
+	 (dir (if (and (>= pfx 4) (> (length deft-path) 1))
 		  (deft-select-directory)
 		deft-directory))
 	 (file (if notename
@@ -906,10 +906,10 @@ Query for a TITLE when invoked as a command."
   "Create a new file quickly.
 Create it with an automatically generated name, one based
 on the `deft-filter-regexp' filter string if it is non-nil.
-With a prefix argument PFX, offer a choice of filename extensions
-when `deft-secondary-extensions' is non-empty.
-With two prefix arguments, also offer a choice of Deft
-directories, when `deft-path' has more than one of them."
+With a prefix argument PFX, offer a choice of Deft
+directories, when `deft-path' has more than one of them.
+With two prefix arguments, also offer a choice of filename
+extensions when `deft-secondary-extensions' is non-empty."
   (interactive "p")
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
