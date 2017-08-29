@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22948 39676 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22948 45410 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -79,7 +79,8 @@ query only as necessary.
 \(fn &optional PFX)" t nil)
 
 (autoload 'deft-switch-to-buffer "deft" "\
-
+Switch to `deft-buffer'.
+Create it if it does not exist.
 
 \(fn)" t nil)
 

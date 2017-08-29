@@ -872,17 +872,19 @@ Set up a hook for refreshing Deft state on save."
   "Create a new file containing the string DATA.
 Save into a file with the specified NOTENAME
 \(if NOTENAME is nil, generate a name).
-With PFX, query for a filename extension;
-otherwise default to `deft-extension'."
-  (let* ((ext (if (and pfx deft-secondary-extensions)
-		  (ido-completing-read
-		   "Extension: "
-		   (cons deft-extension deft-secondary-extensions)
-		   nil t)
-		  deft-extension))
+With a PFX >= 4, query for a filename extension;
+otherwise default to `deft-extension'.
+With a PFX >= 16, query for a target directory;
+otherwise default to `deft-directory'."
+  (let* ((ext (if (and deft-secondary-extensions (>= pfx 4))
+		  (deft-read-extension)
+		deft-extension))
+	 (dir (if (and (>= pfx 16) (> (length deft-path) 1))
+		  (deft-select-directory)
+		deft-directory))
 	 (file (if notename
-		   (deft-make-filename notename ext)
-		 (deft-generate-filename ext))))
+		   (deft-make-filename notename ext dir)
+		 (deft-generate-filename ext dir))))
     (if (not data)
 	(deft-open-file file)
       (write-region data nil file nil nil nil 'excl)
@@ -893,10 +895,9 @@ otherwise default to `deft-extension'."
 
 (defun deft-new-file-named (pfx title)
   "Create a new file, prompting for a title.
-With a prefix argument PFX, offer a choice of filename extensions
-when `deft-secondary-extensions' is non-empty.
+The prefix argument PFX is as for `deft-new-file'.
 Query for a TITLE when invoked as a command."
-  (interactive "P\nsNew title: ")
+  (interactive "p\nsNew title: ")
   (if (not (string-match "[a-zA-Z0-9]" title))
       (error "Aborting, unsuitable title: %S" title)
     (deft-sub-new-file title (deft-title-to-notename title) pfx)))
@@ -906,8 +907,10 @@ Query for a TITLE when invoked as a command."
 Create it with an automatically generated name, one based
 on the `deft-filter-regexp' filter string if it is non-nil.
 With a prefix argument PFX, offer a choice of filename extensions
-when `deft-secondary-extensions' is non-empty."
-  (interactive "P")
+when `deft-secondary-extensions' is non-empty.
+With two prefix arguments, also offer a choice of Deft
+directories, when `deft-path' has more than one of them."
+  (interactive "p")
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
 	(notename
@@ -1335,6 +1338,15 @@ That is, functionally move that element to position 0."
 	 (rst (- len n)))
     (cons (nth n lst) (append (butlast lst rst) (last lst (- rst 1))))))
 
+(defun deft-read-extension ()
+  "Read a Deft filename extension, interactively.
+The default choice is `deft-extension', but any of the
+`deft-secondary-extensions' are also available as choices."
+  (ido-completing-read
+   "Extension: "
+   (cons deft-extension deft-secondary-extensions)
+   nil t))
+
 ;;;###autoload
 (defun deft-select-directory ()
   "Select a Deft directory, possibly interactively.
@@ -1425,9 +1437,9 @@ query only as necessary."
 
 ;;;###autoload
 (defun deft-switch-to-buffer ()
-  (interactive)
   "Switch to `deft-buffer'.
 Create it if it does not exist."
+  (interactive)
   (let ((buf (get-buffer deft-buffer)))
     (if buf
 	(switch-to-buffer buf)
