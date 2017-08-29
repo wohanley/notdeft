@@ -149,7 +149,11 @@ This is body text.
   : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
   and the directory
   : ~/phone/notes
-  becomes available after Emacs has already started, you may want to re-evaluate the =setq= expression in order to get the newly available directory included on the =deft-path=.
+  becomes available after Emacs has already started, your =deft-path= may not include the newly available directory.
+
+  To make it more convenient to deal with directories that appear after Emacs startup, you are allowed to include restricted /code/ forms in your =deft-path= definition:
+  : (setq deft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
+  Now, whenever you =deft-refresh= (or =C-c C-g= in =*Deft*=), your set of Deft directories gets recomputed.
 
 * Invoking Deft from Another Mode
 

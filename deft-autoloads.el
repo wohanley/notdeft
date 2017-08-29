@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22948 45410 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22949 23152 903000 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -55,11 +55,12 @@ the default name; otherwise default to the old basename.
 Select a Deft directory, possibly interactively.
 Select from the configured list of directories (i.e., `deft-path'),
 possibly user assisted.
+Any DIRS argument overrides the list of choices.
 \(Non-existing directories are not available for selecting.)
 If `default-directory' is a Deft one, use that as the default choice.
 Return the selected directory, or error out.
 
-\(fn)" nil nil)
+\(fn &optional DIRS)" nil nil)
 
 (autoload 'deft-open-file-by-basename "deft" "\
 Open a Deft file named FILENAME.
@@ -72,9 +73,8 @@ FILENAME is a non-directory filename, with an extension
 Create `deft-buffer' and initialize Deft.
 Switch to the buffer.
 Reset state even if the buffer already exists.
-With a prefix argument PFX, always query for
-the initial `deft-directory' choice, and otherwise
-query only as necessary.
+With a prefix argument PFX, always query for the initial
+`deft-directory' choice, and otherwise query only as necessary.
 
 \(fn &optional PFX)" t nil)
 

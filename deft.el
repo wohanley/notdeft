@@ -208,8 +208,13 @@
 
 (defcustom deft-path '("~/.deft/")
   "Deft directory search path.
-A list of directories which may or may not exist on startup."
+A list of directories which may or may not exist on startup.
+Normally a list of strings, but may also contain other sexps,
+which are evaluated at startup or by calling `deft-refresh'.
+Each sexp must evaluate to a string or a list of strings
+naming directories."
   :type '(repeat (string :tag "Directory"))
+  :safe (lambda (lst) (cl-every 'deft-safe-path-element-p lst))
   :group 'deft)
 
 (defcustom deft-extension "org"
@@ -235,6 +240,7 @@ A list of directories which may or may not exist on startup."
 Specified as a number of seconds.
 Set to zero to disable."
   :type 'float
+  :safe 'floatp
   :group 'deft)
 
 (defcustom deft-time-format " %Y-%m-%d %H:%M"
@@ -242,6 +248,7 @@ Set to zero to disable."
 Set to nil to hide."
   :type '(choice (string :tag "Time format")
 		 (const :tag "Hide" nil))
+  :safe 'string-or-null-p
   :group 'deft)
 
 ;; Faces
@@ -311,6 +318,10 @@ Set to nil to hide."
 (defvar deft-all-files nil
   "List of all files to list or filter.")
 
+(defvar deft-directories nil
+  "A cache of Deft directories corresponding to `deft-path'.
+May not have been initialized if nil.")
+
 (defvar deft-hash-contents nil
   "Hash containing complete cached file contents, keyed by filename.")
 
@@ -328,6 +339,41 @@ Set to nil to hide."
 
 (defvar deft-window-width nil
   "Width of Deft buffer.")
+
+;; Deft path and directory
+
+(defun deft-safe-path-element-p (x)
+  "Whether X is a safe `deft-path' element."
+  (or (stringp x)
+      (symbolp x)
+      (and (listp x)
+	   (cl-case (car x)
+	     ((file-expand-wildcards) t))
+	   (cl-every 'deft-safe-path-element-p (cdr x)))))
+
+(defun deft-resolve-directories ()
+  "Resolve directories from `deft-path'.
+Return the result as a list of strings."
+  (apply 'append
+	 (mapcar
+	  (lambda (x)
+	    (cond
+	     ((stringp x)
+	      (list x))
+	     ((or (symbolp x) (listp x))
+	      (let ((y (eval x)))
+		(cond
+		 ((stringp y) (list y))
+		 ((and (listp y) (cl-every 'stringp y)) y)
+		 (t (error "Expected string or list thereof: %S" y)))))
+	     (t (error "Path element: %S" x))))
+	  deft-path)))
+
+(defun deft-get-directories ()
+  "Return `deft-directories', computing it if nil."
+  (unless deft-directories
+    (setq deft-directories (deft-resolve-directories)))
+  deft-directories)
 
 ;; File processing
 
@@ -432,7 +478,7 @@ If multiple such files exist, return one of them.
 If none exist, return nil."
   (let* ((file-p (lambda (pn)
 		   (string= name (file-name-nondirectory pn))))
-	 (cand-roots deft-path)
+	 (cand-roots (deft-get-directories))
 	 result)
     (while (and cand-roots (not result))
       (let ((abs-root (expand-file-name (car cand-roots))))
@@ -511,7 +557,7 @@ Return the files' absolute paths if FULL is true."
 Search all existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation.
 It may contain duplicates."
-  (let ((dir-lst deft-path)
+  (let ((dir-lst (deft-get-directories))
 	(fn-lst '()))
     (dolist (dir dir-lst)
       (setq fn-lst
@@ -771,7 +817,7 @@ The DIR argument must be a Deft root directory."
   "Recreate all Xapian indexes on `deft-path'."
   (interactive)
   (when deft-xapian-program
-    (deft-xapian-index-dirs deft-path nil t)
+    (deft-xapian-index-dirs (deft-get-directories) nil t)
     (deft-changed 'nothing)))
 
 (defun deft-changed (what &optional things)
@@ -798,12 +844,13 @@ Do nothing if there is no `deft-buffer'."
 	  (setq deft-all-files (deft-files-under-root deft-directory))
 	  (deft-cache-update deft-all-files)
 	  (setq deft-all-files (deft-sort-files deft-all-files)))
-      (cl-case what
-	(anything (deft-xapian-index-dirs deft-path))
-	(dirs (deft-xapian-index-dirs things))
-	(files (deft-xapian-index-files things)))
-      (setq deft-all-files (deft-xapian-search deft-path deft-xapian-query))
-      (deft-cache-update deft-all-files))
+      (let ((roots (deft-get-directories)))
+	(cl-case what
+	  (anything (deft-xapian-index-dirs roots))
+	  (dirs (deft-xapian-index-dirs things))
+	  (files (deft-xapian-index-files things)))
+	(setq deft-all-files (deft-xapian-search roots deft-xapian-query))
+	(deft-cache-update deft-all-files)))
     (deft-filter-update)
     (deft-buffer-setup)))
 
@@ -828,11 +875,10 @@ Refresh `deft-all-files' and other state accordingly."
   "Refresh the `deft-buffer' in the background.
 \(That is, do not display the buffer.)
 Do nothing if there is no `deft-buffer'.
-
-You may invoke this command manually if Deft files change
-outside of `deft-mode', as such changes are not detected
-automatically."
+Invoke this command manually if Deft files change outside of
+`deft-mode', as such changes are not detected automatically."
   (interactive)
+  (setq deft-directories (deft-resolve-directories))
   (deft-changed 'anything))
 
 (defun deft-no-directory-message ()
@@ -879,7 +925,7 @@ otherwise default to `deft-extension'."
   (let* ((ext (if (and deft-secondary-extensions (>= pfx 16))
 		  (deft-read-extension)
 		deft-extension))
-	 (dir (if (and (>= pfx 4) (> (length deft-path) 1))
+	 (dir (if (>= pfx 4)
 		  (deft-select-directory)
 		deft-directory))
 	 (file (if notename
@@ -930,7 +976,7 @@ Return nil if FILE is not under any Deft root."
   (cl-some (lambda (dir)
 	     (when (deft-file-under-dir-p dir file)
 	       dir))
-	   deft-path))
+	   (deft-get-directories)))
 
 (defun deft-direct-file-p (file)
   "Whether FILE is directly in a Deft directory.
@@ -1298,9 +1344,10 @@ Otherwise, quickly create a new file."
     map)
   "Keymap for Deft mode.")
 
-(defun deft-mode ()
+(defun deft-mode (&optional dirs)
   "Major mode for quickly browsing, filtering, and editing plain text notes.
 Turning on `deft-mode' runs the hook `deft-mode-hook'.
+The optional argument DIRS specifies the Deft directories to use.
 
 \\{deft-mode-map}."
   (kill-all-local-variables)
@@ -1311,6 +1358,7 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (deft-cache-initialize)
   (setq deft-filter-regexp nil)
   (setq deft-xapian-query nil)
+  (setq deft-directories (or dirs (deft-resolve-directories)))
   (deft-changed 'anything)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
@@ -1348,35 +1396,37 @@ The default choice is `deft-extension', but any of the
    nil t))
 
 ;;;###autoload
-(defun deft-select-directory ()
+(defun deft-select-directory (&optional dirs)
   "Select a Deft directory, possibly interactively.
 Select from the configured list of directories (i.e., `deft-path'),
 possibly user assisted.
+Any DIRS argument overrides the list of choices.
 \(Non-existing directories are not available for selecting.)
 If `default-directory' is a Deft one, use that as the default choice.
 Return the selected directory, or error out."
-  (if (not deft-path)
-      (error "No configured Deft data directories")
-    (let ((lst (deft-filter-existing-dirs deft-path)))
-      (if (not lst)
-	  (error "No existing Deft data directories")
-	(if (= (length lst) 1)
-	    (car lst)
-	  (let* ((ix
-		  (cl-position-if
-		   (lambda (x) (file-equal-p default-directory x))
-		   lst))
-		 (choice-lst
-		  (if ix (drop-nth-cons ix lst) lst))
-		 (d (ido-completing-read
-		     "Data directory: " choice-lst
-		     nil 'confirm-after-completion
-		     nil nil nil t)))
-	    (if (not d)
-		(error "Nothing selected")
-	      (if (not (file-directory-p d))
-		  (error "Not a directory")
-		d))))))))
+  (let ((roots (or dirs (deft-get-directories))))
+    (if (not roots)
+	(error "No specified Deft data directories")
+      (let ((lst (deft-filter-existing-dirs roots)))
+	(if (not lst)
+	    (error "No existing Deft data directories")
+	  (if (= (length lst) 1)
+	      (car lst)
+	    (let* ((ix
+		    (cl-position-if
+		     (lambda (x) (file-equal-p default-directory x))
+		     lst))
+		   (choice-lst
+		    (if ix (drop-nth-cons ix lst) lst))
+		   (d (ido-completing-read
+		       "Data directory: " choice-lst
+		       nil 'confirm-after-completion
+		       nil nil nil t)))
+	      (if (not d)
+		  (error "Nothing selected")
+		(if (not (file-directory-p d))
+		    (error "Not a directory")
+		  d)))))))))
 
 (defun deft-chdir ()
   "Change `deft-directory' according to interactive selection.
@@ -1388,12 +1438,13 @@ Also set `default-directory' to match."
     (unless deft-xapian-program
       (deft-changed 'anything))))
 
-(defun deft-mode-with-directory (dir)
-  "Set `deft-directory' to DIR, and open that directory in Deft."
+(defun deft-mode-with-directory (dir &optional dirs)
+  "Set `deft-directory' to DIR, and open that directory in Deft.
+DIRS, if non-nil, specifies the Deft directories to use."
   (setq deft-directory (file-name-as-directory (expand-file-name dir)))
   (message "Using Deft data directory '%s'" dir)
   (switch-to-buffer deft-buffer)
-  (deft-mode))
+  (deft-mode dirs))
 
 ;;;###autoload
 (defun deft-open-file-by-basename (filename)
@@ -1410,30 +1461,30 @@ FILENAME is a non-directory filename, with an extension
   "Create `deft-buffer' and initialize Deft.
 Switch to the buffer.
 Reset state even if the buffer already exists.
-With a prefix argument PFX, always query for
-the initial `deft-directory' choice, and otherwise
-query only as necessary."
+With a prefix argument PFX, always query for the initial
+`deft-directory' choice, and otherwise query only as necessary."
   (interactive "P")
-  (cond
-   (pfx
-    (deft-mode-with-directory (deft-select-directory)))
-   ((null deft-path)
-    (error "Empty `deft-path'"))
-   ((= 1 (length deft-path))
-    (let ((dir (car deft-path)))
-      (unless (file-exists-p dir)
-	(make-directory dir t))
-      (deft-mode-with-directory dir)))
-   (deft-xapian-program
-     (let ((dir (cl-some (lambda (dir)
-			   (when (file-exists-p dir)
-			     dir))
-			 deft-path)))
-       (if dir
-	   (deft-mode-with-directory dir)
-	 (error "No existing directory on `deft-path'"))))
-   (t
-    (deft-mode-with-directory (deft-select-directory)))))
+  (let ((roots (deft-resolve-directories)))
+    (cond
+     (pfx
+      (deft-mode-with-directory (deft-select-directory roots) roots))
+     ((null roots)
+      (error "Empty `deft-path'"))
+     ((= 1 (length roots))
+      (let ((dir (car roots)))
+	(unless (file-exists-p dir)
+	  (make-directory dir t))
+	(deft-mode-with-directory dir roots)))
+     (deft-xapian-program
+       (let ((dir (cl-some (lambda (dir)
+			     (when (file-exists-p dir)
+			       dir))
+			   roots)))
+	 (if dir
+	     (deft-mode-with-directory dir roots)
+	   (error "No existing directory on `deft-path'"))))
+     (t
+      (deft-mode-with-directory (deft-select-directory roots) roots)))))
 
 ;;;###autoload
 (defun deft-switch-to-buffer ()
@@ -1463,7 +1514,7 @@ Do not modify the `deft-buffer', or modify Deft state."
   (when deft-xapian-program
     (let* ((deft-xapian-order-by-time nil)
 	   (deft-xapian-max-results 1)
-	   (files (deft-xapian-search deft-path query)))
+	   (files (deft-xapian-search (deft-get-directories) query)))
       (if (not files)
 	  (message "No matching notes found")
 	(deft-open-file (car files))))))
