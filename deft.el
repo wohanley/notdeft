@@ -918,6 +918,16 @@ Set up a hook for refreshing Deft state on save."
     (add-to-list 'deft-auto-save-buffers (buffer-name))
     (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
 
+;;;###autoload
+(defun deft-save-buffer (pfx)
+  "Save the current buffer.
+The prefix argument PFX is passed to `save-buffer'.
+Set up a hook for refreshing Deft state on save."
+  (interactive "P")
+  (prog1 (save-buffer pfx)
+    (add-to-list 'deft-auto-save-buffers (buffer-name))
+    (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
+
 (defun deft-find-file (file)
   "Find FILE interactively using the minibuffer."
   (interactive "F")
@@ -1362,7 +1372,6 @@ The optional argument DIRS specifies the Deft directories to use.
   (kill-all-local-variables)
   (setq truncate-lines t)
   (setq buffer-read-only t)
-  (setq default-directory deft-directory)
   (use-local-map deft-mode-map)
   (deft-cache-initialize)
   (setq deft-filter-regexp nil)
@@ -1438,12 +1447,10 @@ Return the selected directory, or error out."
 		  d)))))))))
 
 (defun deft-chdir ()
-  "Change `deft-directory' according to interactive selection.
-Also set `default-directory' to match."
+  "Change `deft-directory' according to interactive selection."
   (interactive)
   (let ((dir (deft-select-directory)))
     (setq deft-directory (file-name-as-directory (expand-file-name dir)))
-    (setq default-directory deft-directory)
     (unless deft-xapian-program
       (deft-changed 'anything))))
 
@@ -1507,7 +1514,7 @@ Create it if it does not exist."
 
 ;;;###autoload
 (defun deft-open-query ()
-  "Open Deft with an interactively read Xapian search QUERY.
+  "Open Deft with an interactively read Xapian search query.
 Start Deft up if no `deft-buffer' yet exists,
 otherwise merely switch to the existing buffer."
   (interactive)
@@ -1517,7 +1524,7 @@ otherwise merely switch to the existing buffer."
       (deft-xapian-query-set query))))
 
 ;;;###autoload
-(defun deft-open-lucky-query-file ()
+(defun deft-lucky-find-file ()
   "Open the highest-ranked note matching a search query.
 Read the query interactively, accounting for `deft-xapian-query-history'.
 Open the file directly, without switching to any `deft-buffer'.

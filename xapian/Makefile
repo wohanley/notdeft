@@ -1,9 +1,14 @@
-default : deft-xapian
+default : build
 
 -include local.mk
 
+build : deft-xapian
+
 deft-xapian : deft-xapian.cc
 	g++ -o $@ -std=c++11 -Wall `pkg-config --cflags --libs tclap` `xapian-config --cxxflags --libs` $<
+
+clean :
+	-rm deft-xapian
 
 install-deps :
 	sudo aptitude install libtclap-dev libxapian-dev
