@@ -378,12 +378,6 @@ Return the result as a list of strings."
 	     (t (error "Path element: %S" x))))
 	  deft-path)))
 
-(defun deft-get-directories ()
-  "Return `deft-directories', computing it if nil."
-  (unless deft-directories
-    (setq deft-directories (deft-resolve-directories)))
-  deft-directories)
-
 ;; File processing
 
 (defun deft-title-to-notename (str)
@@ -488,7 +482,7 @@ If none exist, return nil."
   (deft-ensure-init)
   (let* ((file-p (lambda (pn)
 		   (string= name (file-name-nondirectory pn))))
-	 (cand-roots (deft-get-directories))
+	 (cand-roots deft-directories)
 	 result)
     (while (and cand-roots (not result))
       (let ((abs-root (expand-file-name (car cand-roots))))
@@ -568,7 +562,7 @@ Search all existing `deft-path' directories.
 The result list is sorted by the `string-lessp' relation.
 It may contain duplicates."
   (deft-ensure-init)
-  (let ((dir-lst (deft-get-directories))
+  (let ((dir-lst deft-directories)
 	(fn-lst '()))
     (dolist (dir dir-lst)
       (setq fn-lst
@@ -847,7 +841,7 @@ The DIR argument must be a Deft root directory."
   "Recreate all Xapian indexes on `deft-path'."
   (interactive)
   (when deft-xapian-program
-    (deft-xapian-index-dirs (deft-get-directories) nil t)
+    (deft-xapian-index-dirs deft-directories nil t)
     (deft-changed 'nothing)))
 
 (defun deft-changed (what &optional things)
@@ -870,7 +864,7 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
 	(setq deft-all-files (deft-files-under-root deft-directory))
 	(deft-cache-update deft-all-files)
 	(setq deft-all-files (deft-sort-files deft-all-files)))
-    (let ((roots (deft-get-directories)))
+    (let ((roots deft-directories))
       (cl-case what
 	(anything (deft-xapian-index-dirs roots))
 	(dirs (deft-xapian-index-dirs things))
@@ -1007,7 +1001,7 @@ Return nil if FILE is not under any Deft root."
   (cl-some (lambda (dir)
 	     (when (deft-file-under-dir-p dir file)
 	       dir))
-	   (deft-get-directories)))
+	   deft-directories))
 
 (defun deft-direct-file-p (file)
   "Whether FILE is directly in a Deft directory.
@@ -1577,7 +1571,7 @@ any DIRS argument overrides the configured list of choices.
 Non-existing directories are not available for selecting.
 If `default-directory' is a Deft one, use that as the default choice.
 Return the selected directory, or error out."
-  (let ((roots (or dirs (deft-get-directories))))
+  (let ((roots (or dirs deft-directories)))
     (if (not roots)
 	(error "No specified Deft data directories")
       (let ((lst (deft-filter-existing-dirs roots)))
@@ -1646,7 +1640,7 @@ Open the file directly, without switching to any `deft-buffer'."
     (let* ((query (deft-xapian-read-query))
 	   (deft-xapian-order-by-time nil)
 	   (deft-xapian-max-results 1)
-	   (files (deft-xapian-search (deft-get-directories) query)))
+	   (files (deft-xapian-search deft-directories query)))
       (if (not files)
 	  (message "No matching notes found")
 	(deft-open-file (car files))))))
