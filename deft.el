@@ -1032,24 +1032,50 @@ FILE need not actually exist for this predicate to hold."
 	 (let ((dir (file-name-directory file)))
 	   (not (file-equal-p dir root))))))
 
-(defun deft-delete-file ()
-  "Delete the file represented by the widget at the point.
-Prompt before proceeding."
-  (interactive)
-  (let ((filename (widget-get (widget-at) :tag)))
+(defun deft-is-current-buffer ()
+  "Whether the current buffer is a `deft-buffer'."
+  (equal (buffer-name (current-buffer)) deft-buffer))
+
+(defun deft-current-filename ()
+  "Return the current Deft note filename.
+In a `deft-buffer', return the currently selected file's name.
+Otherwise return the current buffer's file name, if any.
+Otherwise return nil."
+  (if (deft-is-current-buffer)
+      (widget-get (widget-at) :tag)
+    (buffer-file-name)))
+
+(defun deft-no-selected-file-message ()
+  (if (deft-is-current-buffer)
+      "No file selected"
+    "Not in a file buffer"))
+
+;;;###autoload
+(defun deft-delete-file (prefix)
+  "Delete the selected or current Deft note file.
+Prompt before proceeding.
+With a prefix argument, also kill the deleted file's buffer, if any."
+  (interactive "P")
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
     (cond
-     ((not filename)
-      (message "Not on a file"))
+     ((not old-file)
+      (message (deft-no-selected-file-message)))
      (t
-      (let ((filename-nd
-	     (file-name-nondirectory filename)))
+      (let ((old-file-nd
+	     (file-name-nondirectory old-file)))
 	(when (y-or-n-p
-	       (concat "Delete file " filename-nd "? "))
-	  (delete-file filename)
-	  (delq filename deft-current-files)
-	  (delq filename deft-all-files)
-	  (deft-changed 'files (list filename))
-	  (message (concat "Deleted " filename-nd))))))))
+	       (concat "Delete file " old-file-nd "? "))
+	  (when (file-exists-p old-file)
+	    (delete-file old-file))
+	  (delq old-file deft-current-files)
+	  (delq old-file deft-all-files)
+	  (deft-changed 'files (list old-file))
+	  (when prefix
+	    (let ((buf (get-file-buffer old-file)))
+	      (when buf
+		(kill-buffer buf))))
+	  (message "Deleted %s" old-file-nd)))))))
 
 (defun deft-move-into-subdir (pfx)
   "Move the file at point into a subdirectory of the same name.
@@ -1579,11 +1605,13 @@ Return the selected directory, or error out."
 (defun deft-chdir ()
   "Change `deft-directory' according to interactive selection."
   (interactive)
-  (deft-ensure-init)
-  (let ((dir (deft-select-directory)))
-    (setq deft-directory (file-name-as-directory (expand-file-name dir)))
-    (unless deft-xapian-program
-      (deft-changed 'anything))))
+  (if (not deft-hash-mtimes)
+      (deft-ensure-init t nil 'deft-select-directory)
+    (deft-ensure-init nil)
+    (let ((dir (deft-select-directory)))
+      (setq deft-directory (file-name-as-directory (expand-file-name dir)))
+      (unless deft-xapian-program
+	(deft-changed 'anything)))))
 
 ;;;###autoload
 (defun deft-open-file-by-basename (filename)
