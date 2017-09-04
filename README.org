@@ -6,7 +6,8 @@ This is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]],
 The key differences of this Deft variant are:
   1. Rather than supporting a single, customizable =deft-directory= (tree) of note files, it supports a customizable =deft-path= search path of directory trees.
   2. It supports optional invocation of a =deft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =deft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in mainline Deft).
-That is, the file browser of Deft 0.3x lists Xapian search results instead of listing the contents of a =deft-directory=.
+  3. It has commands that need not be run from within =deft-mode=.
+That is, the file browser of Deft 0.3x lists Xapian search results instead of listing the contents of a single =deft-directory=, and there are also commands that do not involve the =*Deft*= buffer in any way.
 
 * Installation and Customization
 
@@ -171,6 +172,10 @@ This is body text.
   A command similar to =deft-open-query= is
   : M-x deft-lucky-find-file
   which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*Deft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
+
+  The =deft-rename-current-file= command can be useful for renaming a note file that was perhaps created without a proper name (e.g., by using =C-c C-n=). Having written a note in a current buffer, issue the command
+  : M-x deft-rename-current-file
+  to enter a new basename for the file of that buffer; the default value is derived from the title of the note, as extracted from the buffer contents.
 
 * See Also
 

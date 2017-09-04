@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22957 20453 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22957 34243 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -58,16 +58,45 @@ the default name; otherwise default to the old basename.
 
 \(fn)" t nil)
 
+(autoload 'deft-refresh "deft" "\
+Refresh or reset Deft state.
+Refresh Deft state so that filesystem changes get noticed.
+With a PREFIX argument, reset state, so that caches and
+queries and such are also cleared.
+Invoke this command manually if Deft files change outside of
+`deft-mode', as such changes are not detected automatically.
+
+\(fn PREFIX)" t nil)
+
+(autoload 'deft "deft" "\
+Switch to `deft-buffer', creating it if not yet created.
+With a prefix argument PFX, always query for an initial
+`deft-directory' choice for a newly created Deft buffer,
+and otherwise query only as necessary.
+
+\(fn &optional PFX)" t nil)
+
+(autoload 'deft-read-extension "deft" "\
+Read a Deft filename extension, interactively.
+The default choice is `deft-extension', but any of the
+`deft-secondary-extensions' are also available as choices.
+
+\(fn)" nil nil)
+
 (autoload 'deft-select-directory "deft" "\
 Select a Deft directory, possibly interactively.
-Select from the configured list of directories (i.e., `deft-path'),
-possibly user assisted.
-Any DIRS argument overrides the list of choices.
-\(Non-existing directories are not available for selecting.)
+Select from the configured list of directories (i.e., `deft-path');
+any DIRS argument overrides the configured list of choices.
+Non-existing directories are not available for selecting.
 If `default-directory' is a Deft one, use that as the default choice.
 Return the selected directory, or error out.
 
 \(fn &optional DIRS)" nil nil)
+
+(autoload 'deft-chdir "deft" "\
+Change `deft-directory' according to interactive selection.
+
+\(fn)" t nil)
 
 (autoload 'deft-open-file-by-basename "deft" "\
 Open a Deft file named FILENAME.
@@ -76,25 +105,10 @@ FILENAME is a non-directory filename, with an extension
 
 \(fn FILENAME)" nil nil)
 
-(autoload 'deft "deft" "\
-Create `deft-buffer' and initialize Deft.
-Switch to the buffer.
-Reset state even if the buffer already exists.
-With a prefix argument PFX, always query for the initial
-`deft-directory' choice, and otherwise query only as necessary.
-
-\(fn &optional PFX)" t nil)
-
-(autoload 'deft-switch-to-buffer "deft" "\
-Switch to `deft-buffer'.
-Create it if it does not exist.
-
-\(fn)" t nil)
-
 (autoload 'deft-open-query "deft" "\
 Open Deft with an interactively read Xapian search query.
-Start Deft up if no `deft-buffer' yet exists,
-otherwise merely switch to the existing buffer.
+Create a `deft-buffer' if one does not yet exist,
+otherwise merely switch to the existing Deft buffer.
 
 \(fn)" t nil)
 
@@ -102,7 +116,6 @@ otherwise merely switch to the existing buffer.
 Open the highest-ranked note matching a search query.
 Read the query interactively, accounting for `deft-xapian-query-history'.
 Open the file directly, without switching to any `deft-buffer'.
-Do not modify the `deft-buffer', or modify Deft state.
 
 \(fn)" t nil)
 
