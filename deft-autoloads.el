@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22954 31202 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22957 20453 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -43,6 +43,13 @@ Open FILE in a new buffer and set its mode.
 Set up a hook for refreshing Deft state on save.
 
 \(fn FILE)" nil nil)
+
+(autoload 'deft-save-buffer "deft" "\
+Save the current buffer.
+The prefix argument PFX is passed to `save-buffer'.
+Set up a hook for refreshing Deft state on save.
+
+\(fn PFX)" t nil)
 
 (autoload 'deft-rename-current-file "deft" "\
 Rename current buffer file in a Deft-aware manner.
@@ -85,7 +92,7 @@ Create it if it does not exist.
 \(fn)" t nil)
 
 (autoload 'deft-open-query "deft" "\
-Open Deft with an interactively read Xapian search QUERY.
+Open Deft with an interactively read Xapian search query.
 Start Deft up if no `deft-buffer' yet exists,
 otherwise merely switch to the existing buffer.
 

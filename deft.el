@@ -657,6 +657,25 @@ Do nothing if FILE is not in the cache."
   (remhash file deft-hash-summaries)
   (remhash file deft-hash-contents))
 
+(defun deft-cache-clear ()
+  "Clear the cache of file information."
+  (clrhash deft-hash-mtimes)
+  (clrhash deft-hash-titles)
+  (clrhash deft-hash-summaries)
+  (clrhash deft-hash-contents))
+
+(defun deft-cache-gc ()
+  "Remove obsolete entries from the cache.
+That is, remove information for files that no longer exist.
+Return a list of the files whose information was removed."
+  (let (lst)
+    (maphash (lambda (file v)
+	       (unless (file-exists-p file)
+		 (setq lst (cons file lst))))
+	     deft-hash-mtimes)
+    (dolist (file lst lst)
+      (deft-cache-remove-file file))))
+
 (defun deft-cache-file (file)
   "Update file cache for FILE.
 Keep any information for a non-existing file."
@@ -879,16 +898,6 @@ Refresh `deft-all-files' and other state accordingly."
   (unless (equal deft-xapian-query new-query)
     (setq deft-xapian-query new-query)
     (deft-changed 'nothing)))
-
-(defun deft-refresh ()
-  "Refresh the `deft-buffer' in the background.
-\(That is, do not display the buffer.)
-Do nothing if there is no `deft-buffer'.
-Invoke this command manually if Deft files change outside of
-`deft-mode', as such changes are not detected automatically."
-  (interactive)
-  (setq deft-directories (deft-resolve-directories))
-  (deft-changed 'anything))
 
 (defun deft-no-directory-message ()
   "Return an `deft-directory'-does-not-exist message.
@@ -1309,6 +1318,40 @@ Otherwise, quickly create a new file."
         ;; If a buffer is no longer open, remove it from auto save list.
         (delq buf deft-auto-save-buffers)))))
 
+(defun deft-buffers-gc (kill save)
+  "Garbage collect obsolete buffer information.
+That is, remove non-existing buffers from `deft-auto-save-buffers'.
+Optionally, first KILL unmodified `deft-auto-save-buffers'.
+Optionally, SAVE modified buffers before killing any buffers
+\(asking for confirmation unless `deft-auto-save-interval' > 0).
+Return the buffers removed from `deft-auto-save-buffers'."
+  (when save
+    (save-some-buffers
+     (> deft-auto-save-interval 0)
+     (lambda ()
+       (member (buffer-name (current-buffer)) deft-auto-save-buffers))))
+  (when kill
+    (dolist (buf deft-auto-save-buffers)
+      (let ((buf (get-buffer buf)))
+	(when buf
+	  (unless (buffer-modified-p buf)
+	    (kill-buffer buf))))))
+  (let (dropped)
+    (dolist (buf deft-auto-save-buffers)
+      (unless (get-buffer buf)
+	(setq dropped (cons buf dropped))))
+    (dolist (buf dropped dropped)
+      (delq buf deft-auto-save-buffers))))
+
+(defun deft-gc (pfx)
+  "Garbage collect to remove uncurrent Deft state.
+With one prefix argument PFX, also kill unmodified Deft note buffers
+\(i.e., all unmodified `deft-auto-save-buffers').
+With two prefix arguments, also offer to save any modified buffers."
+  (interactive "p")
+  (deft-cache-gc)
+  (deft-buffers-gc (>= pfx 4) (>= pfx 16)))
+
 ;;; Mode definition
 
 (defun deft-show-version ()
@@ -1349,7 +1392,8 @@ Otherwise, quickly create a new file."
     (define-key map (kbd "C-c x m") 'deft-move-elsewhere)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-j") 'deft-chdir)
-    (define-key map (kbd "C-c C-g") 'deft-refresh)
+    (define-key map (kbd "C-c g") 'deft-refresh)
+    (define-key map (kbd "C-c G") 'deft-gc)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
     (define-key map [down-mouse-1] 'widget-button-click)
@@ -1362,6 +1406,16 @@ Otherwise, quickly create a new file."
       (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear))
     map)
   "Keymap for Deft mode.")
+
+(defun deft-refresh ()
+  "Refresh the `deft-buffer' in the background.
+\(That is, do not display the buffer.)
+Do nothing if there is no `deft-buffer'.
+Invoke this command manually if Deft files change outside of
+`deft-mode', as such changes are not detected automatically."
+  (interactive)
+  (setq deft-directories (deft-resolve-directories))
+  (deft-changed 'anything))
 
 (defun deft-mode (&optional dirs)
   "Major mode for quickly browsing, filtering, and editing plain text notes.
