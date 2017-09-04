@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22957 47766 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22957 53897 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -54,16 +54,16 @@ Set up a hook for refreshing Deft state on save.
 (autoload 'deft-delete-file "deft" "\
 Delete the selected or current Deft note file.
 Prompt before proceeding.
-With a prefix argument, also kill the deleted file's buffer, if any.
+With a PREFIX argument, also kill the deleted file's buffer, if any.
 
 \(fn PREFIX)" t nil)
 
-(autoload 'deft-rename-current-file "deft" "\
-Rename current buffer file in a Deft-aware manner.
-Query for a new name, using any parsed title to derive
-the default name; otherwise default to the old basename.
+(autoload 'deft-rename-file "deft" "\
+Rename the selected or current Deft note file.
+Defaults to a content-derived file name (rather than the old one)
+if called with a prefix argument PFX.
 
-\(fn)" t nil)
+\(fn PFX)" t nil)
 
 (autoload 'deft-refresh "deft" "\
 Refresh or reset Deft state.

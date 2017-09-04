@@ -1040,6 +1040,7 @@ Otherwise return nil."
     (buffer-file-name)))
 
 (defun deft-no-selected-file-message ()
+  "Return a \"file not selected\" message."
   (if (deft-is-current-buffer)
       "No file selected"
     "Not in a file buffer"))
@@ -1048,7 +1049,7 @@ Otherwise return nil."
 (defun deft-delete-file (prefix)
   "Delete the selected or current Deft note file.
 Prompt before proceeding.
-With a prefix argument, also kill the deleted file's buffer, if any."
+With a PREFIX argument, also kill the deleted file's buffer, if any."
   (interactive "P")
   (deft-ensure-init)
   (let ((old-file (deft-current-filename)))
@@ -1092,44 +1093,29 @@ invoke with a prefix argument PFX."
 	(deft-changed 'dirs (list (deft-dir-of-deft-file new-file)))
 	(message "Renamed as `%s`" new-file))))))
 
+;;;###autoload
 (defun deft-rename-file (pfx)
-  "Rename the file represented by the widget at point.
+  "Rename the selected or current Deft note file.
 Defaults to a content-derived file name (rather than the old one)
 if called with a prefix argument PFX."
   (interactive "P")
-  (let ((old-file (widget-get (widget-at) :tag)))
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
     (cond
      ((not old-file)
-      (message "Not on a file"))
+      (message (deft-no-selected-file-message)))
      (t
       (let* ((old-name (deft-base-filename old-file))
 	     (def-name
-	       (or (and
-		    pfx
-		    (let ((title
-			   (deft-title-from-file-content old-file)))
-		      (and title
-			   (deft-title-to-notename title))))
+	       (or (when pfx
+		     (let ((title
+			    (if (deft-is-current-buffer)
+				(deft-title-from-file-content old-file)
+			      (deft-parse-title old-file (buffer-string)))))
+		       (and title (deft-title-to-notename title))))
 		   old-name))
-	     (new-file
-	      (deft-sub-rename-file old-file old-name def-name)))
+	     (new-file (deft-sub-rename-file old-file old-name def-name)))
 	(message "Renamed as `%s`" new-file))))))
-
-;;;###autoload
-(defun deft-rename-current-file ()
-  "Rename current buffer file in a Deft-aware manner.
-Query for a new name, using any parsed title to derive
-the default name; otherwise default to the old basename."
-  (interactive)
-  (deft-ensure-init)
-  (let ((old-file (buffer-file-name)))
-    (when old-file
-      (let* ((title (deft-parse-title old-file (buffer-string)))
-	     (old-name (deft-base-filename old-file))
-	     (def-name (if title
-			   (deft-title-to-notename title)
-			 old-name)))
-	(deft-sub-rename-file old-file old-name def-name)))))
 
 (defun deft-sub-rename-file (old-file old-name def-name)
   "Rename OLD-FILE with the OLD-NAME Deft name.
