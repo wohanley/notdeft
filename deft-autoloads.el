@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22957 53897 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22957 55248 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -62,6 +62,21 @@ With a PREFIX argument, also kill the deleted file's buffer, if any.
 Rename the selected or current Deft note file.
 Defaults to a content-derived file name (rather than the old one)
 if called with a prefix argument PFX.
+
+\(fn PFX)" t nil)
+
+(autoload 'deft-move-file "deft" "\
+Move the selected file under selected Deft root.
+If it resides in a subdirectory, move the entire
+directory, but only if given a prefix argument PFX.
+
+\(fn PFX)" t nil)
+
+(autoload 'deft-archive-file "deft" "\
+Archive the selected Deft note file.
+Archive it under `deft-archive-directory', under its Deft root directory.
+If it resides in a subdirectory, archive the entire
+directory, but only with a prefix argument PFX.
 
 \(fn PFX)" t nil)
 

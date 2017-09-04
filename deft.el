@@ -1156,7 +1156,7 @@ but do not create its parent directories."
         (set-buffer buf)
         (set-visited-file-name new-file nil t)))))
 
-(defun deft-move-file (old-file new-dir &optional whole-dir)
+(defun deft-sub-move-file (old-file new-dir &optional whole-dir)
   "Move the OLD-FILE note file into the NEW-DIR directory.
 If OLD-FILE has its own subdirectory, then move the entire
 subdirectory, but only if WHOLE-DIR is true.
@@ -1169,33 +1169,38 @@ Return the pathname of the file/directory that was moved."
     (deft-rename-file+buffer old-file new-file)
     old-file))
 
-(defun deft-move-elsewhere (pfx)
+;;;###autoload
+(defun deft-move-file (pfx)
   "Move the selected file under selected Deft root.
 If it resides in a subdirectory, move the entire
 directory, but only if given a prefix argument PFX."
   (interactive "P")
-  (let ((old-file (widget-get (widget-at) :tag)))
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
     (if (not old-file)
-	(message "Not on a file")
+	(message (deft-no-selected-file-message))
       (let ((new-root (file-name-as-directory (deft-select-directory)))
 	    (old-root (deft-dir-of-deft-file old-file)))
 	(unless (file-equal-p new-root old-root)
-	  (let ((moved-file (deft-move-file old-file new-root pfx)))
+	  (let ((moved-file (deft-sub-move-file old-file new-root pfx)))
 	    (deft-changed 'dirs (list old-root new-root))
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
+;;;###autoload
 (defun deft-archive-file (pfx)
-  "Archive the file represented by the widget at point.
+  "Archive the selected Deft note file.
+Archive it under `deft-archive-directory', under its Deft root directory.
 If it resides in a subdirectory, archive the entire
 directory, but only with a prefix argument PFX."
   (interactive "P")
-  (let ((old-file (widget-get (widget-at) :tag)))
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
     (if (not old-file)
-	(message "Not on a file")
+	(message (deft-no-selected-file-message))
       (let ((new-dir
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory deft-archive-directory))))
-	(let ((moved-file (deft-move-file old-file new-dir pfx)))
+	(let ((moved-file (deft-sub-move-file old-file new-dir pfx)))
 	  (deft-changed 'files (list old-file))
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
@@ -1399,7 +1404,7 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map (kbd "C-c C-f") 'deft-find-file)
     (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
-    (define-key map (kbd "C-c x m") 'deft-move-elsewhere)
+    (define-key map (kbd "C-c m") 'deft-move-file)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-j") 'deft-chdir)
     (define-key map (kbd "C-c g") 'deft-refresh)
