@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22957 55248 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22957 61489 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -50,6 +50,24 @@ The prefix argument PFX is passed to `save-buffer'.
 Set up a hook for refreshing Deft state on save.
 
 \(fn PFX)" t nil)
+
+(autoload 'deft-new-file-named "deft" "\
+Create a new file, prompting for a title.
+The prefix argument PFX is as for `deft-new-file'.
+Query for a TITLE when invoked as a command.
+
+\(fn PFX TITLE)" t nil)
+
+(autoload 'deft-new-file "deft" "\
+Create a new file quickly.
+Create it with an automatically generated name, one based
+on the `deft-filter-regexp' filter string if it is non-nil.
+With a prefix argument PFX, offer a choice of Deft
+directories, when `deft-path' has more than one of them.
+With two prefix arguments, also offer a choice of filename
+extensions when `deft-secondary-extensions' is non-empty.
+
+\(fn &optional PFX)" t nil)
 
 (autoload 'deft-delete-file "deft" "\
 Delete the selected or current Deft note file.
@@ -111,9 +129,10 @@ Select from the configured list of directories (i.e., `deft-path');
 any DIRS argument overrides the configured list of choices.
 Non-existing directories are not available for selecting.
 If `default-directory' is a Deft one, use that as the default choice.
+Use the specified PROMPT in querying, if given.
 Return the selected directory, or error out.
 
-\(fn &optional DIRS)" nil nil)
+\(fn &optional DIRS PROMPT)" nil nil)
 
 (autoload 'deft-chdir "deft" "\
 Change `deft-directory' according to interactive selection.

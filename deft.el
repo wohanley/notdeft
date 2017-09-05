@@ -951,7 +951,7 @@ otherwise default to `deft-extension'."
 		  (deft-read-extension)
 		deft-extension))
 	 (dir (if (>= pfx 4)
-		  (deft-select-directory)
+		  (deft-select-directory nil "One-off choice of directory: ")
 		deft-directory))
 	 (file (if notename
 		   (deft-make-filename notename ext dir)
@@ -964,15 +964,18 @@ otherwise default to `deft-extension'."
       (with-current-buffer (get-file-buffer file)
 	(goto-char (point-max))))))
 
+;;;###autoload
 (defun deft-new-file-named (pfx title)
   "Create a new file, prompting for a title.
 The prefix argument PFX is as for `deft-new-file'.
 Query for a TITLE when invoked as a command."
   (interactive "p\nsNew title: ")
+  (deft-ensure-init)
   (if (not (string-match "[a-zA-Z0-9]" title))
       (error "Aborting, unsuitable title: %S" title)
     (deft-sub-new-file title (deft-title-to-notename title) pfx)))
 
+;;;###autoload
 (defun deft-new-file (&optional pfx)
   "Create a new file quickly.
 Create it with an automatically generated name, one based
@@ -982,6 +985,7 @@ directories, when `deft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
 extensions when `deft-secondary-extensions' is non-empty."
   (interactive "p")
+  (deft-ensure-init)
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
 	(notename
@@ -1555,12 +1559,13 @@ The default choice is `deft-extension', but any of the
    nil t))
 
 ;;;###autoload
-(defun deft-select-directory (&optional dirs)
+(defun deft-select-directory (&optional dirs prompt)
   "Select a Deft directory, possibly interactively.
 Select from the configured list of directories (i.e., `deft-path');
 any DIRS argument overrides the configured list of choices.
 Non-existing directories are not available for selecting.
 If `default-directory' is a Deft one, use that as the default choice.
+Use the specified PROMPT in querying, if given.
 Return the selected directory, or error out."
   (let ((roots (or dirs deft-directories)))
     (if (not roots)
@@ -1577,7 +1582,7 @@ Return the selected directory, or error out."
 		   (choice-lst
 		    (if ix (drop-nth-cons ix lst) lst))
 		   (d (ido-completing-read
-		       "Data directory: " choice-lst
+		       (or prompt "Data directory: ") choice-lst
 		       nil 'confirm-after-completion
 		       nil nil nil t)))
 	      (if (not d)
