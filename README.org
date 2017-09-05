@@ -50,7 +50,7 @@ That is, the file browser of Deft 0.3x lists Xapian search results instead of li
    : (setq deft-xapian-program "/path/to/deft-xapian")
    
    See the other =deft-xapian-*= customization variables for configuring the Xapian indexing and searching behavior. Most notably:
-   - The configuration variable =deft-xapian-max-results= controls the maximum number of files to list in a =deft-mode= buffer. You may set it to =nil= to always have all results displayed.
+   - The configuration variable =deft-xapian-max-results= controls the maximum number of files to list in a =deft-mode= buffer. You may set it to 0 to always have all results displayed.
    - The default is to order the results so that most recently edited files are listed first, but you may change this behavior by setting =deft-xapian-order-by-time= to =nil=, in which case Xapian's ranking mechanism is used instead.
 
 * Search Query Syntax

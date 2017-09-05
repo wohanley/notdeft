@@ -24,7 +24,7 @@ the files in the current `deft-directory'."
 (defcustom deft-xapian-max-results 100
   "Maximum number of Xapian query results.
 \(I.e., '--max-count' for `deft-xapian-program'.)
-No limit if nil."
+No limit if 0."
   :type 'integer
   :safe 'integerp
   :group 'deft)
@@ -126,7 +126,7 @@ based on file modification time, most recent first."
 	  (pcase (downcase opt)
 	    ("time" (setq time-sort t))
 	    ("rank" (setq time-sort nil))
-	    ("all" (setq max-results nil))
+	    ("all" (setq max-results 0))
 	    ))))
     (let ((s (shell-command-to-string
 	      (concat
@@ -137,7 +137,7 @@ based on file modification time, most recent first."
 		   " --boolean-any-case" "")
 	       (if deft-xapian-pure-not
 		   " --pure-not" "")
-	       (if max-results
+	       (if (> max-results 0)
 		   (format " --max-count %d" deft-xapian-max-results)
 		 "")
 	       (if query

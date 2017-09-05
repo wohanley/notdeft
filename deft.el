@@ -892,7 +892,17 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
 Refresh `deft-all-files' and other state accordingly."
   (unless (equal deft-xapian-query new-query)
     (setq deft-xapian-query new-query)
-    (deft-changed 'nothing)))
+    (deft-changed 'nothing)
+    (let* ((n (length deft-all-files))
+	   (is-max (and (> deft-xapian-max-results 0)
+			(= n deft-xapian-max-results)))
+	   (found (if is-max
+		      (format "Found maximum of %d notes" n)
+		    (format "Found %d notes" n)))
+	   (shown (if deft-filter-regexp
+		      (format ", showing %d of them" (length deft-current-files))
+		      ", showing all of them")))
+      (message (concat found shown)))))
 
 (defun deft-no-directory-message ()
   "Return an `deft-directory'-does-not-exist message.
