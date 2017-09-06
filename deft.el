@@ -104,8 +104,8 @@
 ;; with `C-c C-q`.
 
 ;; Archiving unused files can be carried out by pressing `C-c C-a`.
-;; Files will be moved to `deft-archive-directory' within your
-;; chosen `deft-directory'.
+;; Files will be moved to `deft-archive-directory' under a Deft
+;; data directory (e.g., current `deft-directory').
 
 ;; Files opened with Deft can be automatically saved after Emacs has
 ;; been idle for a customizable number of seconds. To enable this
@@ -301,7 +301,8 @@ Set to nil to hide."
 ;; Global variables
 
 (defvar deft-directory nil
-  "Chosen Deft data directory.")
+  "Chosen default Deft data directory.
+An absolute path, or nil if none.")
 
 (defvar deft-mode-hook nil
   "Hook run when entering Deft mode.")
@@ -397,10 +398,9 @@ Return the result as a list of strings."
 
 (defun deft-generate-filename (&optional ext dir)
   "Generate a new unique filename.
-Do so without being given any information about
-note title or content.
-Have the file have the extension EXT, and
-be in directory DIR."
+Do so without being given any information about note title or content.
+Have the file have the extension EXT, and be in directory DIR
+\(their defaults are as for `deft-make-filename')."
   (let (filename)
     (while (or (not filename)
 	       (file-exists-p filename))
@@ -414,11 +414,10 @@ be in directory DIR."
   "Derive a filename from Deft note name NOTENAME.
 The filename shall have the extension EXT,
 defaulting to `deft-extension'.
-The file shall reside in the directory DIR,
-defaulting to `deft-directory', except that
-IN-SUBDIR indicates that the file should be given
-its own subdirectory."
-  (let ((root (or dir deft-directory)))
+The file shall reside in the directory DIR (or a default directory
+computed by `deft-get-directory'), except that IN-SUBDIR indicates
+that the file should be given its own subdirectory."
+  (let ((root (or dir (deft-get-directory))))
     (concat (file-name-as-directory root)
 	    (if in-subdir (file-name-as-directory notename) "")
 	    notename "." (or ext deft-extension))))
@@ -758,7 +757,7 @@ Keep any information for a non-existing file."
   (deft-print-header)
 
   ;; Print the files list
-  (if (not (file-exists-p deft-directory))
+  (if (not (or deft-xapian-program (file-exists-p deft-directory)))
       (widget-insert (deft-no-directory-message))
     (if deft-current-files
 	(mapc 'deft-file-widget deft-current-files) ;; for side effects
@@ -861,7 +860,8 @@ any Xapian indexes, and update `deft-all-files' and
 or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (if (not deft-xapian-program)
       (unless (eq what 'nothing)
-	(setq deft-all-files (deft-files-under-root deft-directory))
+	(setq deft-all-files (when deft-directory
+			       (deft-files-under-root deft-directory)))
 	(deft-cache-update deft-all-files)
 	(setq deft-all-files (deft-sort-files deft-all-files)))
     (let ((roots deft-directories))
@@ -894,21 +894,27 @@ Refresh `deft-all-files' and other state accordingly."
     (setq deft-xapian-query new-query)
     (deft-changed 'nothing)
     (let* ((n (length deft-all-files))
+	   (is-none (= n 0))
 	   (is-max (and (> deft-xapian-max-results 0)
 			(= n deft-xapian-max-results)))
-	   (found (if is-max
-		      (format "Found maximum of %d notes" n)
-		    (format "Found %d notes" n)))
-	   (shown (if deft-filter-regexp
-		      (format ", showing %d of them" (length deft-current-files))
-		      ", showing all of them")))
+	   (found (cond
+		   (is-max (format "Found maximum of %d notes" n))
+		   (is-none "Found no notes")
+		   (t (format "Found %d notes" n))))
+	   (shown (cond
+		   (is-none "")
+		   (deft-filter-regexp
+		     (format ", showing %d of them" (length deft-current-files)))
+		   (t ", showing all of them"))))
       (message (concat found shown)))))
 
 (defun deft-no-directory-message ()
   "Return an `deft-directory'-does-not-exist message.
 That is, return a message to display when the Deft directory
 does not exist."
-  (concat "Directory " deft-directory " does not exist.\n"))
+  (if deft-directory
+      (concat "Directory " deft-directory " does not exist.\n")
+      (concat "No Deft data directory.\n")))
 
 (defun deft-no-files-message ()
   "Return a short message to display if no files are found."
@@ -954,15 +960,13 @@ Set up a hook for refreshing Deft state on save."
 Save into a file with the specified NOTENAME
 \(if NOTENAME is nil, generate a name).
 With a PFX >= 4, query for a target directory;
-otherwise default to `deft-directory'.
+otherwise default to the result of `deft-get-directory'.
 With a PFX >= 16, query for a filename extension;
 otherwise default to `deft-extension'."
-  (let* ((ext (if (and deft-secondary-extensions (>= pfx 16))
-		  (deft-read-extension)
-		deft-extension))
-	 (dir (if (>= pfx 4)
-		  (deft-select-directory nil "One-off choice of directory: ")
-		deft-directory))
+  (let* ((ext (when (and deft-secondary-extensions (>= pfx 16))
+		(deft-read-extension)))
+	 (dir (when (or (not deft-directory) (>= pfx 4))
+		(deft-select-directory nil "Directory for new file: ")))
 	 (file (if notename
 		   (deft-make-filename notename ext dir)
 		 (deft-generate-filename ext dir))))
@@ -1040,22 +1044,37 @@ FILE need not actually exist for this predicate to hold."
 	 (let ((dir (file-name-directory file)))
 	   (not (file-equal-p dir root))))))
 
-(defun deft-is-current-buffer ()
-  "Whether the current buffer is a `deft-buffer'."
-  (equal (buffer-name (current-buffer)) deft-buffer))
+(defun deft-buffer-p (&optional buffer)
+  "Whether BUFFER is a `deft-buffer'."
+  (equal (buffer-name (or buffer (current-buffer))) deft-buffer))
 
+(defun deft-get-directory (&optional buffer)
+  "Select a Deft directory for a new file.
+As appropriate, try to pick a directory based on BUFFER
+\(default: the current buffer) as context information.
+Otherwise, use any `deft-directory'.
+All else failing, query using `deft-select-directory'."
+  (or (unless (deft-buffer-p buffer)
+	(cl-some
+	 (lambda (root)
+	   (when (file-in-directory-p default-directory root)
+	     root))
+	 deft-directories))
+      deft-directory
+      (deft-select-directory)))
+	 
 (defun deft-current-filename ()
   "Return the current Deft note filename.
 In a `deft-buffer', return the currently selected file's name.
 Otherwise return the current buffer's file name, if any.
 Otherwise return nil."
-  (if (deft-is-current-buffer)
+  (if (deft-buffer-p)
       (widget-get (widget-at) :tag)
     (buffer-file-name)))
 
 (defun deft-no-selected-file-message ()
   "Return a \"file not selected\" message."
-  (if (deft-is-current-buffer)
+  (if (deft-buffer-p)
       "No file selected"
     "Not in a file buffer"))
 
@@ -1123,7 +1142,7 @@ if called with a prefix argument PFX."
 	     (def-name
 	       (or (when pfx
 		     (let ((title
-			    (if (deft-is-current-buffer)
+			    (if (deft-buffer-p)
 				(deft-title-from-file-content old-file)
 			      (deft-parse-title old-file (buffer-string)))))
 		       (and title (deft-title-to-notename title))))
@@ -1421,7 +1440,7 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map (kbd "C-c m") 'deft-move-file)
     ;; Miscellaneous
     (define-key map (kbd "C-c C-j") 'deft-chdir)
-    (define-key map (kbd "C-c g") 'deft-refresh)
+    (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c G") 'deft-gc)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
@@ -1448,33 +1467,32 @@ Invoke this command manually if Deft files change outside of
   (if prefix
       (deft-ensure-init t)
     (deft-ensure-init)
-    (setq deft-directories (deft-resolve-directories))
+    (setq deft-directories
+	  (deft-filter-existing-dirs (deft-resolve-directories)))
     (deft-changed 'anything)))
 
 (defun deft-file-member (file list)
   "Whether FILE is a member of LIST."
   (and (cl-some (lambda (x) (file-equal-p file x)) list) t))
 
-(defun deft-ensure-init (&optional always dirs dir)
+(defun deft-ensure-init (&optional reset dir)
   "Initialize Deft state unless already initialized.
-If ALWAYS is non-nil, initialize unconditionally.
-The optional argument DIRS specifies the Deft directories to use.
+If RESET is non-nil, initialize unconditionally.
 The optional argument DIR specifies the initial `deft-directory'
 to set, or a function for determining it from among DIRS."
-  (when (or always (not deft-hash-mtimes))
+  (when (or reset (not deft-hash-mtimes))
     (deft-cache-initialize)
     (setq deft-filter-regexp nil)
     (setq deft-xapian-query nil)
-    (setq deft-directories (or dirs (deft-resolve-directories)))
-    (when (or always (not deft-directory))
-      (let ((dir (cond
-		  ((stringp dir) dir)
-		  ((functionp dir) (funcall dir dirs))
-		  ((and deft-directory
-			(deft-file-member deft-directory deft-directories))
-		   deft-directory)
-		  (t (deft-select-directory dirs)))))
-	(setq deft-directory (file-name-as-directory (expand-file-name dir)))))
+    (let ((dirs (deft-resolve-directories)))
+      (when (or reset (not deft-directory))
+	(let ((dir (cond
+		    ((stringp dir) dir)
+		    ((functionp dir) (funcall dir dirs))
+		    (t (deft-maybe-select-directory dirs)))))
+	  (setq deft-directory (when dir
+				 (file-name-as-directory (expand-file-name dir))))))
+      (setq deft-directories (deft-filter-existing-dirs dirs)))
     (deft-changed 'anything)))
 
 (defun deft-mode ()
@@ -1494,51 +1512,29 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
 
 (put 'deft-mode 'mode-class 'special)
 
-(defun deft-create-buffer (&optional dirs dir)
+(defun deft-create-buffer ()
   "Create and switch to a `deft-mode' buffer.
-If a Deft buffer already exists, its state is reset.
-The DIRS and DIR arguments are as for `deft-ensure-init'."
-  (deft-ensure-init t dirs dir)
+If a Deft buffer already exists, its state is reset."
   (switch-to-buffer deft-buffer)
   (deft-mode)
   (deft-buffer-setup)
-  (message "Using Deft data directory '%s'" deft-directory))
+  (when deft-directory
+    (message "Using Deft data directory '%s'" deft-directory)))
 
 ;;;###autoload
-(defun deft (&optional pfx)
+(defun deft (&optional prefix)
   "Switch to `deft-buffer', creating it if not yet created.
-With a prefix argument PFX, always query for an initial
-`deft-directory' choice for a newly created Deft buffer,
-and otherwise query only as necessary."
-  (interactive "P")
+With a PREFIX argument, start Deft with fresh state. With two
+PREFIX arguments, also interactively query for an initial choice of
+`deft-directory', except where Deft has already been initialized."
+  (interactive "p")
+  (if prefix
+      (deft-ensure-init (>= prefix 4) (and (>= prefix 16) 'deft-select-directory))
+    (deft-ensure-init))
   (let ((buf (get-buffer deft-buffer)))
-    (cond
-     (buf
-      (switch-to-buffer buf))
-     ((and deft-directory (not pfx) (file-exists-p deft-directory))
-      (deft-create-buffer))
-     (t
-      (let ((roots (deft-resolve-directories)))
-	(cond
-	 (pfx
-	  (deft-create-buffer roots 'deft-select-directory))
-	 ((null roots)
-	  (error "Empty `deft-path'"))
-	 ((= 1 (length roots))
-	  (let ((dir (car roots)))
-	    (unless (file-exists-p dir)
-	      (make-directory dir t))
-	    (deft-create-buffer roots dir)))
-	 (deft-xapian-program
-	   (let ((dir (cl-some (lambda (dir)
-				 (when (file-exists-p dir)
-				   dir))
-			       roots)))
-	     (if dir
-		 (deft-create-buffer roots dir)
-	       (error "No existing directory on `deft-path'"))))
-	 (t
-	  (deft-create-buffer roots 'deft-select-directory))))))))
+    (if buf
+	(switch-to-buffer buf)
+      (deft-create-buffer))))
 
 (defun deft-filter-existing-dirs (in-lst)
   "Pick existing directories in IN-LST.
@@ -1568,50 +1564,75 @@ The default choice is `deft-extension', but any of the
    (cons deft-extension deft-secondary-extensions)
    nil t))
 
+(defun deft-maybe-select-directory (&optional dirs)
+  "Try to select an existing Deft directory.
+If DIRS is non-nil, select from among those directories;
+otherwise select from `deft-directories'.
+If there are only non-existing directory candidates,
+offer to create one of them. If the user refuses, or
+if there are no choices, return nil."
+  (let ((choices (or dirs deft-directories)))
+    (when choices
+      (let ((roots (deft-filter-existing-dirs choices)))
+	(if roots
+	    (or (and deft-directory
+		     (deft-file-member deft-directory roots)
+		     deft-directory)
+		(car roots))
+	  (let ((root (car choices)))
+	    (when (file-exists-p root)
+	      (error "Data \"directory\" is a non-directory: %s" root))
+	    (when (y-or-n-p (concat "Create directory " root "? "))
+	      (make-directory root t)
+	      root)))))))
+
+(defun deft-list-prefer (choices prefer)
+  "Re-order the CHOICES list to make preferred element first.
+PREFER is a predicate for identifying such an element.
+Move only the first matching element, if any.
+Return CHOICES as is if there are no matching elements."
+  (let ((ix (cl-position-if prefer choices)))
+    (if ix (drop-nth-cons ix choices) choices)))
+
 ;;;###autoload
 (defun deft-select-directory (&optional dirs prompt)
   "Select a Deft directory, possibly interactively.
-Select from the configured list of directories (i.e., `deft-path');
-any DIRS argument overrides the configured list of choices.
-Non-existing directories are not available for selecting.
-If `default-directory' is a Deft one, use that as the default choice.
+If DIRS is non-nil, select from among those directories;
+otherwise select from `deft-directories'.
 Use the specified PROMPT in querying, if given.
 Return the selected directory, or error out."
   (let ((roots (or dirs deft-directories)))
     (if (not roots)
 	(error "No specified Deft data directories")
       (let ((lst (deft-filter-existing-dirs roots)))
-	(if (not lst)
-	    (error "No existing Deft data directories")
-	  (if (= (length lst) 1)
-	      (car lst)
-	    (let* ((ix
-		    (cl-position-if
-		     (lambda (x) (file-equal-p default-directory x))
-		     lst))
-		   (choice-lst
-		    (if ix (drop-nth-cons ix lst) lst))
-		   (d (ido-completing-read
-		       (or prompt "Data directory: ") choice-lst
-		       nil 'confirm-after-completion
-		       nil nil nil t)))
-	      (if (not d)
-		  (error "Nothing selected")
-		(if (not (file-directory-p d))
-		    (error "Not a directory")
-		  d)))))))))
+	(cond
+	 ((not lst)
+	  (error "No existing Deft data directories"))
+	 ((= (length lst) 1)
+	  (car lst))
+	 (t
+	  (when deft-directory
+	    (setq lst (deft-list-prefer lst (lambda (file)
+					      (file-equal-p deft-directory file)))))
+	  (let ((dir (ido-completing-read
+		      (or prompt "Data directory: ") lst
+		      nil 'confirm-after-completion
+		      nil nil nil t)))
+	    (unless dir
+	      (error "Nothing selected"))
+	    dir)))))))
 
 ;;;###autoload
 (defun deft-chdir ()
-  "Change `deft-directory' according to interactive selection."
+  "Change `deft-directory' according to interactive selection.
+Query for a directory with `deft-select-directory'."
   (interactive)
-  (if (not deft-hash-mtimes)
-      (deft-ensure-init t nil 'deft-select-directory)
-    (deft-ensure-init nil)
-    (let ((dir (deft-select-directory)))
-      (setq deft-directory (file-name-as-directory (expand-file-name dir)))
-      (unless deft-xapian-program
-	(deft-changed 'anything)))))
+  (deft-ensure-init)
+  (let ((dir (deft-select-directory)))
+    (setq deft-directory (file-name-as-directory (expand-file-name dir)))
+    (unless deft-xapian-program
+      (deft-changed 'anything))
+    (message "Data directory set to '%s'" deft-directory)))
 
 ;;;###autoload
 (defun deft-open-file-by-basename (filename)

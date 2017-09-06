@@ -14,8 +14,8 @@
 (defcustom deft-xapian-program nil
   "Xapian backend's executable program path.
 Specified as an absolute path.
-When nil, incremental search is limited to
-the files in the current `deft-directory'."
+When nil, incremental search is limited to files
+in the current `deft-directory' (if any)."
   :type '(choice (const :tag "None" nil)
 		 (file :tag "Path"))
   :safe 'string-or-null-p
@@ -88,24 +88,29 @@ Return the read string, or nil if no query is given."
 With ASYNC, do the indexing asynchronously.
 With RECREATE, truncate any existing index files.
 The return value is as for `call-process'."
-  (apply
-   'call-process
-   deft-xapian-program ;; PROGRAM
-   nil ;; INFILE
-   (if async 0 nil) ;; DESTINATION
-   nil ;; DISPLAY
-   `("index"
-     "--chdir" ,(expand-file-name "." "~")
-     ,@(if recreate '("--recreate") nil)
-     ,@(apply 'append (mapcar
-		       (lambda (ext)
-			 `("--extension" ,(concat "." ext)))
-		       (cons deft-extension deft-secondary-extensions)))
-     "--lang" ,deft-xapian-language
-     ,@(mapcar
-	(lambda (dir)
-	  (file-relative-name dir "~"))
-	dirs))))
+  (let ((ret
+	 (apply
+	  'call-process
+	  deft-xapian-program ;; PROGRAM
+	  nil		      ;; INFILE
+	  (if async 0 nil)    ;; DESTINATION
+	  nil		      ;; DISPLAY
+	  `("index"
+	    "--chdir" ,(expand-file-name "." "~")
+	    ,@(if recreate '("--recreate") nil)
+	    ,@(apply 'append (mapcar
+			      (lambda (ext)
+				`("--extension" ,(concat "." ext)))
+			      (cons deft-extension deft-secondary-extensions)))
+	    "--lang" ,deft-xapian-language
+	    ,@(mapcar
+	       (lambda (dir)
+		 (file-relative-name dir "~"))
+	       dirs)))))
+    (unless async
+      (when (/= 0 ret)
+	(error "Index generation failed: %d exit by %s"
+	       ret deft-xapian-program)))))
 
 (defun deft-xapian-search (dirs &optional query)
   "On the Xapian indexes in DIRS, perform the search QUERY.

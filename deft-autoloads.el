@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22957 61489 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22960 39264 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -110,11 +110,11 @@ Invoke this command manually if Deft files change outside of
 
 (autoload 'deft "deft" "\
 Switch to `deft-buffer', creating it if not yet created.
-With a prefix argument PFX, always query for an initial
-`deft-directory' choice for a newly created Deft buffer,
-and otherwise query only as necessary.
+With a PREFIX argument, start Deft with fresh state. With two
+PREFIX arguments, also interactively query for an initial choice of
+`deft-directory', except where Deft has already been initialized.
 
-\(fn &optional PFX)" t nil)
+\(fn &optional PREFIX)" t nil)
 
 (autoload 'deft-read-extension "deft" "\
 Read a Deft filename extension, interactively.
@@ -125,10 +125,8 @@ The default choice is `deft-extension', but any of the
 
 (autoload 'deft-select-directory "deft" "\
 Select a Deft directory, possibly interactively.
-Select from the configured list of directories (i.e., `deft-path');
-any DIRS argument overrides the configured list of choices.
-Non-existing directories are not available for selecting.
-If `default-directory' is a Deft one, use that as the default choice.
+If DIRS is non-nil, select from among those directories;
+otherwise select from `deft-directories'.
 Use the specified PROMPT in querying, if given.
 Return the selected directory, or error out.
 
@@ -136,6 +134,7 @@ Return the selected directory, or error out.
 
 (autoload 'deft-chdir "deft" "\
 Change `deft-directory' according to interactive selection.
+Query for a directory with `deft-select-directory'.
 
 \(fn)" t nil)
 

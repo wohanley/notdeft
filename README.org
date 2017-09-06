@@ -146,7 +146,9 @@ This is body text.
 
 * Transient Directories
 
-  It is acceptable for the =deft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they will be included in subsequent searches. Note, however, that =deft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
+  It is acceptable for the =deft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they can be included in subsequent searches by first refreshing the searched =deft-directories= with the =deft-refresh= command (or =C-c C-g= in =*Deft*=).
+
+  Note, however, that =deft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
   : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
   and the directory
   : ~/phone/notes
@@ -154,7 +156,7 @@ This is body text.
 
   To make it more convenient to deal with directories that appear after Emacs startup, you are allowed to include restricted /code/ forms in your =deft-path= definition:
   : (setq deft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
-  Now, whenever you =deft-refresh= (or =C-c C-g= in =*Deft*=), your set of Deft directories gets recomputed.
+  Now, whenever you =deft-refresh=, your recomputation of =deft-directories= will also re-evaluate any such code forms.
 
 * Invoking Deft from Another Mode
 

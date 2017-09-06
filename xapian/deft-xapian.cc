@@ -364,14 +364,19 @@ static int doSearch(vector<string> subArgs) {
   try {
     Xapian::Database db;
     auto dirs = dirsArg.getValue();
+    int numDbFiles = 0;
     for (auto dir : dirs) {
       string dbFile(file_join(dir, ".xapian-db"));
       if (access(dbFile.c_str(), R_OK) != -1) {
 	Xapian::Database dirDb(dbFile);
 	db.add_database(dirDb);
+	numDbFiles++;
 	//cout << "Added database: " << db.get_description() << endl;
       }
     }
+    if (numDbFiles == 0)
+      return 0;
+    
     Xapian::Enquire enquire(db);
     if (timeSort) // by modification time, descending
       enquire.set_sort_by_value(DOC_MTIME, true);
