@@ -122,7 +122,7 @@ the value of the variable `deft-xapian-order-by-time'.
 Return at most `deft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
-  (let ((time-sort (if query t deft-xapian-order-by-time))
+  (let ((time-sort (if query deft-xapian-order-by-time t))
 	(max-results deft-xapian-max-results))
     (when query
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)

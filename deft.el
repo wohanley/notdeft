@@ -230,7 +230,9 @@ naming directories."
   :group 'deft)
 
 (defcustom deft-archive-directory "_archive"
-  "Sub-directory name for archived notes."
+  "Sub-directory name for archived notes.
+Should begin with '.', '_', or '#' to be excluded from
+indexing for Xapian searches."
   :type 'string
   :safe 'stringp
   :group 'deft)
@@ -748,25 +750,31 @@ Keep any information for a non-existing file."
 (eval-when-compile
   (defvar deft-mode-map))
 
-(defun deft-buffer-setup ()
-  "Render the file browser in the `deft-buffer'."
-  (setq deft-window-width (window-width))
-  (let ((inhibit-read-only t))
-    (erase-buffer))
-  (remove-overlays)
-  (deft-print-header)
+(defun deft-buffer-setup (&optional hint)
+  "Render the file browser in the `deft-buffer'.
+The `deft-buffer' is assumed to be active.
+HINT optionally indicates the type of change that has occurred,
+to optimize the UI refresh behavior. It can be the symbol
+`keep-line', or nil."
+  (let ((orig-line (and (eq hint 'keep-line) (line-number-at-pos))))
+    (setq deft-window-width (window-width))
+    (let ((inhibit-read-only t))
+      (erase-buffer))
+    (remove-overlays)
+    (deft-print-header)
 
-  ;; Print the files list
-  (if (not (or deft-xapian-program (file-exists-p deft-directory)))
-      (widget-insert (deft-no-directory-message))
-    (if deft-current-files
-	(mapc 'deft-file-widget deft-current-files) ;; for side effects
-      (widget-insert (deft-no-files-message))))
+    ;; Print the files list
+    (if (not (or deft-xapian-program (file-exists-p deft-directory)))
+	(widget-insert (deft-no-directory-message))
+      (if deft-current-files
+	  (mapc 'deft-file-widget deft-current-files) ;; for side effects
+	(widget-insert (deft-no-files-message))))
 
-  (use-local-map deft-mode-map)
-  (widget-setup)
-  (goto-char 1)
-  (forward-line 2))
+    (use-local-map deft-mode-map)
+    (widget-setup)
+    
+    (goto-char (point-min))
+    (forward-line (if orig-line (1- orig-line) 2))))
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
@@ -808,8 +816,7 @@ Keep any information for a non-existing file."
 
 (add-hook 'window-configuration-change-hook
 	  (lambda ()
-	    (when (and (eq (current-buffer) (get-buffer deft-buffer))
-                       (not (eq deft-window-width (window-width))))
+	    (when (and (deft-buffer-p) (/= deft-window-width (window-width)))
               (deft-buffer-setup))))
 
 (defun deft-keep-readable (files)
@@ -843,7 +850,7 @@ The DIR argument must be a Deft root directory."
     (deft-xapian-index-dirs deft-directories nil t)
     (deft-changed 'nothing)))
 
-(defun deft-changed (what &optional things)
+(defun deft-changed (what &optional things hint)
   "Refresh Deft file list, cache, and search index state.
 The arguments hint at what may need refreshing.
 
@@ -853,6 +860,8 @@ It is one of:
 - `dirs' to assume changes in THINGS Deft directories;
 - `files' to assume changes in THINGS Deft files; or
 - `anything' to make no assumptions about filesystem changes.
+
+HINT is as for `deft-buffer-setup'.
 
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `deft-all-files' and
@@ -875,7 +884,7 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (let ((buf (get-buffer deft-buffer)))
     (when buf
       (with-current-buffer buf
-	(deft-buffer-setup)))))
+	(deft-buffer-setup hint)))))
 
 (defun deft-xapian-query-edit ()
   "Enter a Xapian query string, and make it current."
@@ -904,7 +913,8 @@ Refresh `deft-all-files' and other state accordingly."
 	   (shown (cond
 		   (is-none "")
 		   (deft-filter-regexp
-		     (format ", showing %d of them" (length deft-current-files)))
+		     (format ", showing %d of them"
+			     (length deft-current-files)))
 		   (t ", showing all of them"))))
       (message (concat found shown)))))
 
@@ -926,9 +936,8 @@ does not exist."
 
 (defun deft-refresh-after-save ()
   "Refresh Deft state after saving a Deft note file."
-  (save-excursion
-    (let ((file (buffer-file-name)))
-      (deft-changed 'files (list file)))))
+  (let ((file (buffer-file-name)))
+    (deft-changed 'files (list file))))
 
 ;;;###autoload
 (defun deft-open-file (file)
@@ -1046,7 +1055,7 @@ FILE need not actually exist for this predicate to hold."
 
 (defun deft-buffer-p (&optional buffer)
   "Whether BUFFER is a `deft-buffer'."
-  (equal (buffer-name (or buffer (current-buffer))) deft-buffer))
+  (eq (or buffer (current-buffer)) (get-buffer deft-buffer)))
 
 (defun deft-get-directory (&optional buffer)
   "Select a Deft directory for a new file.
@@ -1098,22 +1107,24 @@ With a PREFIX argument, also kill the deleted file's buffer, if any."
 	    (delete-file old-file))
 	  (delq old-file deft-current-files)
 	  (delq old-file deft-all-files)
-	  (deft-changed 'files (list old-file))
+	  (deft-changed 'files (list old-file) 'keep-line)
 	  (when prefix
 	    (let ((buf (get-file-buffer old-file)))
 	      (when buf
 		(kill-buffer buf))))
 	  (message "Deleted %s" old-file-nd)))))))
 
+;;;###autoload
 (defun deft-move-into-subdir (pfx)
   "Move the file at point into a subdirectory of the same name.
 To nest more than one level (which is allowed but perhaps atypical),
 invoke with a prefix argument PFX."
   (interactive "P")
-  (let ((old-file (widget-get (widget-at) :tag)))
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
     (cond
      ((not old-file)
-      (message "Not on a file"))
+      (message (deft-no-selected-file-message)))
      ((and (not pfx) (deft-file-in-subdir-p old-file))
       (message "Already in a Deft sub-directory"))
      (t
@@ -1123,7 +1134,8 @@ invoke with a prefix argument PFX."
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
 	(deft-rename-file+buffer old-file new-file nil t)
-	(deft-changed 'dirs (list (deft-dir-of-deft-file new-file)))
+	(deft-changed 'dirs
+	  (list (deft-dir-of-deft-file new-file)) 'keep-line)
 	(message "Renamed as `%s`" new-file))))))
 
 ;;;###autoload
@@ -1194,7 +1206,9 @@ but do not create its parent directories."
 If OLD-FILE has its own subdirectory, then move the entire
 subdirectory, but only if WHOLE-DIR is true.
 Return the pathname of the file/directory that was moved."
-  (when (and whole-dir (deft-file-in-subdir-p old-file))
+  (when (deft-file-in-subdir-p old-file)
+    (unless whole-dir
+      (error "Attempt to move file in a sub-directory: %s" old-file))
     (setq old-file (directory-file-name
 		    (file-name-directory old-file))))
   (let ((new-file (concat (file-name-as-directory new-dir)
@@ -1216,15 +1230,15 @@ directory, but only if given a prefix argument PFX."
 	    (old-root (deft-dir-of-deft-file old-file)))
 	(unless (file-equal-p new-root old-root)
 	  (let ((moved-file (deft-sub-move-file old-file new-root pfx)))
-	    (deft-changed 'dirs (list old-root new-root))
+	    (deft-changed 'dirs (list old-root new-root) 'keep-line)
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
 ;;;###autoload
 (defun deft-archive-file (pfx)
   "Archive the selected Deft note file.
 Archive it under `deft-archive-directory', under its Deft root directory.
-If it resides in a subdirectory, archive the entire
-directory, but only with a prefix argument PFX."
+If it resides in a subdirectory, archive the entire directory,
+but only with a prefix argument PFX."
   (interactive "P")
   (deft-ensure-init)
   (let ((old-file (deft-current-filename)))
@@ -1234,7 +1248,7 @@ directory, but only with a prefix argument PFX."
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory deft-archive-directory))))
 	(let ((moved-file (deft-sub-move-file old-file new-dir pfx)))
-	  (deft-changed 'files (list old-file))
+	  (deft-changed 'files (list old-file) 'keep-line)
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
 (defun deft-show-file-info ()
@@ -1435,7 +1449,7 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map (kbd "C-c C-d") 'deft-delete-file)
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)
-    (define-key map (kbd "C-c C-b") 'deft-move-into-subdir)
+    (define-key map (kbd "C-c b") 'deft-move-into-subdir)
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
     (define-key map (kbd "C-c m") 'deft-move-file)
     ;; Miscellaneous
