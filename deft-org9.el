@@ -39,15 +39,10 @@ The optional PFX argument is ignored."
     (let ((fn (and fn-lst (ido-completing-read "Deft note: " fn-lst))))
       (concat "deft:" (or fn "")))))
 
-(defun deft-insert-org-link (pfx)
-  "Insert an Org \"deft:\" link, interactively.
-Offer a list of notes from which to choose the link target.
-Without a prefix argument, query for a description.
-With one prefix argument PFX, include no description.
-With two prefix arguments, insert any note title
-as the link description. (If multiple notes have the same
-name, pick any one of them for title extraction.)"
-  (interactive "p")
+(defun deft-make-org-link (pfx)
+  "Return an Org \"deft:\" link as a string.
+Choose the link target interactively.
+The PFX argument is as for `deft-insert-org-link'."
   (let ((name-lst (deft-make-basename-list)))
     (let ((name (when name-lst
 		  (ido-completing-read "Deft note: " name-lst))))
@@ -62,8 +57,29 @@ name, pick any one of them for title extraction.)"
 		  (4 nil)
 		  (16 (deft-title-from-file-content file)))))
 	  (if desc
-	      (insert "[[deft:" name "][" desc "]]")
-	    (insert "[[deft:" name "]]")))))))
+	      (concat "[[deft:" name "][" desc "]]")
+	    (concat "[[deft:" name "]]")))))))
+
+(defun deft-insert-org-link (pfx)
+  "Insert an Org \"deft:\" link, interactively.
+Offer a list of notes from which to choose the link target.
+Without a prefix argument, query for a description.
+With one prefix argument PFX, include no description.
+With two prefix arguments, insert any note title
+as the link description. (If multiple notes have the same
+name, pick any one of them for title extraction.)"
+  (interactive "p")
+  (let ((s (deft-make-org-link pfx)))
+    (when s
+      (insert s))))
+
+(defun deft-kill-org-link (pfx)
+  "Store an Org \"deft:\" link into `kill-ring'.
+The PFX argument is as for `deft-insert-org-link'."
+  (interactive "p")
+  (let ((s (deft-make-org-link pfx)))
+    (when s
+      (kill-new s))))
 
 (provide 'deft-org9)
 
