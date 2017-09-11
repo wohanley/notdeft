@@ -753,10 +753,19 @@ Keep any information for a non-existing file."
 (defun deft-buffer-setup (&optional hint)
   "Render the file browser in the `deft-buffer'.
 The `deft-buffer' is assumed to be active.
-HINT optionally indicates the type of change that has occurred,
-to optimize the UI refresh behavior. It can be the symbol
-`keep-line', or nil."
-  (let ((orig-line (and (eq hint 'keep-line) (line-number-at-pos))))
+HINT optionally indicates how to position the cursor in the buffer;
+it can be a filename to select, the symbol `retain', or nil."
+  (let ((line
+	 (pcase hint
+	   (`retain
+	    (line-number-at-pos))
+	   ((pred stringp)
+	    (if (not deft-current-files)
+		3
+	      (let ((ix (cl-position hint deft-current-files :test 'string=)))
+		(if ix (+ 3 ix) (line-number-at-pos)))))
+	   (_ 3))))
+    ;;(message "line pos %S (%S)" line (current-time))
     (setq deft-window-width (window-width))
     (let ((inhibit-read-only t))
       (erase-buffer))
@@ -774,7 +783,7 @@ to optimize the UI refresh behavior. It can be the symbol
     (widget-setup)
     
     (goto-char (point-min))
-    (forward-line (if orig-line (1- orig-line) 2))))
+    (forward-line (1- line))))
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
@@ -816,7 +825,8 @@ to optimize the UI refresh behavior. It can be the symbol
 
 (add-hook 'window-configuration-change-hook
 	  (lambda ()
-	    (when (and (deft-buffer-p) (/= deft-window-width (window-width)))
+	    (when (and (deft-buffer-p)
+		       (not (equal deft-window-width (window-width))))
               (deft-buffer-setup))))
 
 (defun deft-keep-readable (files)
@@ -937,7 +947,8 @@ does not exist."
 (defun deft-refresh-after-save ()
   "Refresh Deft state after saving a Deft note file."
   (let ((file (buffer-file-name)))
-    (deft-changed 'files (list file))))
+    (when file
+      (deft-changed 'files (list file) file))))
 
 ;;;###autoload
 (defun deft-open-file (file)
@@ -982,7 +993,7 @@ otherwise default to `deft-extension'."
     (if (not data)
 	(deft-open-file file)
       (write-region data nil file nil nil nil 'excl)
-      (deft-changed 'files (list file))
+      (deft-changed 'files (list file) file)
       (deft-open-file file)
       (with-current-buffer (get-file-buffer file)
 	(goto-char (point-max))))))
@@ -999,7 +1010,7 @@ Query for a TITLE when invoked as a command."
     (deft-sub-new-file title (deft-title-to-notename title) pfx)))
 
 ;;;###autoload
-(defun deft-new-file (&optional pfx)
+(defun deft-new-file (pfx)
   "Create a new file quickly.
 Create it with an automatically generated name, one based
 on the `deft-filter-regexp' filter string if it is non-nil.
@@ -1107,7 +1118,7 @@ With a PREFIX argument, also kill the deleted file's buffer, if any."
 	    (delete-file old-file))
 	  (delq old-file deft-current-files)
 	  (delq old-file deft-all-files)
-	  (deft-changed 'files (list old-file) 'keep-line)
+	  (deft-changed 'files (list old-file) 'retain)
 	  (when prefix
 	    (let ((buf (get-file-buffer old-file)))
 	      (when buf
@@ -1135,7 +1146,7 @@ invoke with a prefix argument PFX."
 	      (file-name-nondirectory old-file))))
 	(deft-rename-file+buffer old-file new-file nil t)
 	(deft-changed 'dirs
-	  (list (deft-dir-of-deft-file new-file)) 'keep-line)
+	  (list (deft-dir-of-deft-file new-file)) new-file)
 	(message "Renamed as `%s`" new-file))))))
 
 ;;;###autoload
@@ -1181,7 +1192,7 @@ Used by `deft-rename-file' and `deft-rename-current-file'."
 	    (file-name-directory old-file))))
     (deft-rename-file+buffer old-file new-file)
     (when (get-buffer deft-buffer)
-      (deft-changed 'dirs (list (deft-dir-of-deft-file new-file))))
+      (deft-changed 'dirs (list (deft-dir-of-deft-file new-file)) new-file))
     new-file))
 
 (defun deft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
@@ -1230,7 +1241,7 @@ directory, but only if given a prefix argument PFX."
 	    (old-root (deft-dir-of-deft-file old-file)))
 	(unless (file-equal-p new-root old-root)
 	  (let ((moved-file (deft-sub-move-file old-file new-root pfx)))
-	    (deft-changed 'dirs (list old-root new-root) 'keep-line)
+	    (deft-changed 'dirs (list old-root new-root) moved-file)
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
 ;;;###autoload
@@ -1248,7 +1259,7 @@ but only with a prefix argument PFX."
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory deft-archive-directory))))
 	(let ((moved-file (deft-sub-move-file old-file new-dir pfx)))
-	  (deft-changed 'files (list old-file) 'keep-line)
+	  (deft-changed 'files (list old-file) 'retain)
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
 (defun deft-show-file-info ()
@@ -1363,7 +1374,7 @@ Otherwise, quickly create a new file."
     (deft-open-file (car deft-current-files)))
    ;; Default
    (t
-    (deft-new-file))))
+    (deft-new-file 1))))
 
 ;;; Automatic File Saving
 
@@ -1504,8 +1515,9 @@ to set, or a function for determining it from among DIRS."
 		    ((stringp dir) dir)
 		    ((functionp dir) (funcall dir dirs))
 		    (t (deft-maybe-select-directory dirs)))))
-	  (setq deft-directory (when dir
-				 (file-name-as-directory (expand-file-name dir))))))
+	  (setq deft-directory
+		(when dir
+		  (file-name-as-directory (expand-file-name dir))))))
       (setq deft-directories (deft-filter-existing-dirs dirs)))
     (deft-changed 'anything)))
 
@@ -1645,7 +1657,7 @@ Query for a directory with `deft-select-directory'."
   (let ((dir (deft-select-directory)))
     (setq deft-directory (file-name-as-directory (expand-file-name dir)))
     (unless deft-xapian-program
-      (deft-changed 'anything))
+      (deft-changed 'anything 'retain))
     (message "Data directory set to '%s'" deft-directory)))
 
 ;;;###autoload
