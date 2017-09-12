@@ -343,6 +343,9 @@ May not have been initialized if nil.")
 (defvar deft-window-width nil
   "Width of Deft buffer.")
 
+(defvar deft-pending-updates nil
+  "Indicator of pending updates due to automatic saves, etc.")
+
 ;; Deft path and directory
 
 (defun deft-safe-path-element-p (x)
@@ -781,6 +784,7 @@ it can be a filename to select, the symbol `retain', or nil."
 
     (use-local-map deft-mode-map)
     (widget-setup)
+    (setq deft-pending-updates nil)
     
     (goto-char (point-min))
     (forward-line (1- line))))
@@ -823,11 +827,22 @@ it can be a filename to select, the symbol `retain', or nil."
       (widget-insert (propertize mtime 'face 'deft-time-face)))
     (widget-insert "\n")))
 
+(defun deft-buffer-visible-p ()
+  "Return non-nil if a window is displaying `deft-buffer'."
+  (get-buffer-window deft-buffer))
+
+(defun deft-window-configuration-changed ()
+  "A `window-configuration-change-hook' for Deft."
+  (when (deft-buffer-visible-p)
+    (cond
+     ((not (equal deft-window-width (window-width)))
+      (deft-buffer-setup))
+     (deft-pending-updates
+       (deft-buffer-setup 'retain))
+     )))
+
 (add-hook 'window-configuration-change-hook
-	  (lambda ()
-	    (when (and (deft-buffer-p)
-		       (not (equal deft-window-width (window-width))))
-              (deft-buffer-setup))))
+	  'deft-window-configuration-changed)
 
 (defun deft-keep-readable (files)
   "Filter out unreadable FILES."
@@ -893,8 +908,10 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (deft-filter-update)
   (let ((buf (get-buffer deft-buffer)))
     (when buf
-      (with-current-buffer buf
-	(deft-buffer-setup hint)))))
+      (if (get-buffer-window buf)
+	  (with-current-buffer buf
+	    (deft-buffer-setup hint))
+	(setq deft-pending-updates t)))))
 
 (defun deft-xapian-query-edit ()
   "Enter a Xapian query string, and make it current."

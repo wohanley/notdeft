@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22963 2655 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22967 11050 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -67,7 +67,7 @@ directories, when `deft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
 extensions when `deft-secondary-extensions' is non-empty.
 
-\(fn &optional PFX)" t nil)
+\(fn PFX)" t nil)
 
 (autoload 'deft-delete-file "deft" "\
 Delete the selected or current Deft note file.
