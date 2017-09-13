@@ -789,6 +789,14 @@ it can be a filename to select, the symbol `retain', or nil."
     (goto-char (point-min))
     (forward-line (1- line))))
 
+(defun deft-in-deft-buffer-setup (&optional hint)
+  "Set up `deft-buffer', making it current temporarily.
+The optional HINT argument is as for `deft-buffer-setup'."
+  (let ((buf (get-buffer deft-buffer)))
+    (when buf
+      (with-current-buffer buf
+	(deft-buffer-setup hint)))))
+
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
   (let* ((text (deft-file-contents file))
@@ -827,19 +835,18 @@ it can be a filename to select, the symbol `retain', or nil."
       (widget-insert (propertize mtime 'face 'deft-time-face)))
     (widget-insert "\n")))
 
-(defun deft-buffer-visible-p ()
-  "Return non-nil if a window is displaying `deft-buffer'."
-  (get-buffer-window deft-buffer))
+(defun deft-buffer-visible-window ()
+  "Return a window displaying `deft-buffer', if any."
+  (get-buffer-window deft-buffer 'visible))
 
 (defun deft-window-configuration-changed ()
   "A `window-configuration-change-hook' for Deft."
-  (when (deft-buffer-visible-p)
+  (when (deft-buffer-visible-window)
     (cond
      ((not (equal deft-window-width (window-width)))
-      (deft-buffer-setup))
+      (deft-in-deft-buffer-setup))
      (deft-pending-updates
-       (deft-buffer-setup 'retain))
-     )))
+       (deft-in-deft-buffer-setup 'retain)))))
 
 (add-hook 'window-configuration-change-hook
 	  'deft-window-configuration-changed)
@@ -908,7 +915,7 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (deft-filter-update)
   (let ((buf (get-buffer deft-buffer)))
     (when buf
-      (if (get-buffer-window buf)
+      (if (get-buffer-window buf 'visible)
 	  (with-current-buffer buf
 	    (deft-buffer-setup hint))
 	(setq deft-pending-updates t)))))
