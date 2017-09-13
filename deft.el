@@ -782,20 +782,11 @@ it can be a filename to select, the symbol `retain', or nil."
 	  (mapc 'deft-file-widget deft-current-files) ;; for side effects
 	(widget-insert (deft-no-files-message))))
 
-    (use-local-map deft-mode-map)
     (widget-setup)
     (setq deft-pending-updates nil)
     
     (goto-char (point-min))
     (forward-line (1- line))))
-
-(defun deft-in-deft-buffer-setup (&optional hint)
-  "Set up `deft-buffer', making it current temporarily.
-The optional HINT argument is as for `deft-buffer-setup'."
-  (let ((buf (get-buffer deft-buffer)))
-    (when buf
-      (with-current-buffer buf
-	(deft-buffer-setup hint)))))
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
@@ -841,15 +832,11 @@ The optional HINT argument is as for `deft-buffer-setup'."
 
 (defun deft-window-configuration-changed ()
   "A `window-configuration-change-hook' for Deft."
-  (when (deft-buffer-visible-window)
-    (cond
-     ((not (equal deft-window-width (window-width)))
-      (deft-in-deft-buffer-setup))
-     (deft-pending-updates
-       (deft-in-deft-buffer-setup 'retain)))))
-
-(add-hook 'window-configuration-change-hook
-	  'deft-window-configuration-changed)
+  (cond
+   ((not (equal deft-window-width (window-width)))
+    (deft-buffer-setup))
+   (deft-pending-updates
+     (deft-buffer-setup 'retain))))
 
 (defun deft-keep-readable (files)
   "Filter out unreadable FILES."
@@ -1548,6 +1535,7 @@ to set, or a function for determining it from among DIRS."
 (defun deft-mode ()
   "Major mode for quickly browsing, filtering, and editing plain text notes.
 Turning on `deft-mode' runs the hook `deft-mode-hook'.
+Only run this function when a `deft-buffer' is current.
 
 \\{deft-mode-map}."
   (kill-all-local-variables)
@@ -1556,6 +1544,8 @@ Turning on `deft-mode' runs the hook `deft-mode-hook'.
   (use-local-map deft-mode-map)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
+  (add-hook 'window-configuration-change-hook
+	    'deft-window-configuration-changed nil t)
   (when (> deft-auto-save-interval 0)
     (run-with-idle-timer deft-auto-save-interval t 'deft-auto-save))
   (run-mode-hooks 'deft-mode-hook))
