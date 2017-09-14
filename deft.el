@@ -386,8 +386,16 @@ Return the result as a list of strings."
 
 ;; File processing
 
+(defun deft-notename-basis-p (str)
+  "Whether can derive a notename from STR."
+  (and (stringp str)
+       (string-match-p "[a-zA-Z0-9]" str)
+       t))
+
 (defun deft-title-to-notename (str)
-  "Turn a title string STR to a note name string."
+  "Turn a title string STR to a note name string.
+To actually get a usable name, STR should be something
+for which the predicate `deft-notename-basis-p' holds."
   (when (string-match "^[^a-zA-Z0-9-]+" str)
     (setq str (replace-match "" t t str)))
   (when (string-match "[^a-zA-Z0-9-]+$" str)
@@ -993,7 +1001,8 @@ Save into a file with the specified NOTENAME
 With a PFX >= 4, query for a target directory;
 otherwise default to the result of `deft-get-directory'.
 With a PFX >= 16, query for a filename extension;
-otherwise default to `deft-extension'."
+otherwise default to `deft-extension'.
+Return the name of the new file."
   (let* ((ext (when (and deft-secondary-extensions (>= pfx 16))
 		(deft-read-extension)))
 	 (dir (when (or (not deft-directory) (>= pfx 4))
@@ -1007,7 +1016,8 @@ otherwise default to `deft-extension'."
       (deft-changed 'files (list file) file)
       (deft-open-file file)
       (with-current-buffer (get-file-buffer file)
-	(goto-char (point-max))))))
+	(goto-char (point-max))))
+    file))
 
 ;;;###autoload
 (defun deft-new-file-named (pfx title)
@@ -1016,7 +1026,7 @@ The prefix argument PFX is as for `deft-new-file'.
 Query for a TITLE when invoked as a command."
   (interactive "p\nsNew title: ")
   (deft-ensure-init)
-  (if (not (string-match "[a-zA-Z0-9]" title))
+  (if (not (deft-notename-basis-p title))
       (error "Aborting, unsuitable title: %S" title)
     (deft-sub-new-file title (deft-title-to-notename title) pfx)))
 
@@ -1034,7 +1044,8 @@ extensions when `deft-secondary-extensions' is non-empty."
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
 	(notename
-	 (when deft-filter-regexp
+	 (when (and deft-filter-regexp
+		    (deft-notename-basis-p deft-filter-regexp))
 	   (deft-title-to-notename deft-filter-regexp))))
     (deft-sub-new-file data notename pfx)))
 
