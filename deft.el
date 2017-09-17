@@ -763,7 +763,7 @@ Keep any information for a non-existing file."
 
 (defun deft-buffer-setup (&optional hint)
   "Render the file browser in the `deft-buffer'.
-The `deft-buffer' is assumed to be active.
+The `deft-buffer' is assumed to be current.
 HINT optionally indicates how to position the cursor in the buffer;
 it can be a filename to select, the symbol `retain', or nil."
   (let ((line
@@ -794,7 +794,10 @@ it can be a filename to select, the symbol `retain', or nil."
     (setq deft-pending-updates nil)
     
     (goto-char (point-min))
-    (forward-line (1- line))))
+    (forward-line (1- line))
+    (let ((win (get-buffer-window)))
+      (when win
+	(set-window-point win (point))))))
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
@@ -975,7 +978,7 @@ does not exist."
 Set up a hook for refreshing Deft state on save."
   (deft-ensure-init)
   (prog1 (find-file file)
-    (add-to-list 'deft-auto-save-buffers (buffer-name))
+    (add-to-list 'deft-auto-save-buffers (current-buffer))
     (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
 
 ;;;###autoload
@@ -986,9 +989,22 @@ Set up a hook for refreshing Deft state on save."
   (interactive "P")
   (deft-ensure-init)
   (prog1 (save-buffer pfx)
-    (add-to-list 'deft-auto-save-buffers (buffer-name))
+    (add-to-list 'deft-auto-save-buffers (current-buffer))
     (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
 
+(defun deft-switch-to-buffer ()
+  "Switch to an existing Deft note buffer."
+  (interactive)
+  (let ((names (deft-map-drop-false 'buffer-name deft-auto-save-buffers)))
+    (cond
+     ((not names)
+      (message "No Deft notes open"))
+     ((null (cdr names))
+      (switch-to-buffer (car names)))
+     (t
+      (let ((name (ido-completing-read "Buffer: " names nil t)))
+	(switch-to-buffer name))))))
+		     
 (defun deft-find-file (file)
   "Find FILE interactively using the minibuffer."
   (interactive "F")
@@ -1424,16 +1440,15 @@ Return the buffers removed from `deft-auto-save-buffers'."
     (save-some-buffers
      (> deft-auto-save-interval 0)
      (lambda ()
-       (member (buffer-name (current-buffer)) deft-auto-save-buffers))))
+       (memq (current-buffer) deft-auto-save-buffers))))
   (when kill
     (dolist (buf deft-auto-save-buffers)
-      (let ((buf (get-buffer buf)))
-	(when buf
-	  (unless (buffer-modified-p buf)
-	    (kill-buffer buf))))))
+      (when (buffer-name buf) 
+	(unless (buffer-modified-p buf)
+	  (kill-buffer buf)))))
   (let (dropped)
     (dolist (buf deft-auto-save-buffers)
-      (unless (get-buffer buf)
+      (unless (buffer-name buf)
 	(setq dropped (cons buf dropped))))
     (dolist (buf dropped dropped)
       (delq buf deft-auto-save-buffers))))
@@ -1482,10 +1497,11 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map (kbd "C-c C-d") 'deft-delete-file)
     (define-key map (kbd "C-c C-r") 'deft-rename-file)
     (define-key map (kbd "C-c C-f") 'deft-find-file)
-    (define-key map (kbd "C-c b") 'deft-move-into-subdir)
+    (define-key map (kbd "C-c S") 'deft-move-into-subdir)
     (define-key map (kbd "C-c C-a") 'deft-archive-file)
     (define-key map (kbd "C-c m") 'deft-move-file)
     ;; Miscellaneous
+    (define-key map (kbd "C-c b") 'deft-switch-to-buffer)
     (define-key map (kbd "C-c C-j") 'deft-chdir)
     (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c G") 'deft-gc)
@@ -1587,15 +1603,23 @@ PREFIX arguments, also interactively query for an initial choice of
 	(switch-to-buffer buf)
       (deft-create-buffer))))
 
-(defun deft-filter-existing-dirs (in-lst)
-  "Pick existing directories in IN-LST.
+(defun deft-map-drop-false (function sequence)
+  "Like `mapcar' of FUNCTION and SEQUENCE, but filtering nils."
+  (let (lst)
+    (dolist (elt sequence)
+      (let ((elt (funcall function elt)))
+	(when elt
+	  (setq lst (cons elt lst)))))
+    (reverse lst)))
+
+(defun deft-filter-existing-dirs (lst)
+  "Pick existing directories in LST.
 That is, filter the argument list, rejecting anything
 except for names of existing directories."
-  (let (lst)
-    (mapc (lambda (d)
-	    (when (file-directory-p d)
-	      (setq lst (cons d lst))))
-	  (reverse in-lst))
+  (deft-map-drop-false
+    (lambda (d)
+      (when (file-directory-p d)
+	d))
     lst))
 
 (defun drop-nth-cons (n lst)
