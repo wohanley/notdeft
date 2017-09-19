@@ -123,7 +123,8 @@ Return at most `deft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
   (let ((time-sort (if query deft-xapian-order-by-time t))
-	(max-results deft-xapian-max-results))
+	(max-results deft-xapian-max-results)
+	name-sort)
     (when query
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
 	(let ((opt (match-string 1 query)))
@@ -132,31 +133,47 @@ based on file modification time, most recent first."
 	    ("time" (setq time-sort t))
 	    ("rank" (setq time-sort nil))
 	    ("all" (setq max-results 0))
+	    ("file" (setq name-sort t))
 	    ))))
-    (let ((s (shell-command-to-string
-	      (concat
-	       (shell-quote-argument deft-xapian-program) " search"
-	       (if time-sort " --time-sort" "")
-	       " --lang " (shell-quote-argument deft-xapian-language)
-	       (if deft-xapian-boolean-any-case
-		   " --boolean-any-case" "")
-	       (if deft-xapian-pure-not
-		   " --pure-not" "")
-	       (if (> max-results 0)
-		   (format " --max-count %d" deft-xapian-max-results)
-		 "")
-	       (if query
-		   (concat " --query " (shell-quote-argument query))
-		 "")
-	       " " (mapconcat
-		    (lambda (dir)
-		      (shell-quote-argument
-		       (expand-file-name dir "~")))
-		    dirs " ")))))
-      (mapcar
-       (lambda (file)
-	 (expand-file-name file "~"))
-       (split-string s "\n" t)))))
+    (let* ((s (shell-command-to-string
+	       (concat
+		(shell-quote-argument deft-xapian-program) " search"
+		(if time-sort " --time-sort" "")
+		" --lang " (shell-quote-argument deft-xapian-language)
+		(if deft-xapian-boolean-any-case
+		    " --boolean-any-case" "")
+		(if deft-xapian-pure-not
+		    " --pure-not" "")
+		(if (> max-results 0)
+		    (format " --max-count %d" deft-xapian-max-results)
+		  "")
+		(if query
+		    (concat " --query " (shell-quote-argument query))
+		  "")
+		" " (mapconcat
+		     (lambda (dir)
+		       (shell-quote-argument
+			(expand-file-name dir "~")))
+		     dirs " "))))
+	   (files
+	    (mapcar
+	     (lambda (file)
+	       (expand-file-name file "~"))
+	     (split-string s "\n" t))))
+      (if name-sort
+	  (deft-sort-files-by-name files)
+	files))))
+
+(defun deft-sort-files-by-name (files)
+  "Sort FILES alphabetically by non-directory name.
+Return the file names in decreasing order."
+  (let* ((lst (mapcar (lambda (file)
+		       (cons (file-name-nondirectory file) file))
+		     files))
+	 (lst (sort lst (lambda (x y)
+			  (string-lessp (car y) (car x)))))
+	 (lst (mapcar 'cdr lst)))
+    lst))
 
 (provide 'deft-xapian)
 

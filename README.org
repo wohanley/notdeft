@@ -70,7 +70,10 @@ That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists 
    The following custom query syntax is supported:
    - =!all= :: Prefix a query with =!all= to show all matching results.
    - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =deft-xapian-order-by-time= setting.
+   - =!file= :: Prefix a query with =!file= to have results sorted by (non-directory) file name.
    A space character must be used to separate the above keywords from the rest of the query string.
+
+   The =!file= modifier might be useful for instance when you have file names such as “2017-01-01-0001.JPG” and “2017-09-19-0123.JPG”, and you would like to see them in chronological order by “creation time”, even if some of the files have been edited, and consequently have had their modification times changed.
 
 * Example Notes
 
@@ -178,7 +181,7 @@ This is body text.
   : C-u M-x deft-rename-file
   to enter a new basename for the file of that buffer. The =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. The same command also works in a =*Deft*= buffer, affecting the currently selected file.
 
-* Note Archive
+* Note Archival
 
   To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*Deft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =deft-archive-directory=, with the default name of
   : "_archive"
