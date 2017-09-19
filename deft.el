@@ -530,7 +530,8 @@ to the directory ROOT.
 If DIR is nil, then list Deft files under ROOT.
 Add to the RESULT list in an undefined order,
 and return the resulting value.
-Only include files matching regexp FILE-RE."
+Only include files matching regexp FILE-RE, defaulting
+to the result of `deft-make-file-re'."
   (let* ((root (file-name-as-directory (expand-file-name root)))
 	 (dir (file-name-as-directory (or dir ".")))
 	 (abs-dir (expand-file-name dir root)))
@@ -558,14 +559,14 @@ The arguments ROOT, DIR, RESULT, and FILE-RE are the same."
      (expand-file-name rel root))
    (deft-glob root dir result file-re)))
 
-(defun deft-find-all-files-in-dir (directory full)
-  "Return a list of all Deft files under DIRECTORY.
-The specified DIRECTORY must be a Deft root.
-Return an empty list if there is no readable DIRECTORY.
+(defun deft-find-all-files-in-dir (dir full)
+  "Return a list of all Deft files under DIR.
+The specified directory must be a Deft root.
+Return an empty list if there is no readable directory.
 Return the files' absolute paths if FULL is true."
   (if full
-      (deft-glob/absolute directory)
-    (deft-glob directory)))
+      (deft-glob/absolute dir)
+    (deft-glob dir)))
 
 ;;;###autoload
 (defun deft-make-basename-list ()
@@ -784,7 +785,7 @@ it can be a filename to select, the symbol `retain', or nil."
     (deft-print-header)
 
     ;; Print the files list
-    (if (not (or deft-xapian-program (file-exists-p deft-directory)))
+    (if (not deft-directories)
 	(widget-insert (deft-no-directory-message))
       (if deft-current-files
 	  (mapc 'deft-file-widget deft-current-files) ;; for side effects
@@ -849,18 +850,24 @@ it can be a filename to select, the symbol `retain', or nil."
    (deft-pending-updates
      (deft-buffer-setup 'retain))))
 
-(defun deft-keep-readable (files)
-  "Filter out unreadable FILES."
-  (let (result)
-    (dolist (file files result)
-      (when (file-readable-p file)
-	(setq result (cons file result))))))
+(defun deft-map-drop-false (function sequence &optional no-order)
+  "Like `mapcar' of FUNCTION and SEQUENCE, but filtering nils.
+Optionally, if NO-ORDER is true, return the results without
+retaining order."
+  (let (lst)
+    (dolist (elt sequence)
+      (let ((elt (funcall function elt)))
+	(when elt
+	  (setq lst (cons elt lst)))))
+    (if no-order lst (reverse lst))))
 
-(defun deft-files-under-root (dir)
-  "Return a list of all readable Deft files under DIR.
-Return the results as absolute paths.
-The DIR argument must be a Deft root directory."
-  (deft-keep-readable (deft-find-all-files-in-dir dir t)))
+(defun deft-files-under-all-roots ()
+  "Return a list of all Deft files under `deft-directories'.
+Return the results as absolute paths, in any order."
+  (let (result
+	(file-re (deft-make-file-re)))
+    (dolist (dir deft-directories result)
+      (setq result (deft-glob/absolute dir nil result file-re)))))
 
 (defun deft-cache-update (files)
   "Update cached information for FILES."
@@ -899,16 +906,24 @@ any Xapian indexes, and update `deft-all-files' and
 or changes to `deft-filter-regexp' or `deft-xapian-query'."
   (if (not deft-xapian-program)
       (unless (eq what 'nothing)
-	(setq deft-all-files (when deft-directory
-			       (deft-files-under-root deft-directory)))
-	(deft-cache-update deft-all-files)
+	(cl-case what
+	  (files
+	   (deft-cache-update things)
+	   (dolist (file things)
+	     (setq deft-all-files (delete file deft-all-files))
+	     (when (file-exists-p file)
+	       (setq deft-all-files (cons file deft-all-files)))))
+	  (t
+	   (setq deft-all-files (deft-files-under-all-roots))
+	   (deft-cache-update deft-all-files)))
 	(setq deft-all-files (deft-sort-files deft-all-files)))
-    (let ((roots deft-directories))
+    (let ()
       (cl-case what
-	(anything (deft-xapian-index-dirs roots))
+	(anything (deft-xapian-index-dirs deft-directories))
 	(dirs (deft-xapian-index-dirs things))
 	(files (deft-xapian-index-files things)))
-      (setq deft-all-files (deft-xapian-search roots deft-xapian-query))
+      (setq deft-all-files
+	    (deft-xapian-search deft-directories deft-xapian-query))
       (deft-cache-update deft-all-files)))
   (deft-filter-update)
   (let ((buf (get-buffer deft-buffer)))
@@ -951,12 +966,10 @@ Refresh `deft-all-files' and other state accordingly."
       (message (concat found shown)))))
 
 (defun deft-no-directory-message ()
-  "Return an `deft-directory'-does-not-exist message.
-That is, return a message to display when the Deft directory
-does not exist."
-  (if deft-directory
-      (concat "Directory " deft-directory " does not exist.\n")
-      (concat "No Deft data directory.\n")))
+  "Return an `deft-directories'-do-not-exist message.
+That is, return a message to display when there are no
+Deft directories whose contents might be listed."
+  (concat "No Deft data directories.\n"))
 
 (defun deft-no-files-message ()
   "Return a short message to display if no files are found."
@@ -1603,15 +1616,6 @@ PREFIX arguments, also interactively query for an initial choice of
 	(switch-to-buffer buf)
       (deft-create-buffer))))
 
-(defun deft-map-drop-false (function sequence)
-  "Like `mapcar' of FUNCTION and SEQUENCE, but filtering nils."
-  (let (lst)
-    (dolist (elt sequence)
-      (let ((elt (funcall function elt)))
-	(when elt
-	  (setq lst (cons elt lst)))))
-    (reverse lst)))
-
 (defun deft-filter-existing-dirs (lst)
   "Pick existing directories in LST.
 That is, filter the argument list, rejecting anything
@@ -1705,8 +1709,6 @@ Query for a directory with `deft-select-directory'."
   (deft-ensure-init)
   (let ((dir (deft-select-directory)))
     (setq deft-directory (file-name-as-directory (expand-file-name dir)))
-    (unless deft-xapian-program
-      (deft-changed 'anything 'retain))
     (message "Data directory set to '%s'" deft-directory)))
 
 ;;;###autoload

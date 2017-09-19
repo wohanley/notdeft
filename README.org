@@ -6,8 +6,7 @@ This is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]],
 The key differences of this Deft variant are:
   1. Rather than supporting a single, customizable =deft-directory= (tree) of note files, it supports a customizable =deft-path= search path of directory trees.
   2. It supports optional invocation of a =deft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =deft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in mainline Deft).
-  3. It has commands that need not be run from within =deft-mode=.
-That is, the file browser of Deft 0.3x lists Xapian search results instead of listing the contents of a single =deft-directory=, and there are also commands that do not involve the =*Deft*= buffer in any way.
+That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists Xapian search results instead of listing directory contents.
 
 * Installation and Customization
 
