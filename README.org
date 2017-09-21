@@ -181,6 +181,13 @@ This is body text.
   : C-u M-x deft-rename-file
   to enter a new basename for the file of that buffer. The =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. The same command also works in a =*Deft*= buffer, affecting the currently selected file.
 
+  The Deft commands that are usable from outside =deft-mode= might be bound to key combinations for convenient access. To facilitate this, Deft 0.3x provides a =deft-global= feature, which exports a keymap for those commands. That keymap can be bound to a prefix key. For example:
+  #+BEGIN_SRC emacs-lisp
+(require 'deft-global)
+(global-set-key [f6] 'deft-global-map)
+  #+END_SRC
+  after which the command =[f6] o= should invoke the =deft-open-query= command in any mode that does not override the binding for F6 with something else.
+
 * Note Archival
 
   To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*Deft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =deft-archive-directory=, with the default name of

@@ -73,7 +73,7 @@ name, pick any one of them for title extraction.)"
     (when s
       (insert s))))
 
-(defun deft-kill-org-link (pfx)
+(defun deft-kill-ring-save-org-link (pfx)
   "Store an Org \"deft:\" link into `kill-ring'.
 The PFX argument is as for `deft-insert-org-link'."
   (interactive "p")

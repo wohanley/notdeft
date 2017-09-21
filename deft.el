@@ -198,6 +198,7 @@
 (require 'cl-lib)
 (require 'widget)
 (require 'wid-edit)
+(require 'deft-global)
 (require 'deft-xapian)
 
 ;; Customization
@@ -996,7 +997,7 @@ Set up a hook for refreshing Deft state on save."
 
 ;;;###autoload
 (defun deft-save-buffer (pfx)
-  "Save the current buffer.
+  "Save the current buffer as a Deft note.
 The prefix argument PFX is passed to `save-buffer'.
 Set up a hook for refreshing Deft state on save."
   (interactive "P")
@@ -1018,8 +1019,9 @@ Set up a hook for refreshing Deft state on save."
       (let ((name (ido-completing-read "Buffer: " names nil t)))
 	(switch-to-buffer name))))))
 		     
+;;;###autoload
 (defun deft-find-file (file)
-  "Find FILE interactively using the minibuffer."
+  "Find a Deft FILE interactively using the minibuffer."
   (interactive "F")
   (deft-open-file file))
 
@@ -1500,23 +1502,12 @@ With two prefix arguments, also offer to save any modified buffers."
     ;; Filtering
     (define-key map (kbd "C-c C-l") 'deft-filter)
     (define-key map (kbd "C-c C-c") 'deft-filter-clear)
-    ;; File creation
-    (define-key map (kbd "C-c C-n") 'deft-new-file)
-    (define-key map (kbd "C-c C-m") 'deft-new-file-named)
     ;; File management
     (define-key map (kbd "C-c i") 'deft-show-file-info)
     (define-key map (kbd "C-c p") 'deft-show-file-parse)
     (define-key map (kbd "C-c P") 'deft-show-find-file-parse)
-    (define-key map (kbd "C-c C-d") 'deft-delete-file)
-    (define-key map (kbd "C-c C-r") 'deft-rename-file)
-    (define-key map (kbd "C-c C-f") 'deft-find-file)
-    (define-key map (kbd "C-c S") 'deft-move-into-subdir)
-    (define-key map (kbd "C-c C-a") 'deft-archive-file)
-    (define-key map (kbd "C-c m") 'deft-move-file)
     ;; Miscellaneous
     (define-key map (kbd "C-c b") 'deft-switch-to-buffer)
-    (define-key map (kbd "C-c C-j") 'deft-chdir)
-    (define-key map (kbd "C-c C-g") 'deft-refresh)
     (define-key map (kbd "C-c G") 'deft-gc)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
@@ -1528,7 +1519,10 @@ With two prefix arguments, also offer to save any modified buffers."
       (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
       (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
       (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear))
-    map)
+    (let ((parent-map (make-sparse-keymap)))
+      (define-key parent-map (kbd "C-c") 'deft-global-map)
+      (set-keymap-parent map parent-map)
+      map))
   "Keymap for Deft mode.")
 
 ;;;###autoload
@@ -1577,7 +1571,7 @@ to set, or a function for determining it from among DIRS."
 Turning on `deft-mode' runs the hook `deft-mode-hook'.
 Only run this function when a `deft-buffer' is current.
 
-\\{deft-mode-map}."
+\\{deft-mode-map}"
   (kill-all-local-variables)
   (setq truncate-lines t)
   (setq buffer-read-only t)

@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22967 11050 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22979 55610 834000 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -45,11 +45,16 @@ Set up a hook for refreshing Deft state on save.
 \(fn FILE)" nil nil)
 
 (autoload 'deft-save-buffer "deft" "\
-Save the current buffer.
+Save the current buffer as a Deft note.
 The prefix argument PFX is passed to `save-buffer'.
 Set up a hook for refreshing Deft state on save.
 
 \(fn PFX)" t nil)
+
+(autoload 'deft-find-file "deft" "\
+Find a Deft FILE interactively using the minibuffer.
+
+\(fn FILE)" t nil)
 
 (autoload 'deft-new-file-named "deft" "\
 Create a new file, prompting for a title.
