@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22979 55610 834000 0))
+;;;### (autoloads nil "deft" "deft.el" (22982 37332 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -38,9 +38,13 @@ Optionally, use function TRIM to trim any result string.
 
 \(fn STR &optional TRIM)" nil nil)
 
+(autoload 'deft-register-file "deft" "\
+Register FILE as storing a Deft note.
+
+\(fn FILE)" nil nil)
+
 (autoload 'deft-open-file "deft" "\
-Open FILE in a new buffer and set its mode.
-Set up a hook for refreshing Deft state on save.
+Open Deft note FILE in a new buffer.
 
 \(fn FILE)" nil nil)
 

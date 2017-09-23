@@ -986,14 +986,29 @@ Deft directories whose contents might be listed."
     (when file
       (deft-changed 'files (list file) file))))
 
+(defun deft-register-buffer (&optional buffer)
+  "Register BUFFER for saving as a Deft note.
+Use `current-buffer' as the default buffer.
+Ensure that BUFFER gets auto-saved, as configured for Deft,
+and that Deft state gets refreshed on save."
+  (deft-ensure-init)
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (add-to-list 'deft-auto-save-buffers buffer)
+      (add-hook 'after-save-hook 'deft-refresh-after-save nil t))))
+
+;;;###autoload
+(defun deft-register-file (file)
+  "Register FILE as storing a Deft note."
+  (let ((buf (get-file-buffer file)))
+    (when buf
+      (deft-register-buffer buf))))
+
 ;;;###autoload
 (defun deft-open-file (file)
-  "Open FILE in a new buffer and set its mode.
-Set up a hook for refreshing Deft state on save."
-  (deft-ensure-init)
+  "Open Deft note FILE in a new buffer."
   (prog1 (find-file file)
-    (add-to-list 'deft-auto-save-buffers (current-buffer))
-    (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
+    (deft-register-buffer)))
 
 ;;;###autoload
 (defun deft-save-buffer (pfx)
@@ -1001,10 +1016,9 @@ Set up a hook for refreshing Deft state on save."
 The prefix argument PFX is passed to `save-buffer'.
 Set up a hook for refreshing Deft state on save."
   (interactive "P")
-  (deft-ensure-init)
   (prog1 (save-buffer pfx)
-    (add-to-list 'deft-auto-save-buffers (current-buffer))
-    (add-hook 'after-save-hook 'deft-refresh-after-save nil t)))
+    (deft-register-buffer)
+    (deft-refresh-after-save)))
 
 (defun deft-switch-to-buffer ()
   "Switch to an existing Deft note buffer."
@@ -1458,7 +1472,7 @@ Return the buffers removed from `deft-auto-save-buffers'."
        (memq (current-buffer) deft-auto-save-buffers))))
   (when kill
     (dolist (buf deft-auto-save-buffers)
-      (when (buffer-name buf) 
+      (when (buffer-name buf)
 	(unless (buffer-modified-p buf)
 	  (kill-buffer buf)))))
   (let (dropped)

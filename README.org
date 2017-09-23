@@ -188,6 +188,29 @@ This is body text.
   #+END_SRC
   after which the command =[f6] o= should invoke the =deft-open-query= command in any mode that does not override the binding for F6 with something else.
 
+* Quick Note Capture
+
+  To quickly create a new note file from any buffer, you can use
+  : M-x deft-new-file
+  That command is also bound to =C-n= in =deft-global-map=, and if that keymap is bound to the prefix =[f6]=, for example, then you can create a new note with the key combination =[f6] C-n=.
+
+  Org mode has its own “capture” mechanism, and you can certainly configure capturing into a file that resides in a Deft directory. For example:
+  #+BEGIN_SRC emacs-lisp
+(setq org-directory "~/notes") ;; default Org files location
+(setq deft-path (list org-directory)) ;; Deft search path
+(setq org-default-notes-file (concat org-directory "/notes.org"))
+(global-set-key [f7] 'org-capture)
+  #+END_SRC
+  which defines "~/notes" as the sole Deft directory, and has the key F7 initiate an =org-capture=, by default into the file "~/notes/notes.org". After completing capture, you can go back to the previously captured item with
+  : C-u C-u M-x org-capture
+  The capture facility supports the definition and use of =org-capture-templates= for different purposes.
+
+  A caveat with Org capturing is that unless you have already opened the capture file under Deft, any newly captured items may not immediately get noticed by Deft. To ensure that Deft is aware of any changes, one write custom commands which register the capture file with something like
+  : (deft-register-file org-default-notes-file)
+  or also open it with
+  : (deft-open-file org-default-notes-file)
+  Note that different =org-capture-templates= may define different capture locations.
+
 * Note Archival
 
   To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*Deft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =deft-archive-directory=, with the default name of
