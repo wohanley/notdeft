@@ -342,10 +342,13 @@ May not have been initialized if nil.")
   "List of buffers that will be automatically saved.")
 
 (defvar deft-window-width nil
-  "Width of Deft buffer.")
+  "Width of Deft buffer, as currently drawn, or nil.")
 
 (defvar deft-pending-updates nil
-  "Indicator of pending updates due to automatic saves, etc.")
+  "Whether there are pending updates for `deft-buffer'.
+Either nil for no pending updates, `redraw' for a pending refresh
+of the buffer, or `recompute' for a pending recomputation of
+`deft-current-files'.")
 
 ;; Deft path and directory
 
@@ -763,22 +766,9 @@ Keep any information for a non-existing file."
 (eval-when-compile
   (defvar deft-mode-map))
 
-(defun deft-buffer-setup (&optional hint)
-  "Render the file browser in the `deft-buffer'.
-The `deft-buffer' is assumed to be current.
-HINT optionally indicates how to position the cursor in the buffer;
-it can be a filename to select, the symbol `retain', or nil."
-  (let ((line
-	 (pcase hint
-	   (`retain
-	    (line-number-at-pos))
-	   ((pred stringp)
-	    (if (not deft-current-files)
-		3
-	      (let ((ix (cl-position hint deft-current-files :test 'string=)))
-		(if ix (+ 3 ix) (line-number-at-pos)))))
-	   (_ 3))))
-    ;;(message "line pos %S (%S)" line (current-time))
+(defun deft-buffer-setup ()
+  "Render the Deft file browser in the current buffer."
+  (let ((line (max 3 (line-number-at-pos))))
     (setq deft-window-width (window-width))
     (let ((inhibit-read-only t))
       (erase-buffer))
@@ -793,13 +783,9 @@ it can be a filename to select, the symbol `retain', or nil."
 	(widget-insert (deft-no-files-message))))
 
     (widget-setup)
-    (setq deft-pending-updates nil)
     
     (goto-char (point-min))
-    (forward-line (1- line))
-    (let ((win (get-buffer-window)))
-      (when win
-	(set-window-point win (point))))))
+    (forward-line (1- line))))
 
 (defun deft-file-widget (file)
   "Add a line to the file browser for the given FILE."
@@ -839,18 +825,6 @@ it can be a filename to select, the symbol `retain', or nil."
       (widget-insert (propertize mtime 'face 'deft-time-face)))
     (widget-insert "\n")))
 
-(defun deft-buffer-visible-window ()
-  "Return a window displaying `deft-buffer', if any."
-  (get-buffer-window deft-buffer 'visible))
-
-(defun deft-window-configuration-changed ()
-  "A `window-configuration-change-hook' for Deft."
-  (cond
-   ((not (equal deft-window-width (window-width)))
-    (deft-buffer-setup))
-   (deft-pending-updates
-     (deft-buffer-setup 'retain))))
-
 (defun deft-map-drop-false (function sequence &optional no-order)
   "Like `mapcar' of FUNCTION and SEQUENCE, but filtering nils.
 Optionally, if NO-ORDER is true, return the results without
@@ -886,53 +860,90 @@ Return the results as absolute paths, in any order."
   (interactive)
   (when deft-xapian-program
     (deft-xapian-index-dirs deft-directories nil t)
-    (deft-changed 'nothing)))
+    (deft-changed/query)))
 
-(defun deft-changed (what &optional things hint)
+(defun deft-pending-lessp (x y)
+  "Whether pending status value X < Y."
+  (let ((lst '(() redraw recompute)))
+    (< (cl-position x lst) (cl-position y lst))))
+
+(defun deft-set-pending-updates (value)
+  "Set `deft-pending-updates' to at least VALUE."
+  (when (deft-pending-lessp deft-pending-updates value)
+    (setq deft-pending-updates value)))
+
+(defun deft-changed/fs (what &optional things)
   "Refresh Deft file list, cache, and search index state.
 The arguments hint at what may need refreshing.
 
 WHAT is a symbolic hint for purposes of optimization.
 It is one of:
-- `nothing' to assume no filesystem changes;
 - `dirs' to assume changes in THINGS Deft directories;
 - `files' to assume changes in THINGS Deft files; or
 - `anything' to make no assumptions about filesystem changes.
-
-HINT is as for `deft-buffer-setup'.
 
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `deft-all-files' and
 `deft-current-file' lists to reflect those changes,
 or changes to `deft-filter-regexp' or `deft-xapian-query'."
-  (if (not deft-xapian-program)
-      (unless (eq what 'nothing)
-	(cl-case what
-	  (files
-	   (deft-cache-update things)
-	   (dolist (file things)
-	     (setq deft-all-files (delete file deft-all-files))
-	     (when (file-exists-p file)
-	       (setq deft-all-files (cons file deft-all-files)))))
-	  (t
-	   (setq deft-all-files (deft-files-under-all-roots))
-	   (deft-cache-update deft-all-files)))
-	(setq deft-all-files (deft-sort-files deft-all-files)))
-    (let ()
-      (cl-case what
-	(anything (deft-xapian-index-dirs deft-directories))
-	(dirs (deft-xapian-index-dirs things))
-	(files (deft-xapian-index-files things)))
-      (setq deft-all-files
-	    (deft-xapian-search deft-directories deft-xapian-query))
-      (deft-cache-update deft-all-files)))
-  (deft-filter-update)
-  (let ((buf (get-buffer deft-buffer)))
-    (when buf
-      (if (get-buffer-window buf 'visible)
-	  (with-current-buffer buf
-	    (deft-buffer-setup hint))
-	(setq deft-pending-updates t)))))
+  (cond
+   (deft-xapian-program
+     (cl-case what
+       (anything (deft-xapian-index-dirs deft-directories))
+       (dirs (deft-xapian-index-dirs things))
+       (files (deft-xapian-index-files things)))
+     (setq deft-all-files
+	   (deft-xapian-search deft-directories deft-xapian-query))
+     (deft-cache-update deft-all-files))
+   (t
+    (cl-case what
+      (files
+       (deft-cache-update things)
+       (dolist (file things)
+	 (setq deft-all-files (delete file deft-all-files))
+	 (when (file-exists-p file)
+	   (setq deft-all-files (cons file deft-all-files)))))
+      (t
+       (setq deft-all-files (deft-files-under-all-roots))
+       (deft-cache-update deft-all-files)))
+    (setq deft-all-files (deft-sort-files deft-all-files))))
+  (deft-changed/filter))
+
+(defun deft-changed/query ()
+  "Refresh Deft buffer after query change."
+  (when deft-xapian-program
+    (setq deft-all-files
+	  (deft-xapian-search deft-directories deft-xapian-query))
+    (deft-cache-update deft-all-files)
+    (deft-changed/filter)))
+
+(defun deft-changed/filter ()
+  "Refresh Deft buffer after filter change."
+  (deft-set-pending-updates 'recompute)
+  (deft-changed/window))
+
+(defun deft-changed/window ()
+  "Perform any pending operations on a buffer.
+Only do that if the buffer is visible.
+Update `deft-pending-updates' accordingly."
+  (when deft-pending-updates
+    (let ((buf (get-buffer deft-buffer)))
+      (when (and buf (get-buffer-window buf 'visible))
+	(when (eq deft-pending-updates 'recompute)
+	  (deft-filter-update))
+	(with-current-buffer buf
+	  (deft-buffer-setup))
+	(setq deft-pending-updates nil)))))
+
+(defun deft-window-configuration-changed ()
+  "A `window-configuration-change-hook' for Deft.
+Called with the change event concerning the `selected-window',
+whose current buffer should be a Deft buffer, as the hook
+is installed locally for Deft buffers only."
+  (unless (equal deft-window-width (window-width))
+    (unless deft-pending-updates
+      (deft-set-pending-updates 'redraw)))
+  (deft-changed/window))
 
 (defun deft-xapian-query-edit ()
   "Enter a Xapian query string, and make it current."
@@ -949,7 +960,7 @@ or changes to `deft-filter-regexp' or `deft-xapian-query'."
 Refresh `deft-all-files' and other state accordingly."
   (unless (equal deft-xapian-query new-query)
     (setq deft-xapian-query new-query)
-    (deft-changed 'nothing)
+    (deft-changed/query)
     (let* ((n (length deft-all-files))
 	   (is-none (= n 0))
 	   (is-max (and (> deft-xapian-max-results 0)
@@ -984,7 +995,7 @@ Deft directories whose contents might be listed."
   "Refresh Deft state after saving a Deft note file."
   (let ((file (buffer-file-name)))
     (when file
-      (deft-changed 'files (list file) file))))
+      (deft-changed/fs 'files (list file)))))
 
 (defun deft-register-buffer (&optional buffer)
   "Register BUFFER for saving as a Deft note.
@@ -1058,7 +1069,7 @@ Return the name of the new file."
     (if (not data)
 	(deft-open-file file)
       (write-region data nil file nil nil nil 'excl)
-      (deft-changed 'files (list file) file)
+      (deft-changed/fs 'files (list file))
       (deft-open-file file)
       (with-current-buffer (get-file-buffer file)
 	(goto-char (point-max))))
@@ -1185,7 +1196,7 @@ With a PREFIX argument, also kill the deleted file's buffer, if any."
 	    (delete-file old-file))
 	  (delq old-file deft-current-files)
 	  (delq old-file deft-all-files)
-	  (deft-changed 'files (list old-file) 'retain)
+	  (deft-changed/fs 'files (list old-file))
 	  (when prefix
 	    (let ((buf (get-file-buffer old-file)))
 	      (when buf
@@ -1212,8 +1223,8 @@ invoke with a prefix argument PFX."
 	      (file-name-as-directory (deft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
 	(deft-rename-file+buffer old-file new-file nil t)
-	(deft-changed 'dirs
-	  (list (deft-dir-of-deft-file new-file)) new-file)
+	(deft-changed/fs 'dirs
+	  (list (deft-dir-of-deft-file new-file)))
 	(message "Renamed as `%s`" new-file))))))
 
 ;;;###autoload
@@ -1259,7 +1270,7 @@ Used by `deft-rename-file' and `deft-rename-current-file'."
 	    (file-name-directory old-file))))
     (deft-rename-file+buffer old-file new-file)
     (when (get-buffer deft-buffer)
-      (deft-changed 'dirs (list (deft-dir-of-deft-file new-file)) new-file))
+      (deft-changed/fs 'dirs (list (deft-dir-of-deft-file new-file))))
     new-file))
 
 (defun deft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
@@ -1308,7 +1319,7 @@ directory, but only if given a prefix argument PFX."
 	    (old-root (deft-dir-of-deft-file old-file)))
 	(unless (file-equal-p new-root old-root)
 	  (let ((moved-file (deft-sub-move-file old-file new-root pfx)))
-	    (deft-changed 'dirs (list old-root new-root) moved-file)
+	    (deft-changed/fs 'dirs (list old-root new-root))
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
 ;;;###autoload
@@ -1326,7 +1337,7 @@ but only with a prefix argument PFX."
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory deft-archive-directory))))
 	(let ((moved-file (deft-sub-move-file old-file new-dir pfx)))
-	  (deft-changed 'files (list old-file) 'retain)
+	  (deft-changed/fs 'files (list old-file))
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
 (defun deft-show-file-info ()
@@ -1388,11 +1399,14 @@ Modify the variable `deft-current-files' to set the result."
   "Clear the current filter string and refresh the file browser.
 With a prefix argument PFX, also clear any Xapian query."
   (interactive "P")
-  (when (or deft-filter-regexp (and pfx deft-xapian-query))
+  (cond
+   ((and pfx deft-xapian-query)
     (setq deft-filter-regexp nil)
-    (when pfx
-      (setq deft-xapian-query nil))
-    (deft-changed 'nothing)))
+    (setq deft-xapian-query nil)
+    (deft-changed/query))
+   (deft-filter-regexp
+     (setq deft-filter-regexp nil)
+     (deft-changed/filter))))
 
 (defun deft-filter (str)
   "Set the filter string to STR and update the file browser."
@@ -1402,7 +1416,7 @@ With a prefix argument PFX, also clear any Xapian query."
 	(setq deft-filter-regexp nil)
       (setq deft-filter-regexp str))
     (unless (equal old-regexp deft-filter-regexp)
-      (deft-changed 'nothing))))
+      (deft-changed/filter))))
 
 (defun deft-filter-increment ()
   "Append character to the filter regexp and update state.
@@ -1414,7 +1428,7 @@ Get the character from the variable `last-command-event'."
       (setq char ?\s))
     (setq char (char-to-string char))
     (setq deft-filter-regexp (concat deft-filter-regexp char))
-    (deft-changed 'nothing)))
+    (deft-changed/filter)))
 
 (defun deft-filter-decrement ()
   "Remove last character from the filter regexp and update state.
@@ -1529,7 +1543,7 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map [down-mouse-2] 'widget-button-click)
     ;; Xapian
     (when deft-xapian-program
-      (define-key map (kbd "C-c r") 'deft-xapian-re-index)
+      (define-key map (kbd "C-c R") 'deft-xapian-re-index)
       (define-key map (kbd "<tab>") 'deft-xapian-query-edit)
       (define-key map (kbd "<backtab>") 'deft-xapian-query-clear)
       (define-key map (kbd "<S-tab>") 'deft-xapian-query-clear))
@@ -1553,7 +1567,7 @@ Invoke this command manually if Deft files change outside of
     (deft-ensure-init)
     (setq deft-directories
 	  (deft-filter-existing-dirs (deft-resolve-directories)))
-    (deft-changed 'anything)))
+    (deft-changed/fs 'anything)))
 
 (defun deft-file-member (file list)
   "Whether FILE is a member of LIST."
@@ -1578,7 +1592,7 @@ to set, or a function for determining it from among DIRS."
 		(when dir
 		  (file-name-as-directory (expand-file-name dir))))))
       (setq deft-directories (deft-filter-existing-dirs dirs)))
-    (deft-changed 'anything)))
+    (deft-changed/fs 'anything)))
 
 (defun deft-mode ()
   "Major mode for quickly browsing, filtering, and editing plain text notes.
@@ -1592,7 +1606,7 @@ Only run this function when a `deft-buffer' is current.
   (use-local-map deft-mode-map)
   (setq major-mode 'deft-mode)
   (setq mode-name "Deft")
-  (add-hook 'window-configuration-change-hook
+  (add-hook 'window-configuration-change-hook ;; buffer locally
 	    'deft-window-configuration-changed nil t)
   (when (> deft-auto-save-interval 0)
     (run-with-idle-timer deft-auto-save-interval t 'deft-auto-save))
@@ -1606,6 +1620,7 @@ If a Deft buffer already exists, its state is reset."
   (switch-to-buffer deft-buffer)
   (deft-mode)
   (deft-buffer-setup)
+  (setq deft-pending-updates nil)
   (when deft-directory
     (message "Using Deft data directory '%s'" deft-directory)))
 
