@@ -404,6 +404,8 @@ for which the predicate `deft-notename-basis-p' holds."
     (setq str (replace-match "" t t str)))
   (when (string-match "[^a-zA-Z0-9-]+$" str)
     (setq str (replace-match "" t t str)))
+  (while (string-match "[`'“”\"]" str)
+    (setq str (replace-match "" t t str)))
   (while (string-match "[^a-zA-Z0-9-]+" str)
     (setq str (replace-match "-" t t str)))
   (setq str (downcase str))

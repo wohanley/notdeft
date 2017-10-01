@@ -211,6 +211,32 @@ This is body text.
   : (deft-open-file org-default-notes-file)
   Note that different =org-capture-templates= may define different capture locations.
 
+* Adding Attachments to Notes
+
+  Deft 0.3x has a simple mechanism to support “attaching” files to notes, one that is agnostic to the note file format. If you have a note file
+  : ~/notes/deft-for-emacs.txt
+  you can use the command =C-c S= to move the file into a subdirectory of the same name, so that the file's pathname becomes
+  : ~/notes/deft-for-emacs/deft-for-emacs.txt
+  Now you can copy/move/link any attachments for the note into that subdirectory, and it is convenient to move the note together with its attachments using a regular file manager.
+
+  To move a note from within =*Deft*=, the command =C-u C-c m= can be used to move it under another Deft root directory, where the prefix =C-u= causes it to be moved together with its subdirectory.
+
+  When the attachments reside in the same directory as the note itself, in Org mode it is then easy to add a “file:” link to any attachment with the command =C-u C-c C-l=. For example, if the attachment directory contains a file named “2017-01-01-0001.JPG”, then a “file:” link to it would be simply
+  : [[file:2017-01-01-0001.JPG]]
+  and the command =C-c C-x C-v= can be used to toggle inline display of images.
+
+  Org itself has its own attachment management mechanism, whose action menu is bound to =C-c C-a=. This mechanism allows an attachment directory to be associated with an Org heading (as identified by information stored within the heading's properties), and thus the Deft note file itself can reside directly within a Deft root directory. Org has no command for moving an Org file together with its attachments, however.
+
+  To make the Org mechanism compatible with the Deft mechanism, one can store the attachments in the same (sub)directory as the note file itself, by specifying that directory with the =ATTACH_DIR= property. For example:
+  #+BEGIN_SRC org
+,* Bergen, Norway                              :ATTACH:
+  :PROPERTIES:
+  :ATTACH_DIR: ./
+  :Attachments: 2017-01-01-0001.JPG 2017-09-19-0123.JPG
+  :END:
+  #+END_SRC
+  This way it is still convenient to move a note together with its attachments, and Org commands such as =C-c C-a o= (for opening the attachments) can still be used.
+
 * Note Archival
 
   To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*Deft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =deft-archive-directory=, with the default name of
