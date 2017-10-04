@@ -818,7 +818,7 @@ Keep any information for a non-existing file."
 		   :tag file
 		   :help-echo "Edit this file"
 		   :notify (lambda (widget &rest ignore)
-			     (deft-open-file (widget-get widget :tag)))
+			     (deft-find-file (widget-get widget :tag)))
 		   (if title
 		       (substring title 0 title-width)
 		     "[Empty file]"))
@@ -1047,10 +1047,10 @@ Set up a hook for refreshing Deft state on save."
 	(switch-to-buffer name))))))
 		     
 ;;;###autoload
-(defun deft-open-file (file)
-  "Open Deft note FILE in a new buffer.
+(defun deft-find-file (file)
+  "Edit Deft note FILE.
 Called interactively, query for the FILE using the minibuffer."
-  (interactive "F")
+  (interactive "FFind Deft file: ")
   (prog1 (find-file file)
     (deft-register-buffer)))
 
@@ -1072,10 +1072,10 @@ Return the name of the new file."
 		   (deft-make-filename notename ext dir)
 		 (deft-generate-filename ext dir))))
     (if (not data)
-	(deft-open-file file)
+	(deft-find-file file)
       (write-region data nil file nil nil nil 'excl)
       (deft-changed/fs 'files (list file))
-      (deft-open-file file)
+      (deft-find-file file)
       (with-current-buffer (get-file-buffer file)
 	(goto-char (point-max))))
     file))
@@ -1095,7 +1095,7 @@ Initialize any created file with DATA, or TITLE if not given."
 	 (file (deft-file-by-basename basename)))
     (if (not file)
 	(deft-sub-new-file (or data title) notename)
-      (deft-open-file file)
+      (deft-find-file file)
       file)))
 
 ;;;###autoload
@@ -1479,7 +1479,7 @@ Otherwise, quickly create a new file."
     (widget-button-press (point)))
    ;; Active filter string with match
    ((and deft-filter-regexp deft-current-files)
-    (deft-open-file (car deft-current-files)))
+    (deft-find-file (car deft-current-files)))
    ;; Default
    (t
     (deft-new-file 1))))
@@ -1771,7 +1771,7 @@ FILENAME is a non-directory filename, with an extension
   (let ((fn (deft-file-by-basename filename)))
     (if (not fn)
 	(message "No Deft note '%s'" filename)
-      (deft-open-file fn))))
+      (deft-find-file fn))))
 
 ;;;###autoload
 (defun deft-open-query ()
@@ -1798,7 +1798,7 @@ Open the file directly, without switching to any `deft-buffer'."
 	   (files (deft-xapian-search deft-directories query)))
       (if (not files)
 	  (message "No matching notes found")
-	(deft-open-file (car files))))))
+	(deft-find-file (car files))))))
 
 (provide 'deft)
 

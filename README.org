@@ -205,10 +205,8 @@ This is body text.
   : C-u C-u M-x org-capture
   The capture facility supports the definition and use of =org-capture-templates= for different purposes.
 
-  A caveat with Org capturing is that unless you have already opened the capture file under Deft, any newly captured items may not immediately get noticed by Deft. To ensure that Deft is aware of any changes, one write custom commands which register the capture file with something like
+  A caveat with Org capturing is that unless you have already opened the capture file under Deft, any newly captured items may not immediately get noticed by Deft. To ensure that Deft is aware of any changes, one could write custom commands which register the capture file, for example with
   : (deft-register-file org-default-notes-file)
-  or also open it with
-  : (deft-open-file org-default-notes-file)
   Note that different =org-capture-templates= may define different capture locations.
 
 * Adding Attachments to Notes
