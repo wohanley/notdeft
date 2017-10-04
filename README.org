@@ -251,6 +251,66 @@ This is body text.
   : org_archive
   which by default is not an extension recognized by Deft.
 
+* Capturing Data from External Applications
+
+  The =org-protocol= feature of Org mode provides a way for some external applications to interface with Emacs and Org, and the same mechanism can also be adapted for capturing data into Deft. For example, data can be sent from Firefox to Deft using the predefined =store-link= and =capture= protocols.
+
+  The mechanism works by the external application invoking =emacsclient=, and for this to work you should have an Emacs server running in the Emacs instance you want to use to receive data into Deft. A server can be started by evaluating
+  : (server-start)
+
+** =org-protocol= Content Type in Firefox
+
+   To configure Firefox to support the =org-protocol:= scheme, first open =about:config=, and add a =boolean= property
+  : network.protocol-handler.expose.org-protocol false
+
+  Then craft an HTML file such as
+  #+BEGIN_SRC html
+<html>
+  <body>
+    <a href="org-protocol://store-link?url=URL&title=TITLE">link</a>
+  </body>
+</html>
+  #+END_SRC
+  and open that file in Firefox, and click the link, after which a “Launch Application” dialog is presented. “Choose other Application”, tick the box “Remember my choice for org-protocol links”, and specify =emacsclient= as the executable.
+
+  That application selection can later be modified from Firefox “Preferences” / “Applications”. If required, the “Content Type” should be removable at least by editing the “mimeTypes.rdf” file in the Firefox profile.
+
+** =store-link= from Firefox
+
+   There is nothing Deft specific about the =store-link= Org protocol, as it merely stores a link to the Emacs =kill-ring= for yanking. To configure Firefox to support the protocol, just add a suitable bookmarklet (e.g., to the “Bookmarks Toolbar”). The bookmark “Location” can be specified as
+   #+BEGIN_SRC javascript
+javascript:location.href='org-protocol://store-link?url='+encodeURIComponent(document.location)+'&title='+encodeURIComponent(document.title);void(0);
+   #+END_SRC
+
+   By selecting that bookmark a link to the current page can be inserted in Emacs with =C-y=, or with
+  : M-x org-insert-link
+  which is bound to =C-c C-l= in Org.
+
+** =capture= from Firefox
+
+   Configuring the =capture= protocol for use with Deft is slightly more involved, if we assume that we want to choose a filename based on the page title, and if we also want to open the note file (associated with that title) in Deft (so that Deft also detects the changes to the file).
+
+   The Firefox bookmarklet can for example be
+   #+BEGIN_SRC javascript
+javascript:location.href='org-protocol://capture?template=w&url='+encodeURIComponent(document.location)+'&title='+encodeURIComponent(document.title)+'&body='+encodeURIComponent(window.getSelection());void(0);
+   #+END_SRC
+   which now also sends any currently selected text over to Emacs.
+
+   Now we must also define the “w” template as one of the =org-capture-templates=, and the definition can be
+   #+BEGIN_SRC emacs-lisp
+(require 'org-protocol)
+(require 'deft-autoloads)
+
+(setq org-capture-templates
+      '(("w" "capture selection into Deft" plain
+	 (file (lambda ()
+		 (deft-switch-to-file-named
+		   (plist-get org-store-link-plist :description))))
+	 "%l\non %u\n\n%i"
+	 :empty-lines-before 1)))
+   #+END_SRC
+   This definition assumes that the =:description= is available from =org-store-link-plist=, and that it corresponds to the =document.title=; this may be undocumented functionality, but works in Org mode 9.1.1.
+
 * See Also
 
   The file “deft.el” has some more documentation.

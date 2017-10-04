@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (22982 37332 0 0))
+;;;### (autoloads nil "deft" "deft.el" (22996 19009 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -43,11 +43,6 @@ Register FILE as storing a Deft note.
 
 \(fn FILE)" nil nil)
 
-(autoload 'deft-open-file "deft" "\
-Open Deft note FILE in a new buffer.
-
-\(fn FILE)" nil nil)
-
 (autoload 'deft-save-buffer "deft" "\
 Save the current buffer as a Deft note.
 The prefix argument PFX is passed to `save-buffer'.
@@ -55,17 +50,29 @@ Set up a hook for refreshing Deft state on save.
 
 \(fn PFX)" t nil)
 
-(autoload 'deft-find-file "deft" "\
-Find a Deft FILE interactively using the minibuffer.
+(autoload 'deft-open-file "deft" "\
+Open Deft note FILE in a new buffer.
+Called interactively, query for the FILE using the minibuffer.
 
 \(fn FILE)" t nil)
+
+(autoload 'deft-switch-to-file-named "deft" "\
+Switch to a Deft note with the specified TITLE.
+It is assumed that a notename has been derived from
+the title with `deft-title-to-notename'.
+If no note so named exists, create one.
+Initialize any created file with DATA, or TITLE if not given.
+
+\(fn TITLE &optional DATA)" nil nil)
 
 (autoload 'deft-new-file-named "deft" "\
 Create a new file, prompting for a title.
 The prefix argument PFX is as for `deft-new-file'.
 Query for a TITLE when invoked as a command.
+Initialize the file with DATA, or TITLE if not given.
+Return the filename of the created file.
 
-\(fn PFX TITLE)" t nil)
+\(fn PFX TITLE &optional DATA)" t nil)
 
 (autoload 'deft-new-file "deft" "\
 Create a new file quickly.
@@ -75,6 +82,7 @@ With a prefix argument PFX, offer a choice of Deft
 directories, when `deft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
 extensions when `deft-secondary-extensions' is non-empty.
+Return the filename of the created file.
 
 \(fn PFX)" t nil)
 

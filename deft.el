@@ -1024,12 +1024,6 @@ and that Deft state gets refreshed on save."
       (deft-register-buffer buf))))
 
 ;;;###autoload
-(defun deft-open-file (file)
-  "Open Deft note FILE in a new buffer."
-  (prog1 (find-file file)
-    (deft-register-buffer)))
-
-;;;###autoload
 (defun deft-save-buffer (pfx)
   "Save the current buffer as a Deft note.
 The prefix argument PFX is passed to `save-buffer'.
@@ -1053,21 +1047,24 @@ Set up a hook for refreshing Deft state on save."
 	(switch-to-buffer name))))))
 		     
 ;;;###autoload
-(defun deft-find-file (file)
-  "Find a Deft FILE interactively using the minibuffer."
+(defun deft-open-file (file)
+  "Open Deft note FILE in a new buffer.
+Called interactively, query for the FILE using the minibuffer."
   (interactive "F")
-  (deft-open-file file))
+  (prog1 (find-file file)
+    (deft-register-buffer)))
 
-(defun deft-sub-new-file (data notename pfx)
+(defun deft-sub-new-file (&optional data notename pfx)
   "Create a new file containing the string DATA.
 Save into a file with the specified NOTENAME
 \(if NOTENAME is nil, generate a name).
-With a PFX >= 4, query for a target directory;
+With a PFX >= '(4), query for a target directory;
 otherwise default to the result of `deft-get-directory'.
-With a PFX >= 16, query for a filename extension;
+With a PFX >= '(16), query for a filename extension;
 otherwise default to `deft-extension'.
 Return the name of the new file."
-  (let* ((ext (when (and deft-secondary-extensions (>= pfx 16))
+  (let* ((pfx (prefix-numeric-value pfx))
+	 (ext (when (and deft-secondary-extensions (>= pfx 16))
 		(deft-read-extension)))
 	 (dir (when (or (not deft-directory) (>= pfx 4))
 		(deft-select-directory nil "Directory for new file: ")))
@@ -1084,16 +1081,36 @@ Return the name of the new file."
     file))
 
 ;;;###autoload
-(defun deft-new-file-named (pfx title)
+(defun deft-switch-to-file-named (title &optional data)
+  "Switch to a Deft note with the specified TITLE.
+It is assumed that a notename has been derived from
+the title with `deft-title-to-notename'.
+If no note so named exists, create one.
+Initialize any created file with DATA, or TITLE if not given."
+  (deft-ensure-init)
+  (unless (deft-notename-basis-p title)
+    (error "Aborting, unsuitable title: %S" title))
+  (let* ((notename (deft-title-to-notename title))
+	 (basename (concat notename "." deft-extension))
+	 (file (deft-file-by-basename basename)))
+    (if (not file)
+	(deft-sub-new-file (or data title) notename)
+      (deft-open-file file)
+      file)))
+
+;;;###autoload
+(defun deft-new-file-named (pfx title &optional data)
   "Create a new file, prompting for a title.
 The prefix argument PFX is as for `deft-new-file'.
-Query for a TITLE when invoked as a command."
-  (interactive "p\nsNew title: ")
+Query for a TITLE when invoked as a command.
+Initialize the file with DATA, or TITLE if not given.
+Return the filename of the created file."
+  (interactive "P\nsNew title: ")
   (deft-ensure-init)
   (let ((notename (if (deft-notename-basis-p title)
 		      (deft-title-to-notename title)
 		    (deft-generate-notename))))
-    (deft-sub-new-file title notename pfx)))
+    (deft-sub-new-file (or data title) notename pfx)))
 
 ;;;###autoload
 (defun deft-new-file (pfx)
@@ -1103,8 +1120,9 @@ on the `deft-filter-regexp' filter string if it is non-nil.
 With a prefix argument PFX, offer a choice of Deft
 directories, when `deft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
-extensions when `deft-secondary-extensions' is non-empty."
-  (interactive "p")
+extensions when `deft-secondary-extensions' is non-empty.
+Return the filename of the created file."
+  (interactive "P")
   (deft-ensure-init)
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
