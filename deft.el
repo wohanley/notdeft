@@ -415,6 +415,14 @@ for which the predicate `deft-notename-basis-p' holds."
   "Format time TM suitably for filenames."
   (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ; UTC
 
+(defun deft-generate-notename ()
+  "Generate a notename, and return it.
+The generated name is not guaranteed to be unique."
+  (let* ((ctime (current-time))
+	 (ctime-s (deft-format-time-for-filename ctime))
+	 (base-filename (format "Deft--%s" ctime-s)))
+    base-filename))
+
 (defun deft-generate-filename (&optional ext dir)
   "Generate a new unique filename.
 Do so without being given any information about note title or content.
@@ -423,9 +431,7 @@ Have the file have the extension EXT, and be in directory DIR
   (let (filename)
     (while (or (not filename)
 	       (file-exists-p filename))
-      (let* ((ctime (current-time))
-	     (ctime-s (deft-format-time-for-filename ctime))
-	     (base-filename (format "Deft--%s" ctime-s)))
+      (let ((base-filename (deft-generate-notename)))
 	(setq filename (deft-make-filename base-filename ext dir))))
     filename))
 
@@ -1084,9 +1090,10 @@ The prefix argument PFX is as for `deft-new-file'.
 Query for a TITLE when invoked as a command."
   (interactive "p\nsNew title: ")
   (deft-ensure-init)
-  (if (not (deft-notename-basis-p title))
-      (error "Aborting, unsuitable title: %S" title)
-    (deft-sub-new-file title (deft-title-to-notename title) pfx)))
+  (let ((notename (if (deft-notename-basis-p title)
+		      (deft-title-to-notename title)
+		    (deft-generate-notename))))
+    (deft-sub-new-file title notename pfx)))
 
 ;;;###autoload
 (defun deft-new-file (pfx)
@@ -1621,8 +1628,8 @@ Only run this function when a `deft-buffer' is current.
 If a Deft buffer already exists, its state is reset."
   (switch-to-buffer deft-buffer)
   (deft-mode)
-  (deft-buffer-setup)
-  (setq deft-pending-updates nil)
+  (setq deft-pending-updates 'recompute)
+  (deft-changed/window)
   (when deft-directory
     (message "Using Deft data directory '%s'" deft-directory)))
 
@@ -1634,7 +1641,8 @@ PREFIX arguments, also interactively query for an initial choice of
 `deft-directory', except where Deft has already been initialized."
   (interactive "p")
   (if prefix
-      (deft-ensure-init (>= prefix 4) (and (>= prefix 16) 'deft-select-directory))
+      (deft-ensure-init (>= prefix 4)
+	(and (>= prefix 16) 'deft-select-directory))
     (deft-ensure-init))
   (let ((buf (get-buffer deft-buffer)))
     (if buf
