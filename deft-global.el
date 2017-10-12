@@ -25,6 +25,7 @@
     (define-key map (kbd "C-r") 'deft-rename-file)
     (define-key map (kbd "S") 'deft-move-into-subdir)
     (define-key map (kbd "m") 'deft-move-file)
+    (define-key map [(control x) (e)] 'deft-change-file-extension)
     (define-key map (kbd "C-a") 'deft-archive-file)
     ;; Xapian search
     (define-key map (kbd "f") 'deft-lucky-find-file)

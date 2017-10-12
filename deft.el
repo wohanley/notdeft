@@ -254,6 +254,16 @@ Set to nil to hide."
   :safe 'string-or-null-p
   :group 'deft)
 
+(defcustom deft-file-display-function nil
+  "Formatter for file names in the Deft browser.
+If a function, it must accept the filename and
+a maximum width as its two arguments.
+Set to nil to hide."
+  :type '(choice (function :tag "Formatting function")
+		 (const :tag "Hide" nil))
+  :safe 'null
+  :group 'deft)
+
 ;; Faces
 
 (defgroup deft-faces nil
@@ -360,6 +370,7 @@ of the buffer, or `recompute' for a pending recomputation of
 	   (memq (car x)
 		 '(append
 		   car cdr concat cons
+		   directory-file-name
 		   expand-file-name
 		   file-name-as-directory
 		   file-name-directory
@@ -800,14 +811,17 @@ Keep any information for a non-existing file."
   (let* ((text (deft-file-contents file))
 	 (title (deft-file-title file))
 	 (summary (deft-file-summary file))
-	 (mtime (and deft-time-format
-		     (format-time-string deft-time-format
-					 (deft-file-mtime file))))
-	 (mtime-width (length mtime))
-	 (line-width (- deft-window-width mtime-width))
-	 (title-width (min line-width (length title)))
+	 (mtime (when deft-time-format
+		  (format-time-string deft-time-format
+				      (deft-file-mtime file))))
+	 (line-width (- deft-window-width (length mtime)))
+	 (path (when deft-file-display-function
+		 (funcall deft-file-display-function file line-width)))
+	 (path-width (length path))
+	 (up-to-path-width (- line-width path-width))
+	 (title-width (min up-to-path-width (length title)))
 	 (summary-width (min (length summary)
-			     (- line-width
+			     (- up-to-path-width
 				title-width
 				(length deft-separator)))))
     (widget-create 'link
@@ -827,9 +841,12 @@ Keep any information for a non-existing file."
       (widget-insert (propertize
 		      (if summary (substring summary 0 summary-width) "")
 		      'face 'deft-summary-face)))
+    (when (or path mtime)
+      (while (< (current-column) up-to-path-width)
+	(widget-insert " ")))
+    (when path
+      (widget-insert (propertize path 'face 'deft-time-face)))
     (when mtime
-      (while (< (current-column) line-width)
-	(widget-insert " "))
       (widget-insert (propertize mtime 'face 'deft-time-face)))
     (widget-insert "\n")))
 
@@ -1255,6 +1272,29 @@ invoke with a prefix argument PFX."
 	(message "Renamed as `%s`" new-file))))))
 
 ;;;###autoload
+(defun deft-change-file-extension ()
+  "Change the filename extension of a Deft note.
+Operate on the selected or current Deft note file."
+  (interactive)
+  (deft-ensure-init)
+  (let ((old-file (deft-current-filename)))
+    (cond
+     ((not deft-secondary-extensions)
+      (message "Only one configured extension"))
+     ((not old-file)
+      (message (deft-no-selected-file-message)))
+     (t
+      (let* ((old-ext (file-name-extension old-file))
+	     (new-ext (deft-read-extension old-ext)))
+	(unless (string= old-ext new-ext)
+	  (let ((new-file (concat (file-name-sans-extension old-file)
+				  "." new-ext)))
+	    (deft-rename-file+buffer old-file new-file)
+	    (when (get-buffer deft-buffer)
+	      (deft-changed/fs 'dirs (list (deft-dir-of-deft-file new-file))))
+	    (message "Renamed as `%s`" new-file))))))))
+
+;;;###autoload
 (defun deft-rename-file (pfx)
   "Rename the selected or current Deft note file.
 Defaults to a content-derived file name (rather than the old one)
@@ -1295,9 +1335,10 @@ Used by `deft-rename-file' and `deft-rename-current-file'."
 	  (deft-make-filename new-name
 	    (file-name-extension old-file)
 	    (file-name-directory old-file))))
-    (deft-rename-file+buffer old-file new-file)
-    (when (get-buffer deft-buffer)
-      (deft-changed/fs 'dirs (list (deft-dir-of-deft-file new-file))))
+    (unless (string= old-file new-file)
+      (deft-rename-file+buffer old-file new-file)
+      (when (get-buffer deft-buffer)
+	(deft-changed/fs 'dirs (list (deft-dir-of-deft-file new-file)))))
     new-file))
 
 (defun deft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
@@ -1685,14 +1726,17 @@ That is, functionally move that element to position 0."
     (cons (nth n lst) (append (butlast lst rst) (last lst (- rst 1))))))
 
 ;;;###autoload
-(defun deft-read-extension ()
+(defun deft-read-extension (&optional prefer)
   "Read a Deft filename extension, interactively.
 The default choice is `deft-extension', but any of the
-`deft-secondary-extensions' are also available as choices."
-  (ido-completing-read
-   "Extension: "
-   (cons deft-extension deft-secondary-extensions)
-   nil t))
+`deft-secondary-extensions' are also available as choices.
+With a PREFER argument, use that extension as the first choice."
+  (let* ((choices (cons deft-extension deft-secondary-extensions))
+	 (choices (if prefer
+		      (deft-list-prefer choices
+			`(lambda (ext) (string= ,prefer ext)))
+		    choices)))
+    (ido-completing-read "Extension: " choices nil t)))
 
 (defun deft-maybe-select-directory (&optional dirs)
   "Try to select an existing Deft directory.
@@ -1774,13 +1818,15 @@ FILENAME is a non-directory filename, with an extension
       (deft-find-file fn))))
 
 ;;;###autoload
-(defun deft-open-query ()
-  "Open Deft with an interactively read Xapian search query.
+(defun deft-open-query (&optional query)
+  "Open Deft with an Xapian search query.
+If called interactively, read a search query interactively.
+Non-interactively, the QUERY may be given as an argument.
 Create a `deft-buffer' if one does not yet exist,
 otherwise merely switch to the existing Deft buffer."
   (interactive)
   (when deft-xapian-program
-    (let ((query (deft-xapian-read-query)))
+    (let ((query (or query (deft-xapian-read-query))))
       (deft)
       (deft-xapian-query-set query))))
 

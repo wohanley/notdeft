@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (23001 50230 0 0))
+;;;### (autoloads nil "deft" "deft.el" (23006 48431 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -100,6 +100,12 @@ invoke with a prefix argument PFX.
 
 \(fn PFX)" t nil)
 
+(autoload 'deft-change-file-extension "deft" "\
+Change the filename extension of a Deft note.
+Operate on the selected or current Deft note file.
+
+\(fn)" t nil)
+
 (autoload 'deft-rename-file "deft" "\
 Rename the selected or current Deft note file.
 Defaults to a content-derived file name (rather than the old one)
@@ -144,8 +150,9 @@ PREFIX arguments, also interactively query for an initial choice of
 Read a Deft filename extension, interactively.
 The default choice is `deft-extension', but any of the
 `deft-secondary-extensions' are also available as choices.
+With a PREFER argument, use that extension as the first choice.
 
-\(fn)" nil nil)
+\(fn &optional PREFER)" nil nil)
 
 (autoload 'deft-select-directory "deft" "\
 Select a Deft directory, possibly interactively.
@@ -170,11 +177,13 @@ FILENAME is a non-directory filename, with an extension
 \(fn FILENAME)" nil nil)
 
 (autoload 'deft-open-query "deft" "\
-Open Deft with an interactively read Xapian search query.
+Open Deft with an Xapian search query.
+If called interactively, read a search query interactively.
+Non-interactively, the QUERY may be given as an argument.
 Create a `deft-buffer' if one does not yet exist,
 otherwise merely switch to the existing Deft buffer.
 
-\(fn)" t nil)
+\(fn &optional QUERY)" t nil)
 
 (autoload 'deft-lucky-find-file "deft" "\
 Open the highest-ranked note matching a search query.
