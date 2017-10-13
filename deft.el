@@ -230,6 +230,12 @@ naming directories."
   :safe (lambda (lst) (cl-every 'stringp lst))
   :group 'deft)
 
+(defcustom deft-notename-function 'deft-default-title-to-notename
+  "Function for deriving a note name from a title.
+Returns nil if no name can be derived from the argument."
+  :type 'function
+  :group 'deft)
+
 (defcustom deft-archive-directory "_archive"
   "Sub-directory name for archived notes.
 Should begin with '.', '_', or '#' to be excluded from
@@ -402,6 +408,10 @@ Return the result as a list of strings."
 ;; File processing
 
 (defun deft-title-to-notename (str)
+  "Call `deft-notename-function' on STR."
+  (funcall deft-notename-function str))
+
+(defun deft-default-title-to-notename (str)
   "Turn a title string STR to a note name string.
 Return that string, or nil if no usable name can be derived."
   (when (string-match "^[^a-zA-Z0-9-]+" str)
