@@ -401,16 +401,9 @@ Return the result as a list of strings."
 
 ;; File processing
 
-(defun deft-notename-basis-p (str)
-  "Whether can derive a notename from STR."
-  (and (stringp str)
-       (string-match-p "[a-zA-Z0-9]" str)
-       t))
-
 (defun deft-title-to-notename (str)
   "Turn a title string STR to a note name string.
-To actually get a usable name, STR should be something
-for which the predicate `deft-notename-basis-p' holds."
+Return that string, or nil if no usable name can be derived."
   (when (string-match "^[^a-zA-Z0-9-]+" str)
     (setq str (replace-match "" t t str)))
   (when (string-match "[^a-zA-Z0-9-]+$" str)
@@ -420,7 +413,7 @@ for which the predicate `deft-notename-basis-p' holds."
   (while (string-match "[^a-zA-Z0-9-]+" str)
     (setq str (replace-match "-" t t str)))
   (setq str (downcase str))
-  str)
+  (and (not (string= "" str)) str))
 
 (defun deft-format-time-for-filename (tm)
   "Format time TM suitably for filenames."
@@ -1105,15 +1098,15 @@ the title with `deft-title-to-notename'.
 If no note so named exists, create one.
 Initialize any created file with DATA, or TITLE if not given."
   (deft-ensure-init)
-  (unless (deft-notename-basis-p title)
-    (error "Aborting, unsuitable title: %S" title))
-  (let* ((notename (deft-title-to-notename title))
-	 (basename (concat notename "." deft-extension))
-	 (file (deft-file-by-basename basename)))
-    (if (not file)
-	(deft-sub-new-file (or data title) notename)
-      (deft-find-file file)
-      file)))
+  (let ((notename (deft-title-to-notename title)))
+    (unless notename
+      (error "Aborting, unsuitable title: %S" title))
+    (let* ((basename (concat notename "." deft-extension))
+	   (file (deft-file-by-basename basename)))
+      (if (not file)
+	  (deft-sub-new-file (or data title) notename)
+	(deft-find-file file)
+	file))))
 
 ;;;###autoload
 (defun deft-new-file-named (pfx title &optional data)
@@ -1124,9 +1117,7 @@ Initialize the file with DATA, or TITLE if not given.
 Return the filename of the created file."
   (interactive "P\nsNew title: ")
   (deft-ensure-init)
-  (let ((notename (if (deft-notename-basis-p title)
-		      (deft-title-to-notename title)
-		    (deft-generate-notename))))
+  (let ((notename (deft-title-to-notename title)))
     (deft-sub-new-file (or data title) notename pfx)))
 
 ;;;###autoload
@@ -1144,9 +1135,8 @@ Return the filename of the created file."
   (let ((data (and deft-filter-regexp
 		   (concat deft-filter-regexp "\n\n")))
 	(notename
-	 (when (and deft-filter-regexp
-		    (deft-notename-basis-p deft-filter-regexp))
-	   (deft-title-to-notename deft-filter-regexp))))
+	 (and deft-filter-regexp
+	      (deft-title-to-notename deft-filter-regexp))))
     (deft-sub-new-file data notename pfx)))
 
 (defun deft-file-under-dir-p (dir file)
