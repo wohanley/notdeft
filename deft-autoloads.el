@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (23006 48431 0 0))
+;;;### (autoloads nil "deft" "deft.el" (23010 2820 0 0))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -191,6 +191,11 @@ Read the query interactively, accounting for `deft-xapian-query-history'.
 Open the file directly, without switching to any `deft-buffer'.
 
 \(fn)" t nil)
+
+(autoload 'deft-list-files-by-query "deft" "\
+Return a list of files matching Xapian QUERY.
+
+\(fn QUERY)" nil nil)
 
 ;;;***
 

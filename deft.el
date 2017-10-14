@@ -319,6 +319,9 @@ Set to nil to hide."
 
 ;; Global variables
 
+(defvar deft-directories-changed-hook nil
+  "Hook run after each change to `deft-directories'.")
+
 (defvar deft-directory nil
   "Chosen default Deft data directory.
 An absolute path, or nil if none.")
@@ -1634,8 +1637,9 @@ Invoke this command manually if Deft files change outside of
       (deft-ensure-init t)
     (deft-ensure-init)
     (setq deft-directories
-	  (deft-filter-existing-dirs (deft-resolve-directories)))
-    (deft-changed/fs 'anything)))
+      (deft-filter-existing-dirs (deft-resolve-directories)))
+    (deft-changed/fs 'anything)
+    (run-hooks 'deft-directories-changed-hook)))
 
 (defun deft-file-member (file list)
   "Whether FILE is a member of LIST."
@@ -1659,8 +1663,9 @@ to set, or a function for determining it from among DIRS."
 	  (setq deft-directory
 		(when dir
 		  (file-name-as-directory (expand-file-name dir))))))
-      (setq deft-directories (deft-filter-existing-dirs dirs)))
-    (deft-changed/fs 'anything)))
+      (setq deft-directories (deft-filter-existing-dirs dirs))
+      (deft-changed/fs 'anything)
+      (run-hooks 'deft-directories-changed-hook))))
 
 (defun deft-mode ()
   "Major mode for quickly browsing, filtering, and editing plain text notes.
@@ -1845,6 +1850,13 @@ Open the file directly, without switching to any `deft-buffer'."
       (if (not files)
 	  (message "No matching notes found")
 	(deft-find-file (car files))))))
+
+;;;###autoload
+(defun deft-list-files-by-query (query)
+  "Return a list of files matching Xapian QUERY."
+  (when deft-xapian-program
+    (deft-ensure-init)
+    (deft-xapian-search deft-directories query)))
 
 (provide 'deft)
 
