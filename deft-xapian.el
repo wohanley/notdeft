@@ -83,34 +83,34 @@ Return the read string, or nil if no query is given."
   (defvar deft-extension)
   (defvar deft-secondary-extensions))
 
-(defun deft-xapian-index-dirs (dirs &optional async recreate)
+(defun deft-xapian-index-dirs (dirs &optional recreate)
   "Create or update a Xapian index for DIRS.
-With ASYNC, do the indexing asynchronously.
 With RECREATE, truncate any existing index files.
 The return value is as for `call-process'."
-  (let ((ret
-	 (apply
-	  'call-process
-	  deft-xapian-program ;; PROGRAM
-	  nil		      ;; INFILE
-	  (if async 0 nil)    ;; DESTINATION
-	  nil		      ;; DISPLAY
-	  `("index"
-	    "--chdir" ,(expand-file-name "." "~")
-	    ,@(if recreate '("--recreate") nil)
-	    ,@(apply 'append (mapcar
-			      (lambda (ext)
-				`("--extension" ,(concat "." ext)))
-			      (cons deft-extension deft-secondary-extensions)))
-	    "--lang" ,deft-xapian-language
-	    ,@(mapcar
-	       (lambda (dir)
-		 (file-relative-name dir "~"))
-	       dirs)))))
-    (unless async
+  (with-temp-buffer
+    (let ((ret
+	   (apply
+	    'call-process
+	    deft-xapian-program ;; PROGRAM
+	    nil	                ;; INFILE
+	    t                   ;; DESTINATION
+	    nil	                ;; DISPLAY
+	    `("index"
+	      "--chdir" ,(expand-file-name "." "~")
+	      ,@(if recreate '("--recreate") nil)
+	      ,@(apply 'append
+		       (mapcar
+			(lambda (ext)
+			  `("--extension" ,(concat "." ext)))
+			(cons deft-extension deft-secondary-extensions)))
+	      "--lang" ,deft-xapian-language
+	      ,@(mapcar
+		 (lambda (dir)
+		   (file-relative-name dir "~"))
+		 dirs)))))
       (when (/= 0 ret)
-	(error "Index generation failed: %d exit by %s"
-	       ret deft-xapian-program)))))
+	(error "Index generation failed: %s (%d): %s"
+	       deft-xapian-program ret (buffer-string))))))
 
 (defun deft-xapian-search (dirs &optional query)
   "On the Xapian indexes in DIRS, perform the search QUERY.

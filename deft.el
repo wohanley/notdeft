@@ -890,7 +890,7 @@ Return the results as absolute paths, in any order."
   "Recreate all Xapian indexes on `deft-path'."
   (interactive)
   (when deft-xapian-program
-    (deft-xapian-index-dirs deft-directories nil t)
+    (deft-xapian-index-dirs deft-directories t)
     (deft-changed/query)))
 
 (defun deft-pending-lessp (x y)
