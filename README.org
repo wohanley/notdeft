@@ -8,6 +8,11 @@ The key differences of this Deft variant are:
   2. It supports optional invocation of a =deft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =deft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in mainline Deft).
 That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists Xapian search results instead of listing directory contents.
 
+* Source Code
+
+  Deft 0.3x source code repository can be found at\\
+  https://github.com/hasu/deft
+
 * Installation and Customization
 
   Optionally, byte-compile the Emacs Lisp files with the command

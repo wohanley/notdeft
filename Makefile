@@ -12,3 +12,9 @@ autoloads :
 
 clean :
 	-rm *.elc
+
+website : web/index.html
+
+web/index.html : README.org deft-website.el template.html
+	mkdir -p web
+	emacsclient --eval '(progn (load "deft-website.el") (deft-web-make "README.org" "template.html" "web/index.html"))'
