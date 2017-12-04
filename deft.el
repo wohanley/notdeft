@@ -432,23 +432,25 @@ Return that string, or nil if no usable name can be derived."
   "Format time TM suitably for filenames."
   (format-time-string "%Y-%m-%d-%H-%M-%S" tm t)) ; UTC
 
-(defun deft-generate-notename ()
+(defun deft-generate-notename (&optional fmt)
   "Generate a notename, and return it.
-The generated name is not guaranteed to be unique."
+The generated name is not guaranteed to be unique. Format with
+the format string FMT, or \"Deft--%s\" otherwise."
   (let* ((ctime (current-time))
 	 (ctime-s (deft-format-time-for-filename ctime))
-	 (base-filename (format "Deft--%s" ctime-s)))
+	 (base-filename (format (or fmt "Deft--%s") ctime-s)))
     base-filename))
 
-(defun deft-generate-filename (&optional ext dir)
+(defun deft-generate-filename (&optional ext dir fmt)
   "Generate a new unique filename.
-Do so without being given any information about note title or content.
-Have the file have the extension EXT, and be in directory DIR
-\(their defaults are as for `deft-make-filename')."
+Do so without being given any information about note title or
+content. Have the file have the extension EXT, and be in
+directory DIR \(their defaults are as for `deft-make-filename').
+Pass FMT to `deft-generate-notename'."
   (let (filename)
     (while (or (not filename)
 	       (file-exists-p filename))
-      (let ((base-filename (deft-generate-notename)))
+      (let ((base-filename (deft-generate-notename fmt)))
 	(setq filename (deft-make-filename base-filename ext dir))))
     filename))
 
@@ -1077,6 +1079,56 @@ Called interactively, query for the FILE using the minibuffer."
   (prog1 (find-file file)
     (deft-register-buffer)))
 
+;;;###autoload
+(defun deft-create-file (&optional dir notename ext data)
+  "Create a new Deft note file.
+Create it into the directory DIR with basename NOTENAME and
+filename extension EXT, and write any DATA into the file. If any
+of those values are nil, then use a default value. If DIR or EXT
+is the symbol `ask', then query the user for a directory or
+extension. If DIR is a non-empty list, then offer the user that
+choice list of directories. If NOTENAME is of the form (format
+FMT), then use `deft-generate-filename' to generate a filename
+with the format string FMT. If NOTENAME is of the form (title
+STR), then use `deft-title-to-notename' to generate a notename
+from STR."
+  (deft-ensure-init)
+  (let* ((dir (pcase dir
+	       ((pred stringp)
+		dir)
+	       ((pred consp)
+		(deft-select-directory dir "Directory for new file: "))
+	       (`ask
+		(deft-select-directory nil "Directory for new file: "))
+	       (_
+		(deft-get-directory))))
+	 (ext (pcase ext
+	       ((pred stringp)
+		ext)
+	       (`ask
+		(deft-read-extension))
+	       (_
+		deft-extension)))
+	 (file (pcase notename
+		((pred stringp)
+		 (deft-make-filename notename ext dir))
+		((and `(title ,(and (pred stringp) title))
+		      (let name (deft-title-to-notename title))
+		      (guard name))
+		 (deft-make-filename name ext dir))
+		(`(format ,(and (pred stringp) fmt))
+		 (deft-generate-filename ext dir fmt))
+		(_
+		 (deft-generate-filename ext dir)))))
+    (if (not data)
+	(deft-find-file file)
+      (write-region data nil file nil nil nil 'excl)
+      (deft-changed/fs 'files (list file))
+      (deft-find-file file)
+      (with-current-buffer (get-file-buffer file)
+	(goto-char (point-max))))
+    file))
+
 (defun deft-sub-new-file (&optional data notename pfx)
   "Create a new file containing the string DATA.
 Save into a file with the specified NOTENAME
@@ -1086,22 +1138,12 @@ otherwise default to the result of `deft-get-directory'.
 With a PFX >= '(16), query for a filename extension;
 otherwise default to `deft-extension'.
 Return the name of the new file."
-  (let* ((pfx (prefix-numeric-value pfx))
-	 (ext (when (and deft-secondary-extensions (>= pfx 16))
-		(deft-read-extension)))
-	 (dir (when (or (not deft-directory) (>= pfx 4))
-		(deft-select-directory nil "Directory for new file: ")))
-	 (file (if notename
-		   (deft-make-filename notename ext dir)
-		 (deft-generate-filename ext dir))))
-    (if (not data)
-	(deft-find-file file)
-      (write-region data nil file nil nil nil 'excl)
-      (deft-changed/fs 'files (list file))
-      (deft-find-file file)
-      (with-current-buffer (get-file-buffer file)
-	(goto-char (point-max))))
-    file))
+  (let ((pfx (prefix-numeric-value pfx)))
+    (deft-create-file
+      (and (>= pfx 4) 'ask)
+      notename
+      (and (>= pfx 16) 'ask)
+      data)))
 
 ;;;###autoload
 (defun deft-switch-to-file-named (title &optional data)
@@ -1736,12 +1778,14 @@ That is, functionally move that element to position 0."
 The default choice is `deft-extension', but any of the
 `deft-secondary-extensions' are also available as choices.
 With a PREFER argument, use that extension as the first choice."
-  (let* ((choices (cons deft-extension deft-secondary-extensions))
-	 (choices (if prefer
-		      (deft-list-prefer choices
-			`(lambda (ext) (string= ,prefer ext)))
-		    choices)))
-    (ido-completing-read "Extension: " choices nil t)))
+  (if (not deft-secondary-extensions)
+      deft-extension
+    (let* ((choices (cons deft-extension deft-secondary-extensions))
+	   (choices (if prefer
+			(deft-list-prefer choices
+			  `(lambda (ext) (string= ,prefer ext)))
+		      choices)))
+      (ido-completing-read "Extension: " choices nil t))))
 
 (defun deft-maybe-select-directory (&optional dirs)
   "Try to select an existing Deft directory.

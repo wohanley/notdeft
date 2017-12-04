@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "deft" "deft.el" (23010 2820 0 0))
+;;;### (autoloads nil "deft" "deft.el" (23077 27528 94079 743000))
 ;;; Generated autoloads from deft.el
 
 (autoload 'deft-title-from-file-content "deft" "\
@@ -55,6 +55,21 @@ Edit Deft note FILE.
 Called interactively, query for the FILE using the minibuffer.
 
 \(fn FILE)" t nil)
+
+(autoload 'deft-create-file "deft" "\
+Create a new Deft note file.
+Create it into the directory DIR with basename NOTENAME and
+filename extension EXT, and write any DATA into the file. If any
+of those values are nil, then use a default value. If DIR or EXT
+is the symbol `ask', then query the user for a directory or
+extension. If DIR is a non-empty list, then offer the user that
+choice list of directories. If NOTENAME is of the form (format
+FMT), then use `deft-generate-filename' to generate a filename
+with the format string FMT. If NOTENAME is of the form (title
+STR), then use `deft-title-to-notename' to generate a notename
+from STR.
+
+\(fn &optional DIR NOTENAME EXT DATA)" nil nil)
 
 (autoload 'deft-switch-to-file-named "deft" "\
 Switch to a Deft note with the specified TITLE.
