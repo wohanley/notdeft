@@ -11,8 +11,6 @@
 ;; bound both as a variable and a function, to the name
 ;; `deft-global-name'.
 
-(require 'deft-autoloads)
-
 (defvar deft-global-map
   (let ((map (make-sparse-keymap)))
     ;; File creation, opening, saving

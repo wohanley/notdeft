@@ -13,12 +13,18 @@
 ;; The `org-link-set-parameters' API is available since Org version 9,
 ;; in the `org' feature. You probably want to load this `deft-org9'
 ;; feature when you (auto)load Org itself. Deft can be loaded later,
-;; as there are autoloads for the required Deft functions.
+;; and will be if you have loaded `deft-autoloads'.
 
 ;;; Code:
 
 (require 'org)
-(require 'deft-autoloads)
+
+(eval-when-compile
+  (autoload 'deft-open-file-by-basename "deft")
+  (autoload 'deft-make-basename-list "deft")
+  (autoload 'deft-file-by-basename "deft")
+  (autoload 'deft-chomp-nullify "deft")
+  (autoload 'deft-title-from-file-content "deft"))
 
 (org-link-set-parameters
  "deft"
