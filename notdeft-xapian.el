@@ -1,78 +1,78 @@
-;;; deft-xapian.el --- Xapian backend for Deft
+;;; notdeft-xapian.el --- Xapian backend for NotDeft
 ;; -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017 by the author.
 ;; All rights reserved.
 ;; Author: Tero Hasu <tero@hasu.is>
-;; See "deft.el" for licensing information.
+;; See "notdeft.el" for licensing information.
 
 ;;; Commentary:
-;; Xapian-specific functionality for Deft.
+;; Xapian-specific functionality for NotDeft.
 
 ;;; Code:
 
-(defcustom deft-xapian-program nil
+(defcustom notdeft-xapian-program nil
   "Xapian backend's executable program path.
 Specified as an absolute path.
 When nil, incremental search is limited to files
-in the current `deft-directory' (if any)."
+in the current `notdeft-directory' (if any)."
   :type '(choice (const :tag "None" nil)
 		 (file :tag "Path"))
   :safe 'string-or-null-p
-  :group 'deft)
+  :group 'notdeft)
 
-(defcustom deft-xapian-max-results 100
+(defcustom notdeft-xapian-max-results 100
   "Maximum number of Xapian query results.
-\(I.e., '--max-count' for `deft-xapian-program'.)
+\(I.e., '--max-count' for `notdeft-xapian-program'.)
 No limit if 0."
   :type 'integer
   :safe 'integerp
-  :group 'deft)
+  :group 'notdeft)
 
-(defcustom deft-xapian-language "en"
+(defcustom notdeft-xapian-language "en"
   "Stemming language to use in Xapian indexing and searching."
   :type 'string
   :safe 'stringp
-  :group 'deft)
+  :group 'notdeft)
 
-(defcustom deft-xapian-order-by-time t
+(defcustom notdeft-xapian-order-by-time t
   "Whether to order file list by decreasing modification time."
   :type 'boolean
   :safe 'booleanp
-  :group 'deft)
+  :group 'notdeft)
 
-(defcustom deft-xapian-boolean-any-case t
+(defcustom notdeft-xapian-boolean-any-case t
   "Whether to allow query operators in any case.
 That is, whether the operator syntax also allows
 lowercase characters (e.g., \"and\" and \"or\")."
   :type 'boolean
   :safe 'booleanp
-  :group 'deft)
+  :group 'notdeft)
 
-(defcustom deft-xapian-pure-not t
+(defcustom notdeft-xapian-pure-not t
   "Whether to allow \"NOT\" in queries.
 Using such queries is costly on performance."
   :type 'boolean
   :safe 'booleanp
-  :group 'deft)
+  :group 'notdeft)
 
-(defface deft-xapian-query-face
+(defface notdeft-xapian-query-face
   '((t :inherit font-lock-string-face :bold t))
-  "Face for Deft Xapian queries."
-  :group 'deft-faces)
+  "Face for NotDeft Xapian queries."
+  :group 'notdeft-faces)
 
-(defvar deft-xapian-query-history nil
+(defvar notdeft-xapian-query-history nil
   "Xapian query string history.
-Not cleared between invocations of `deft-mode'.")
+Not cleared between invocations of `notdeft-mode'.")
 
-(defun deft-xapian-read-query ()
+(defun notdeft-xapian-read-query ()
   "Read a Xapian query string, interactively.
-Use and update `deft-xapian-query-history' in querying.
+Use and update `notdeft-xapian-query-history' in querying.
 Return the read string, or nil if no query is given."
   (let ((s (read-from-minibuffer
 	    "Query: " ;; PROMPT
 	    nil nil nil ;; INITIAL-CONTENTS KEYMAP READ
-	    'deft-xapian-query-history ;; HIST
+	    'notdeft-xapian-query-history ;; HIST
 	    nil ;; DEFAULT-VALUE
 	    t ;; INHERIT-INPUT-METHOD
 	    )))
@@ -80,10 +80,10 @@ Return the read string, or nil if no query is given."
       s)))
 
 (eval-when-compile
-  (defvar deft-extension)
-  (defvar deft-secondary-extensions))
+  (defvar notdeft-extension)
+  (defvar notdeft-secondary-extensions))
 
-(defun deft-xapian-index-dirs (dirs &optional recreate)
+(defun notdeft-xapian-index-dirs (dirs &optional recreate)
   "Create or update a Xapian index for DIRS.
 With RECREATE, truncate any existing index files.
 The return value is as for `call-process'."
@@ -91,7 +91,7 @@ The return value is as for `call-process'."
     (let ((ret
 	   (apply
 	    'call-process
-	    deft-xapian-program ;; PROGRAM
+	    notdeft-xapian-program ;; PROGRAM
 	    nil	                ;; INFILE
 	    t                   ;; DESTINATION
 	    nil	                ;; DISPLAY
@@ -102,28 +102,28 @@ The return value is as for `call-process'."
 		       (mapcar
 			(lambda (ext)
 			  `("--extension" ,(concat "." ext)))
-			(cons deft-extension deft-secondary-extensions)))
-	      "--lang" ,deft-xapian-language
+			(cons notdeft-extension notdeft-secondary-extensions)))
+	      "--lang" ,notdeft-xapian-language
 	      ,@(mapcar
 		 (lambda (dir)
 		   (file-relative-name dir "~"))
 		 dirs)))))
       (when (/= 0 ret)
 	(error "Index generation failed: %s (%d): %s"
-	       deft-xapian-program ret (buffer-string))))))
+	       notdeft-xapian-program ret (buffer-string))))))
 
-(defun deft-xapian-search (dirs &optional query)
+(defun notdeft-xapian-search (dirs &optional query)
   "On the Xapian indexes in DIRS, perform the search QUERY.
 I.e., perform the query in terms of the Xapian indexes
 in the specified DIRS. Where a query is not specified,
 use a query that matches any file, and in that case
 results are ordered by file timestamp regardless of
-the value of the variable `deft-xapian-order-by-time'.
-Return at most `deft-xapian-max-results' results, as
+the value of the variable `notdeft-xapian-order-by-time'.
+Return at most `notdeft-xapian-max-results' results, as
 pathnames of the matching files. Sort the results
 based on file modification time, most recent first."
-  (let ((time-sort (if query deft-xapian-order-by-time t))
-	(max-results deft-xapian-max-results)
+  (let ((time-sort (if query notdeft-xapian-order-by-time t))
+	(max-results notdeft-xapian-max-results)
 	name-sort)
     (when query
       (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
@@ -137,15 +137,15 @@ based on file modification time, most recent first."
 	    ))))
     (let* ((s (shell-command-to-string
 	       (concat
-		(shell-quote-argument deft-xapian-program) " search"
+		(shell-quote-argument notdeft-xapian-program) " search"
 		(if time-sort " --time-sort" "")
-		" --lang " (shell-quote-argument deft-xapian-language)
-		(if deft-xapian-boolean-any-case
+		" --lang " (shell-quote-argument notdeft-xapian-language)
+		(if notdeft-xapian-boolean-any-case
 		    " --boolean-any-case" "")
-		(if deft-xapian-pure-not
+		(if notdeft-xapian-pure-not
 		    " --pure-not" "")
 		(if (> max-results 0)
-		    (format " --max-count %d" deft-xapian-max-results)
+		    (format " --max-count %d" notdeft-xapian-max-results)
 		  "")
 		(if query
 		    (concat " --query " (shell-quote-argument query))
@@ -161,10 +161,10 @@ based on file modification time, most recent first."
 	       (expand-file-name file "~"))
 	     (split-string s "\n" t))))
       (if name-sort
-	  (deft-sort-files-by-name files)
+	  (notdeft-sort-files-by-name files)
 	files))))
 
-(defun deft-sort-files-by-name (files)
+(defun notdeft-sort-files-by-name (files)
   "Sort FILES alphabetically by non-directory name.
 Return the file names in decreasing order."
   (let* ((lst (mapcar (lambda (file)
@@ -175,6 +175,6 @@ Return the file names in decreasing order."
 	 (lst (mapcar 'cdr lst)))
     lst))
 
-(provide 'deft-xapian)
+(provide 'notdeft-xapian)
 
-;;; deft-xapian.el ends here
+;;; notdeft-xapian.el ends here

@@ -1,4 +1,4 @@
-PROGRAM := deft-xapian
+PROGRAM := notdeft-xapian
 
 default : build
 
@@ -6,7 +6,7 @@ default : build
 
 build : $(PROGRAM)
 
-$(PROGRAM) : deft-xapian.cc
+$(PROGRAM) : notdeft-xapian.cc
 	g++ -o $@ -std=c++11 -Wall `pkg-config --cflags --libs tclap` `xapian-config --cxxflags --libs` $<
 
 clean :

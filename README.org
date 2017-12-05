@@ -1,16 +1,17 @@
-#+TITLE: Deft 0.3x
+#+TITLE: NotDeft
 #+AUTHOR: Tero Hasu
 
-This is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]], an “Emacs mode for quickly browsing, filtering, and editing directories of plain text notes.” This variant is somewhat less configurable than [[https://github.com/jrblevin/deft][mainline Deft]], but (like the [[http://notmuchmail.org/][Notmuch]] Emacs mode for managing email) it features a Xapian backend for efficient free-text search over potentially very large numbers of note files.
+/NotDeft/ is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]], an “Emacs mode for quickly browsing, filtering, and editing directories of plain text notes.” This variant is somewhat less configurable than mainline [[https://github.com/jrblevin/deft][Deft]], but (like the [[http://notmuchmail.org/][Notmuch]] Emacs mode for managing email) it features a Xapian backend for efficient free-text search over potentially very large numbers of note files.
 
-The key differences of this Deft variant are:
-  1. Rather than supporting a single, customizable =deft-directory= (tree) of note files, it supports a customizable =deft-path= search path of directory trees.
-  2. It supports optional invocation of a =deft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =deft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in mainline Deft).
-That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists Xapian search results instead of listing directory contents.
+The key differences of NotDeft are:
+  1. Rather than supporting a single, customizable =notdeft-directory= (tree) of note files, it supports a customizable =notdeft-path= search path of directory trees.
+     - If the search path includes multiple directories, then many file creation and management operations involve choosing a directory, making NotDeft not so deft.
+  2. It supports optional invocation of a =notdeft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =notdeft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in Deft).
+     - That is, when =notdeft-xapian-program= is set, the file browser of NotDeft lists Xapian search results instead of listing directory contents.
 
 * Source Code
 
-  Deft 0.3x source code repository can be found at\\
+  NotDeft source code repository can be found at\\
   https://github.com/hasu/deft
 
 * Installation and Customization
@@ -19,51 +20,51 @@ That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists 
   : make
 
   Add the directory containing those files to the Emacs search path by adding
-  : (add-to-list 'load-path "/path/to/deft/repository")
+  : (add-to-list 'load-path "/path/to/notdeft/repository")
   to your Emacs startup file (e.g., “~/.emacs”). Also add
-  : (require 'deft-autoloads)
-  to the startup file, to cause Deft to be loaded when you execute
-  : M-x deft
+  : (require 'notdeft-autoloads)
+  to the startup file, to cause NotDeft to be loaded when you execute
+  : M-x notdeft
 
-  Once the =deft= feature has been loaded, you can see and edit all of its configuration options and their documentation with the command
-  : M-x customize-group RET deft RET
+  Once the =notdeft= feature has been loaded, you can see and edit all of its configuration options and their documentation with the command
+  : M-x customize-group RET notdeft RET
 
-  If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =deft-path= in your startup file. For example:
-  : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
+  If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =notdeft-path= in your startup file. For example:
+  : (setq notdeft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
 
 ** Org Mode Integration
 
-   This Deft variant is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, and your Org mode is version 9, you may want to include
-   : (require 'deft-org9)
+   NotDeft is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, and your Org mode is version 9, you may want to include
+   : (require 'notdeft-org9)
    in your Org startup code, to set up support for “deft:” links in =org-mode=.
    
 ** Note File Format
 
-   The default is to have the note filename =deft-extension= set to "org", as used with files in the Org format. If you prefer some other note format, you should change that setting, which can be done with
-   : M-x customize-variable RET deft-extension RET
-   That =deft-extension= is used by default when creating new notes, but a note collection can also use other extensions. There are none by default, but you can define such secondary extensions with
-   : M-x customize-variable RET deft-secondary-extensions RET
+   The default is to have the note filename =notdeft-extension= set to "org", as used with files in the Org format. If you prefer some other note format, you should change that setting, which can be done with
+   : M-x customize-variable RET notdeft-extension RET
+   That =notdeft-extension= is used by default when creating new notes, but a note collection can also use other extensions. There are none by default, but you can define such secondary extensions with
+   : M-x customize-variable RET notdeft-secondary-extensions RET
 
 ** Xapian Backend
 
-   To enable Xapian search queries, you should build the =deft-xapian= C++ program in the “xapian” directory. On some systems simply typing
+   To enable Xapian search queries, you should build the =notdeft-xapian= C++ program in the “xapian” directory. On some systems simply typing
    : make
    should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
 
-   To have Deft use the program, you will have to specify its absolute path in the =deft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
-   : (setq deft-xapian-program "/path/to/deft-xapian")
+   To have NotDeft use the program, you will have to specify its absolute path in the =notdeft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
+   : (setq notdeft-xapian-program "/path/to/notdeft-xapian")
    
-   See the other =deft-xapian-*= customization variables for configuring the Xapian indexing and searching behavior. Most notably:
-   - The configuration variable =deft-xapian-max-results= controls the maximum number of files to list in a =deft-mode= buffer. You may set it to 0 to always have all results displayed.
-   - The default is to order the results so that most recently edited files are listed first, but you may change this behavior by setting =deft-xapian-order-by-time= to =nil=, in which case Xapian's ranking mechanism is used instead.
+   See the other =notdeft-xapian-*= customization variables for configuring the Xapian indexing and searching behavior. Most notably:
+   - The configuration variable =notdeft-xapian-max-results= controls the maximum number of files to list in a =notdeft-mode= buffer. You may set it to 0 to always have all results displayed.
+   - The default is to order the results so that most recently edited files are listed first, but you may change this behavior by setting =notdeft-xapian-order-by-time= to =nil=, in which case Xapian's ranking mechanism is used instead.
 
 * Search Query Syntax
 
-  Press Tab in a =*Deft*= buffer to enter a search query. The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =deft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =deft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in Deft 0.3x).
+  Press Tab in a =*NotDeft*= buffer to enter a search query. The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =notdeft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =notdeft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in NotDeft).
 
 ** Prefixes
 
-   The following prefixes are supported by Deft 0.3x:
+   The following prefixes are supported by NotDeft:
    - =file:= :: Indicates that the search term must appear in the (non-directory, non-extension) filename.
    - =title:= :: Indicates that the search term must appear in the title.
      - Title is specified either as the first non-empty non-comment line, or as the file property (or Org mode “in-buffer setting”) =#+TITLE=. (Multiple =#+TITLE= lines are not supported.)
@@ -74,7 +75,7 @@ That is, when =deft-xapian-program= is set, the file browser of Deft 0.3x lists 
 
    The following custom query syntax is supported:
    - =!all= :: Prefix a query with =!all= to show all matching results.
-   - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =deft-xapian-order-by-time= setting.
+   - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =notdeft-xapian-order-by-time= setting.
    - =!file= :: Prefix a query with =!file= to have results sorted by (non-directory) file name.
    A space character must be used to separate the above keywords from the rest of the query string.
 
@@ -120,7 +121,7 @@ this is a title
 
 This is body text.
   #+END_SRC
-  Stemming is used also on tags, and so the query “tag:tag” will find these two notes (assuming English stemming---see =deft-xapian-language=).
+  Stemming is used also on tags, and so the query “tag:tag” will find these two notes (assuming English stemming---see =notdeft-xapian-language=).
 
 * Example Search Queries
 
@@ -129,12 +130,12 @@ This is body text.
 
   If you have a lot of notes about Org mode, and few about other Emacs matters, it may be interesting to use
   : Emacs AND NOT Org
-  which works if the =deft-xapian-pure-not= option is set.
+  which works if the =notdeft-xapian-pure-not= option is set.
 
   While you're often likely to be more interested in recent (or best maintained) notes, sorting by relevance can be useful particularly when there are multiple search terms: you may be more interested in seeing notes that contain /all/ the terms instead of just /one/ of them. You may use “!rank” to enable relevance-based ranking for a specific query:
   : !rank Emacs Org Deft
 
-  If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =deft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
+  If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =notdeft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
   : !all Emacs
   to list /all/ documents mentioning Emacs.
 
@@ -153,84 +154,84 @@ This is body text.
 
 * Transient Directories
 
-  It is acceptable for the =deft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they can be included in subsequent searches by first refreshing the searched =deft-directories= with the =deft-refresh= command (or =C-c C-g= in =*Deft*=).
+  It is acceptable for the =notdeft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they can be included in subsequent searches by first refreshing the searched =notdeft-directories= with the =notdeft-refresh= command (or =C-c C-g= in =*NotDeft*=).
 
-  Note, however, that =deft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
-  : (setq deft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
+  Note, however, that =notdeft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
+  : (setq notdeft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
   and the directory
   : ~/phone/notes
-  becomes available after Emacs has already started, your =deft-path= may not include the newly available directory.
+  becomes available after Emacs has already started, your =notdeft-path= may not include the newly available directory.
 
-  To make it more convenient to deal with directories that appear after Emacs startup, you are allowed to include restricted /code/ forms in your =deft-path= definition:
-  : (setq deft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
-  Now, whenever you =deft-refresh=, your recomputation of =deft-directories= will also re-evaluate any such code forms.
+  To make it more convenient to deal with directories that appear after Emacs startup, you are allowed to include restricted /code/ forms in your =notdeft-path= definition:
+  : (setq notdeft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
+  Now, whenever you =notdeft-refresh=, your recomputation of =notdeft-directories= will also re-evaluate any such code forms.
 
-* Invoking Deft from Another Mode
+* Invoking NotDeft from Another Mode
 
   To quickly find relevant notes when in another buffer, you might use
-  : M-x deft-open-query
-  which then interactively asks for a search query for opening up in a Deft buffer. That command can of course be bound onto a key.
+  : M-x notdeft-open-query
+  which then interactively asks for a search query for opening up in a NotDeft buffer. That command can of course be bound onto a key.
 
   You might also implement additional commands in terms of the above, for example for quickly listing documents tagged in a certain way:
   #+BEGIN_SRC emacs-lisp
 (defun my-open-todo-notes ()
   (interactive)
-  (deft-open-query "tag:todo"))
+  (notdeft-open-query "tag:todo"))
   #+END_SRC
 
-  A command similar to =deft-open-query= is
-  : M-x deft-lucky-find-file
-  which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*Deft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
+  A command similar to =notdeft-open-query= is
+  : M-x notdeft-lucky-find-file
+  which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*NotDeft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
 
-  The =deft-rename-file= command can be useful for renaming a note file that was perhaps created without a proper name (e.g., by using =C-c C-n=). Having written a note in a current buffer, issue the command
-  : C-u M-x deft-rename-file
-  to enter a new basename for the file of that buffer. The =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. The same command also works in a =*Deft*= buffer, affecting the currently selected file.
+  The =notdeft-rename-file= command can be useful for renaming a note file that was perhaps created without a proper name (e.g., by using =C-c C-n=). Having written a note in a current buffer, issue the command
+  : C-u M-x notdeft-rename-file
+  to enter a new basename for the file of that buffer. The =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. The same command also works in a =*NotDeft*= buffer, affecting the currently selected file.
 
-  The Deft commands that are usable from outside =deft-mode= might be bound to key combinations for convenient access. To facilitate this, Deft 0.3x provides a =deft-global= feature, which exports a keymap for those commands. That keymap can be bound to a prefix key. For example:
+  The NotDeft commands that are usable from outside =notdeft-mode= might be bound to key combinations for convenient access. To facilitate this, NotDeft provides a =notdeft-global= feature, which exports a keymap for those commands. That keymap can be bound to a prefix key. For example:
   #+BEGIN_SRC emacs-lisp
-(require 'deft-global)
-(global-set-key [f6] 'deft-global-map)
+(require 'notdeft-global)
+(global-set-key [f6] 'notdeft-global-map)
   #+END_SRC
-  after which the command =[f6] o= should invoke the =deft-open-query= command in any mode that does not override the binding for F6 with something else.
+  after which the command =[f6] o= should invoke the =notdeft-open-query= command in any mode that does not override the binding for F6 with something else.
 
 * Quick Note Capture
 
   To quickly create a new note file from any buffer, you can use
-  : M-x deft-new-file
-  That command is also bound to =C-n= in =deft-global-map=, and if that keymap is bound to the prefix =[f6]=, for example, then you can create a new note with the key combination =[f6] C-n=.
+  : M-x notdeft-new-file
+  That command is also bound to =C-n= in =notdeft-global-map=, and if that keymap is bound to the prefix =[f6]=, for example, then you can create a new note with the key combination =[f6] C-n=.
 
-  Org mode has its own “capture” mechanism, and you can certainly configure capturing into a file that resides in a Deft directory. For example:
+  Org mode has its own “capture” mechanism, and you can certainly configure capturing into a file that resides in a NotDeft directory. For example:
   #+BEGIN_SRC emacs-lisp
 (setq org-directory "~/notes") ;; default Org files location
-(setq deft-path (list org-directory)) ;; Deft search path
+(setq notdeft-path (list org-directory)) ;; NotDeft search path
 (setq org-default-notes-file (concat org-directory "/notes.org"))
 (global-set-key [f7] 'org-capture)
   #+END_SRC
-  which defines "~/notes" as the sole Deft directory, and has the key F7 initiate an =org-capture=, by default into the file "~/notes/notes.org". After completing capture, you can go back to the previously captured item with
+  which defines "~/notes" as the sole NotDeft directory, and has the key F7 initiate an =org-capture=, by default into the file "~/notes/notes.org". After completing capture, you can go back to the previously captured item with
   : C-u C-u M-x org-capture
   The capture facility supports the definition and use of =org-capture-templates= for different purposes.
 
-  A caveat with Org capturing is that unless you have already opened the capture file under Deft, any newly captured items may not immediately get noticed by Deft. To ensure that Deft is aware of any changes, one could write custom commands which register the capture file, for example with
-  : (deft-register-file org-default-notes-file)
+  A caveat with Org capturing is that unless you have already opened the capture file under NotDeft, any newly captured items may not immediately get noticed by NotDeft. To ensure that NotDeft is aware of any changes, one could write custom commands which register the capture file, for example with
+  : (notdeft-register-file org-default-notes-file)
   Note that different =org-capture-templates= may define different capture locations.
 
 * Adding Attachments to Notes
 
-  Deft 0.3x has a simple mechanism to support “attaching” files to notes, one that is agnostic to the note file format. If you have a note file
+  NotDeft has a simple mechanism to support “attaching” files to notes, one that is agnostic to the note file format. If you have a note file
   : ~/notes/deft-for-emacs.txt
   you can use the command =C-c S= to move the file into a subdirectory of the same name, so that the file's pathname becomes
   : ~/notes/deft-for-emacs/deft-for-emacs.txt
   Now you can copy/move/link any attachments for the note into that subdirectory, and it is convenient to move the note together with its attachments using a regular file manager.
 
-  To move a note from within =*Deft*=, the command =C-u C-c m= can be used to move it under another Deft root directory, where the prefix =C-u= causes it to be moved together with its subdirectory.
+  To move a note from within =*NotDeft*=, the command =C-u C-c m= can be used to move it under another NotDeft root directory, where the prefix =C-u= causes it to be moved together with its subdirectory.
 
   When the attachments reside in the same directory as the note itself, in Org mode it is then easy to add a “file:” link to any attachment with the command =C-u C-c C-l=. For example, if the attachment directory contains a file named “2017-01-01-0001.JPG”, then a “file:” link to it would be simply
   : [[file:2017-01-01-0001.JPG]]
   and the command =C-c C-x C-v= can be used to toggle inline display of images.
 
-  Org itself has its own attachment management mechanism, whose action menu is bound to =C-c C-a=. This mechanism allows an attachment directory to be associated with an Org heading (as identified by information stored within the heading's properties), and thus the Deft note file itself can reside directly within a Deft root directory. Org has no command for moving an Org file together with its attachments, however.
+  Org itself has its own attachment management mechanism, whose action menu is bound to =C-c C-a=. This mechanism allows an attachment directory to be associated with an Org heading (as identified by information stored within the heading's properties), and thus the NotDeft note file itself can reside directly within a NotDeft root directory. Org has no command for moving an Org file together with its attachments, however.
 
-  To make the Org mechanism compatible with the Deft mechanism, one can store the attachments in the same (sub)directory as the note file itself, by specifying that directory with the =ATTACH_DIR= property. For example:
+  To make the Org mechanism compatible with the NotDeft mechanism, one can store the attachments in the same (sub)directory as the note file itself, by specifying that directory with the =ATTACH_DIR= property. For example:
   #+BEGIN_SRC org
 ,* Bergen, Norway                              :ATTACH:
   :PROPERTIES:
@@ -242,7 +243,7 @@ This is body text.
 
 * Note Archival
 
-  To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*Deft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =deft-archive-directory=, with the default name of
+  To archive away a note so that its contents will no longer be included in a search, one can press =C-c C-a= from within =*NotDeft*=. This is a note format agnostic archival method, as the entire note file gets moved into a =notdeft-archive-directory=, with the default name of
   : "_archive"
   meaning that a note file whose original path is
   : ~/notes/deft-for-emacs.txt
@@ -250,15 +251,15 @@ This is body text.
   : ~/notes/_archive/deft-for-emacs.txt
   Any directories whose names begin with an underscore will be excluded from Xapian searches, and thus such an archived note will no longer clutter search results.
   
-  In Org mode one can use Org's own [[http://orgmode.org/manual/Archiving.html][archival mechanism]] to archive just a part of a note document subtree, and the archival file will also be excluded from Xapian searches, provided that its filename extension is not =deft-extension= or one of the =deft-secondary-extensions=. Org's default extension is
+  In Org mode one can use Org's own [[http://orgmode.org/manual/Archiving.html][archival mechanism]] to archive just a part of a note document subtree, and the archival file will also be excluded from Xapian searches, provided that its filename extension is not =notdeft-extension= or one of the =notdeft-secondary-extensions=. Org's default extension is
   : org_archive
-  which by default is not an extension recognized by Deft.
+  which by default is not an extension recognized by NotDeft.
 
 * Capturing Data from External Applications
 
-  The =org-protocol= feature of Org mode provides a way for some external applications to interface with Emacs and Org, and the same mechanism can also be adapted for capturing data into Deft. For example, data can be sent from Firefox to Deft using the predefined =store-link= and =capture= protocols.
+  The =org-protocol= feature of Org mode provides a way for some external applications to interface with Emacs and Org, and the same mechanism can also be adapted for capturing data into NotDeft. For example, data can be sent from Firefox to NotDeft using the predefined =store-link= and =capture= protocols.
 
-  The mechanism works by the external application invoking =emacsclient=, and for this to work you should have an Emacs server running in the Emacs instance you want to use to receive data into Deft. A server can be started by evaluating
+  The mechanism works by the external application invoking =emacsclient=, and for this to work you should have an Emacs server running in the Emacs instance you want to use to receive data into NotDeft. A server can be started by evaluating
   : (server-start)
 
 ** =org-protocol= Content Type in Firefox
@@ -280,7 +281,7 @@ This is body text.
 
 ** =store-link= from Firefox
 
-   There is nothing Deft specific about the =store-link= Org protocol, as it merely stores a link to the Emacs =kill-ring= for yanking. To configure Firefox to support the protocol, just add a suitable bookmarklet (e.g., to the “Bookmarks Toolbar”). The bookmark “Location” can be specified as
+   There is nothing NotDeft specific about the =store-link= Org protocol, as it merely stores a link to the Emacs =kill-ring= for yanking. To configure Firefox to support the protocol, just add a suitable bookmarklet (e.g., to the “Bookmarks Toolbar”). The bookmark “Location” can be specified as
    #+BEGIN_SRC javascript
 javascript:location.href='org-protocol://store-link?url='+encodeURIComponent(document.location)+'&title='+encodeURIComponent(document.title);void(0);
    #+END_SRC
@@ -291,7 +292,7 @@ javascript:location.href='org-protocol://store-link?url='+encodeURIComponent(doc
 
 ** =capture= from Firefox
 
-   Configuring the =capture= protocol for use with Deft is slightly more involved, if we assume that we want to choose a filename based on the page title, and if we also want to open the note file (associated with that title) in Deft (so that Deft also detects the changes to the file).
+   Configuring the =capture= protocol for use with NotDeft is slightly more involved, if we assume that we want to choose a filename based on the page title, and if we also want to open the note file (associated with that title) in NotDeft (so that NotDeft also detects the changes to the file).
 
    The Firefox bookmarklet can for example be
    #+BEGIN_SRC javascript
@@ -302,12 +303,12 @@ javascript:location.href='org-protocol://capture?template=w&url='+encodeURICompo
    Now we must also define the “w” template as one of the =org-capture-templates=, and the definition can be
    #+BEGIN_SRC emacs-lisp
 (require 'org-protocol)
-(require 'deft-autoloads)
+(require 'notdeft-autoloads)
 
 (setq org-capture-templates
-      '(("w" "capture selection into Deft" plain
+      '(("w" "capture selection into NotDeft" plain
 	 (file (lambda ()
-		 (deft-switch-to-file-named
+		 (notdeft-switch-to-file-named
 		   (plist-get org-store-link-plist :description))))
 	 "%l\non %u\n\n%i"
 	 :empty-lines-before 1)))
@@ -316,4 +317,4 @@ javascript:location.href='org-protocol://capture?template=w&url='+encodeURICompo
 
 * See Also
 
-  The file “deft.el” has some more documentation.
+  The file “notdeft.el” has some more documentation.

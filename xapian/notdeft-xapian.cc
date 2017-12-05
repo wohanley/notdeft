@@ -114,14 +114,14 @@ void ls_org(vector<string>& res, const string& root,
 
 static void usage()
 {
-  cerr << "deft-xapian" << endl;
+  cerr << "notdeft-xapian" << endl;
   cerr << "USAGE:" << endl;
   cerr << "To build/refresh search indices" << endl;
   cerr << "(for specified directories):" << endl;
-  cerr << "  deft-xapian index [options] directory..." << endl;
+  cerr << "  notdeft-xapian index [options] directory..." << endl;
   cerr << "To find text documents" << endl;
   cerr << "(matching the specified query):" << endl;
-  cerr << "  deft-xapian search [options] directory..." << endl;
+  cerr << "  notdeft-xapian search [options] directory..." << endl;
 }
 
 static constexpr Xapian::valueno DOC_MTIME = 0;
