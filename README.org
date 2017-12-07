@@ -14,20 +14,58 @@ The key differences of NotDeft are:
   NotDeft source code repository can be found at\\
   https://github.com/hasu/deft
 
-* Installation and Customization
+* NotDeft Installation
 
-  Optionally, byte-compile the Emacs Lisp files with the command
-  : make
+  NotDeft can be installed either as a package, or manually.
 
-  Add the directory containing those files to the Emacs search path by adding
-  : (add-to-list 'load-path "/path/to/notdeft/repository")
-  to your Emacs startup file (e.g., “~/.emacs”). Also add
-  : (require 'notdeft-autoloads)
-  to the startup file, to cause NotDeft to be loaded when you execute
-  : M-x notdeft
+** Installation as a Package
+
+  To install as a package, first download the package via the URL
+  http://terohasu.net/deft/notdeft-0.3.tar,
+  and then install the TAR file with
+  : M-x package-install-file
+
+  You can check whether the package has been installed by evaluating
+  : (describe-package 'notdeft)
+  No documentation is shown by that command, but it does show the location of the package's files, allowing navigation to the documentation. Alternatively, one might implement a command for that purpose; for example:
+  #+BEGIN_SRC emacs-lisp
+(defun notdeft-open-readme ()
+  (interactive)
+  (find-file
+   (expand-file-name
+    "README.org"
+    (package-desc-dir
+     (cadr (assq 'notdeft package-alist))))))
+  #+END_SRC
+
+  While installing the package does unpack the Xapian backend source code, it does not build it or configure it; see [[*Building the Xapian Backend][Building the Xapian Backend]] and [[*Configuring the Xapian Backend][Configuring the Xapian Backend]].
+
+** Manual Installation
+
+   Optionally, byte-compile the Emacs Lisp files with the command
+   : make
+
+   Add the directory containing those files to the Emacs search path by adding
+   : (add-to-list 'load-path "/path/to/notdeft/repository")
+   to your Emacs startup file (e.g., “~/.emacs”). Also add
+   : (require 'notdeft-autoloads)
+   to the startup file, to cause NotDeft to be loaded when you execute
+   : M-x notdeft
+
+** Building the Xapian Backend
+
+   To enable Xapian search queries, you should build the =notdeft-xapian= C++ program in the “xapian” directory. On some systems simply typing
+   : make
+   should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
+
+* NotDeft Configuration
 
   Once the =notdeft= feature has been loaded, you can see and edit all of its configuration options and their documentation with the command
   : M-x customize-group RET notdeft RET
+
+  The most essential settings are
+  - =notdeft-xapian-program= :: to specify the path of the Xapian search tool
+  - =notdeft-path= :: to specify the location(s) of your notes
 
   If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =notdeft-path= in your startup file. For example:
   : (setq notdeft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
@@ -40,19 +78,31 @@ The key differences of NotDeft are:
    
 ** Note File Format
 
-   The default is to have the note filename =notdeft-extension= set to "org", as used with files in the Org format. If you prefer some other note format, you should change that setting, which can be done with
+   The default is to have the note filename =notdeft-extension= set to "org" to indicate the Org format. If you prefer some other note format, you should change that setting, which can be done with
    : M-x customize-variable RET notdeft-extension RET
-   That =notdeft-extension= is used by default when creating new notes, but a note collection can also use other extensions. There are none by default, but you can define such secondary extensions with
+
+   The configured =notdeft-extension= is used by default when creating new notes, but a note collection can also use other extensions. There are none by default, but you can define such secondary extensions with
    : M-x customize-variable RET notdeft-secondary-extensions RET
 
-** Xapian Backend
+   For example, one might set these as
+   : (setq notdeft-extension "txt")
+   : (setq notdeft-secondary-extensions '("md" "org" "scrbl"))
 
-   To enable Xapian search queries, you should build the =notdeft-xapian= C++ program in the “xapian” directory. On some systems simply typing
-   : make
-   should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
+** Configuring the Xapian Backend
 
    To have NotDeft use the program, you will have to specify its absolute path in the =notdeft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
    : (setq notdeft-xapian-program "/path/to/notdeft-xapian")
+
+   If you installed as a package, and built the =notdeft-xapian= executable in that location, then the appropriate setting may be
+   #+BEGIN_SRC emacs-lisp
+(setq notdeft-xapian-program
+      (expand-file-name
+       "xapian/notdeft-xapian"
+       (package-desc-dir
+	(cadr (assq 'notdeft package-alist)))))
+   #+END_SRC
+   Such code must appear after
+   : (package-initialize)
    
    See the other =notdeft-xapian-*= customization variables for configuring the Xapian indexing and searching behavior. Most notably:
    - The configuration variable =notdeft-xapian-max-results= controls the maximum number of files to list in a =notdeft-mode= buffer. You may set it to 0 to always have all results displayed.

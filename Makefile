@@ -5,7 +5,7 @@ default : compile
 all : autoloads compile
 
 compile :
-	emacs --batch -L . -f batch-byte-compile *.el
+	emacs --batch -L . -f batch-byte-compile $(filter-out %-pkg.el, $(wildcard *.el))
 
 autoloads :
 	emacs --batch -L . --eval '(update-file-autoloads "notdeft.el" t (expand-file-name "notdeft-autoloads.el"))'
@@ -15,6 +15,16 @@ exe :
 
 clean :
 	-rm *.elc
+
+PKGNAMEVER = `cat PKGNAMEVER`
+package :
+	emacs --batch -L . -q -l notdeft-info.el -f notdeft-pkg-basename > PKGNAMEVER 2>/dev/null
+	mkdir -p web
+	-rm -r /tmp/$(PKGNAMEVER)
+	mkdir -p /tmp/$(PKGNAMEVER)
+	cp -ai ./ /tmp/$(PKGNAMEVER)/
+	( cd /tmp/$(PKGNAMEVER) && git clean -dxffq && rm -rf .git && rm notdeft-autoloads.el )
+	( tar --create --file web/$(PKGNAMEVER).tar -C /tmp $(PKGNAMEVER) )
 
 website : web/index.html
 

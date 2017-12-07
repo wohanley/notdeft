@@ -20,6 +20,7 @@
 (require 'org)
 
 (eval-when-compile
+  (autoload 'org-link-set-parameters "org")
   (autoload 'notdeft-open-file-by-basename "notdeft")
   (autoload 'notdeft-make-basename-list "notdeft")
   (autoload 'notdeft-file-by-basename "notdeft")

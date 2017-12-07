@@ -175,16 +175,16 @@
 ;; History
 ;; -------
 
-;; Version 0.3x:
+;; NotDeft version 0.3:
 
 ;; * Most notably, add a Xapian-based query engine.
 ;; * Add support for multiple notes directories.
 
-;; Version 0.3 (2011-09-11):
+;; Deft version 0.3 (2011-09-11):
 
 ;; * Internationalization: support filtering with multibyte characters.
 
-;; Version 0.2 (2011-08-22):
+;; Deft version 0.2 (2011-08-22):
 
 ;; * Match filenames when filtering.
 ;; * Automatically save opened files (optional).
@@ -308,8 +308,6 @@ Set to nil to hide."
   :group 'notdeft-faces)
 
 ;; Constants
-
-(defconst notdeft-version "0.3x")
 
 (defconst notdeft-buffer "*NotDeft*"
   "NotDeft buffer name.")
@@ -1619,11 +1617,6 @@ With two prefix arguments, also offer to save any modified buffers."
   (notdeft-buffers-gc (>= pfx 4) (>= pfx 16)))
 
 ;;; Mode definition
-
-(defun notdeft-show-version ()
-  "Show the version number in the minibuffer."
-  (interactive)
-  (message "NotDeft %s" notdeft-version))
 
 (defvar notdeft-mode-map
   (let ((i 0)
