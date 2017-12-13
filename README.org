@@ -74,8 +74,10 @@ The key differences of NotDeft are:
 
    NotDeft is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, and your Org mode is version 9, you may want to include
    : (require 'notdeft-org9)
-   in your Org startup code, to set up support for “deft:” links in =org-mode=.
-   
+   in your Org startup code, to set up support for “deft:” and “notdeft:” links in =org-mode=. A “deft:” link names a note by its non-directory filename, whereas a “notdeft:” link names a NotDeft Xapian search.
+
+   Org mode's =org-store-link= command may be used to capture any Xapian search in a NotDeft buffer, to be later inserted with =org-insert-link=. The =notdeft-org9= feature also defines NotDeft-specific =notdeft-kill-ring-save-org-link= and =notdeft-insert-org-link= commands for capturing and inserting “deft:” links.
+
 ** Note File Format
 
    The default is to have the note filename =notdeft-extension= set to "org" to indicate the Org format. If you prefer some other note format, you should change that setting, which can be done with

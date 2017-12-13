@@ -20,7 +20,9 @@
 (require 'org)
 
 (eval-when-compile
+  ;; avoid warning if compiling with an earlier Org version
   (autoload 'org-link-set-parameters "org")
+  
   (autoload 'notdeft-open-file-by-basename "notdeft")
   (autoload 'notdeft-make-basename-list "notdeft")
   (autoload 'notdeft-file-by-basename "notdeft")
@@ -29,16 +31,16 @@
 
 (org-link-set-parameters
  "deft"
- :follow 'org-notdeft-open
- :complete 'org-notdeft-complete-link)
+ :follow #'notdeft-org-open-deft-link
+ :complete #'notdeft-org-complete-deft-link)
 
-(defun org-notdeft-open (name)
+(defun notdeft-org-open-deft-link (name)
   "Visit the NotDeft note with the specified base file NAME.
 The argument is a non-directory filename.
 This defines the opening of Org \"deft:\" links."
   (notdeft-open-file-by-basename name))
 
-(defun org-notdeft-complete-link (&optional pfx)
+(defun notdeft-org-complete-deft-link (&optional pfx)
   "Define completion for Org \"deft:\" links.
 The optional PFX argument is ignored."
   (let ((fn-lst (notdeft-make-basename-list)))
@@ -87,6 +89,30 @@ The PFX argument is as for `notdeft-insert-org-link'."
   (let ((s (notdeft-make-org-link pfx)))
     (when s
       (kill-new s))))
+
+(eval-when-compile
+  (defvar notdeft-xapian-query)
+  (autoload 'notdeft-open-query "notdeft"))
+
+(org-link-set-parameters
+ "notdeft"
+ :follow #'notdeft-org-open-notdeft-link
+ :store #'notdeft-org-store-notdeft-link)
+
+(defun notdeft-org-open-notdeft-link (query)
+  "Open the NotDeft search specified by QUERY.
+This defines the opening of Org \"notdeft:\" links."
+  (notdeft-open-query query))
+
+(defun notdeft-org-store-notdeft-link ()
+  "Store the current NotDeft search as an Org link.
+This only works in a `notdeft-buffer'.
+Return nil otherwise."
+  (when (and (eq major-mode 'notdeft-mode)
+	     notdeft-xapian-query)
+    (org-store-link-props
+     :type "notdeft"
+     :link (concat "notdeft:" notdeft-xapian-query))))
 
 (provide 'notdeft-org9)
 
