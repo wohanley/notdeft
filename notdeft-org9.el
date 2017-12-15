@@ -11,23 +11,23 @@
 ;; For Org mode version 9 and higher.
 
 ;; The `org-link-set-parameters' API is available since Org version 9,
-;; in the `org' feature. You probably want to load this `notdeft-org9'
-;; feature when you (auto)load Org itself. NotDeft can be loaded later,
-;; and will be if you have loaded `notdeft-autoloads'.
+;; in the `org' feature; you probably want to load this `notdeft-org9'
+;; feature when you load Org itself. This feature requires some
+;; NotDeft definitions, which you get loaded on-demand with
+;; `notdeft-autoloads'.
 
 ;;; Code:
 
 (require 'org)
 
-(eval-when-compile
-  ;; avoid warning if compiling with an earlier Org version
-  (autoload 'org-link-set-parameters "org")
+;; avoid warning if compiling with an earlier Org version
+(declare-function org-link-set-parameters "org" t t)
   
-  (autoload 'notdeft-open-file-by-basename "notdeft")
-  (autoload 'notdeft-make-basename-list "notdeft")
-  (autoload 'notdeft-file-by-basename "notdeft")
-  (autoload 'notdeft-chomp-nullify "notdeft")
-  (autoload 'notdeft-title-from-file-content "notdeft"))
+(declare-function notdeft-open-file-by-basename "notdeft")
+(declare-function notdeft-make-basename-list "notdeft")
+(declare-function notdeft-file-by-basename "notdeft")
+(declare-function notdeft-chomp-nullify "notdeft")
+(declare-function notdeft-title-from-file-content "notdeft")
 
 (org-link-set-parameters
  "deft"
@@ -91,8 +91,8 @@ The PFX argument is as for `notdeft-insert-org-link'."
       (kill-new s))))
 
 (eval-when-compile
-  (defvar notdeft-xapian-query)
-  (autoload 'notdeft-open-query "notdeft"))
+  (defvar notdeft-xapian-query))
+(declare-function notdeft-open-query "notdeft")
 
 (org-link-set-parameters
  "notdeft"
