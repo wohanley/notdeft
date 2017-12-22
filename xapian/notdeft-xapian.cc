@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <ctype.h>
 #include <dirent.h>
 #include <fstream>
@@ -61,6 +62,13 @@ bool whitespace_p(const string& s) {
   return true;
 }
 
+string downcase(const string& s) {
+  string data;
+  data.resize(s.length());
+  std::transform(s.begin(), s.end(), data.begin(), ::tolower);
+  return data;
+}
+
 bool file_directory_p(const string& file) {
   struct stat sb;
   return (stat(file.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode);
@@ -93,9 +101,27 @@ string file_join(const string& x, const string& y) {
   return x + "/" + y;
 }
   
-string file_basename(const string& s) {
+string file_non_directory(const string& s) {
   auto found = s.find_last_of('/');
+  if (found == string::npos)
+    return s;
   return string(s.substr(found + 1));
+}
+
+string file_basename(const string& s) {
+  auto basename = file_non_directory(s);
+  auto found = basename.find_last_of('.');
+  if (found == string::npos)
+    return basename;
+  return string(basename.substr(0, found));
+}
+
+string file_extension(const string& s) {
+  auto basename = file_non_directory(s);
+  auto found = basename.find_last_of('.');
+  if (found == string::npos)
+    return "";
+  return string(basename.substr(found));
 }
 
 void ls_org(vector<string>& res, const string& root,
@@ -221,7 +247,19 @@ static int doIndex(vector<string> subArgs) {
 	    doc.set_data(filePath);
 	    doc.add_value(DOC_MTIME, time_serialize(x.second));
 	    indexer.set_document(doc);
-	    indexer.index_text(file_basename(filePath), 1, "F");
+	    {
+	      const string& fileBase = file_basename(filePath);
+	      indexer.index_text(fileBase, 1, "F");
+	    }
+	    {
+	      string fileExt = file_extension(filePath);
+	      if (!fileExt.empty()) {
+		fileExt = fileExt.substr(1);
+	      }
+	      fileExt = downcase(fileExt);
+	      doc.add_boolean_term("E" + fileExt);
+	      //cerr << "ext: '" << fileExt << "'" << endl;
+	    }
 	    {
 	      string line;
 	      bool titleDone = false;
@@ -382,6 +420,7 @@ static int doSearch(vector<string> subArgs) {
       enquire.set_sort_by_value(DOC_MTIME, true);
 
     Xapian::QueryParser qp;
+    qp.add_prefix("ext", "E");
     qp.add_prefix("file", "F");
     qp.add_prefix("title", "S");
     qp.add_prefix("tag", "K");
