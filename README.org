@@ -118,7 +118,7 @@ The key differences of NotDeft are:
 
    The following prefixes are supported by NotDeft:
    - =file:= :: Indicates that the search term must appear in the (non-directory, non-extension) filename.
-   - =ext:= :: Indicates the exact string that must be the lowercased filename extension of the file (without the ".").
+   - =ext:= :: Indicates the string that must be the lowercased filename extension of the file (without the ".").
    - =title:= :: Indicates that the search term must appear in the title.
      - Title is specified either as the first non-empty non-comment line, or as the file property (or Org mode “in-buffer setting”) =#+TITLE=. (Multiple =#+TITLE= lines are not supported.)
    - =tag:= :: Indicates that the search term must appear among the tags given to the document.
@@ -205,7 +205,7 @@ This is body text.
   : tag:"some tags"
   will not yield any results, regardless of the sets of tags in your notes, or the way they have been declared.
 
-  Filename extensions must be given in lowercase, and without allowing stemming. For example, to find all Org documents that may contain open to-do entries, we might query with:
+  Filename extensions must be given in lowercase, and should be quoted to avoid any stemming. For example, to find all Org documents that may contain open to-do entries, we might query with:
   : !all ext:"org" AND TODO
 
 * Transient Directories

@@ -257,7 +257,9 @@ static int doIndex(vector<string> subArgs) {
 		fileExt = fileExt.substr(1);
 	      }
 	      fileExt = downcase(fileExt);
-	      doc.add_boolean_term("E" + fileExt);
+	      //doc.add_boolean_term("E" + fileExt);
+	      //doc.add_boolean_term("ZE" + fileExt);
+	      indexer.index_text_without_positions(fileExt, 0, "E");
 	      //cerr << "ext: '" << fileExt << "'" << endl;
 	    }
 	    {
