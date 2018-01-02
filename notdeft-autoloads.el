@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23078 41183 248970
-;;;;;;  959000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23115 57488 780046
+;;;;;;  223000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -143,6 +143,13 @@ If it resides in a subdirectory, archive the entire directory,
 but only with a prefix argument PFX.
 
 \(fn PFX)" t nil)
+
+(autoload 'notdeft-open-in-deft "notdeft" "\
+Open the selected note's Deft directory in Deft.
+Do that only when the command `deft' is available. This
+implementation makes assumptions about Deft.
+
+\(fn)" t nil)
 
 (autoload 'notdeft-refresh "notdeft" "\
 Refresh or reset NotDeft state.

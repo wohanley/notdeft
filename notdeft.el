@@ -1451,6 +1451,33 @@ but only with a prefix argument PFX."
 	  (notdeft-changed/fs 'files (list old-file))
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
+(eval-when-compile
+  (defvar deft-directory))
+(declare-function deft-refresh "deft")
+
+;;;###autoload
+(defun notdeft-open-in-deft ()
+  "Open the selected note's Deft directory in Deft.
+Do that only when the command `deft' is available. This
+implementation makes assumptions about Deft."
+  (interactive)
+  (when (fboundp 'deft)
+    (notdeft-ensure-init)
+    (let ((old-file (notdeft-current-filename)))
+      (if (not old-file)
+	  (message (notdeft-no-selected-file-message))
+	(let ((old-dir (notdeft-dir-of-notdeft-file old-file)))
+	  (if (not old-dir)
+	      (message "Not a NotDeft file: %s" old-file)
+	    (let ((re-init
+		   (and (boundp 'deft-buffer)
+			(get-buffer deft-buffer)
+			(not (equal deft-directory old-dir)))))
+	      (setq deft-directory old-dir)
+	      (deft)
+	      (when re-init
+		(deft-refresh)))))))))
+
 (defun notdeft-show-file-info ()
   "Show information about the selected note.
 Show filename, title, summary, etc."
@@ -1828,8 +1855,10 @@ Return the selected directory, or error out."
 	  (car lst))
 	 (t
 	  (when notdeft-directory
-	    (setq lst (notdeft-list-prefer lst (lambda (file)
-					      (file-equal-p notdeft-directory file)))))
+	    (setq lst (notdeft-list-prefer
+		       lst
+		       (lambda (file)
+			 (file-equal-p notdeft-directory file)))))
 	  (let ((dir (ido-completing-read
 		      (or prompt "Data directory: ") lst
 		      nil 'confirm-after-completion
