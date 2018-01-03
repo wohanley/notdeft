@@ -1673,6 +1673,7 @@ With two prefix arguments, also offer to save any modified buffers."
     ;; Filtering
     (define-key map (kbd "C-c C-l") 'notdeft-filter)
     (define-key map (kbd "C-c C-c") 'notdeft-filter-clear)
+    (define-key map (kbd "<C-S-backspace>") 'notdeft-filter-clear)
     ;; File management
     (define-key map (kbd "C-c i") 'notdeft-show-file-info)
     (define-key map (kbd "C-c p") 'notdeft-show-file-parse)
