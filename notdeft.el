@@ -1559,11 +1559,11 @@ With a prefix argument PFX, also clear any Xapian query."
 (defun notdeft-filter (str)
   "Set the filter string to STR and update the file browser."
   (interactive "sFilter: ")
-  (let ((old-regexp notdeft-filter-string))
-    (if (string= "" str)
+  (let ((old-filter notdeft-filter-string))
+    (if (equal "" str)
 	(setq notdeft-filter-string nil)
       (setq notdeft-filter-string str))
-    (unless (equal old-regexp notdeft-filter-string)
+    (unless (equal old-filter notdeft-filter-string)
       (notdeft-changed/filter))))
 
 (defun notdeft-filter-increment ()
@@ -1585,6 +1585,15 @@ In particular, update `notdeft-current-files'."
   (if (> (length notdeft-filter-string) 1)
       (notdeft-filter (substring notdeft-filter-string 0 -1))
     (notdeft-filter-clear)))
+
+(defun notdeft-filter-yank ()
+  "Append the most recently killed or yanked text to the filter."
+  (interactive)
+  (let ((s (current-kill 0 t)))
+    (notdeft-filter
+     (if notdeft-filter-string
+	 (concat notdeft-filter-string s)
+       s))))
 
 (defun notdeft-complete ()
   "Complete the current action.
@@ -1666,13 +1675,13 @@ With two prefix arguments, also offer to save any modified buffers."
     (while (< i 256)
       (define-key map (vector i) 'notdeft-filter-increment)
       (setq i (1+ i)))
-    ;; Handle backspace and delete
-    (define-key map (kbd "DEL") 'notdeft-filter-decrement)
     ;; Handle return via completion or opening file
     (define-key map (kbd "RET") 'notdeft-complete)
     ;; Filtering
+    (define-key map (kbd "DEL") 'notdeft-filter-decrement)
     (define-key map (kbd "C-c C-l") 'notdeft-filter)
     (define-key map (kbd "C-c C-c") 'notdeft-filter-clear)
+    (define-key map (kbd "C-y") 'notdeft-filter-yank)
     (define-key map (kbd "<C-S-backspace>") 'notdeft-filter-clear)
     ;; File management
     (define-key map (kbd "C-c i") 'notdeft-show-file-info)
