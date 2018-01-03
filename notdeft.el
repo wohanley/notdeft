@@ -330,8 +330,10 @@ An absolute path, or nil if none.")
 (defvar notdeft-xapian-query nil
   "Current Xapian query string.")
 
-(defvar notdeft-filter-regexp nil
-  "Current filter regexp used by NotDeft.")
+(defvar notdeft-filter-string nil
+  "Current filter string used by NotDeft.
+It is treated as a list of whitespace-separated strings (not
+regular expressions) that are required to match.")
 
 (defvar notdeft-current-files nil
   "List of files matching current filter.")
@@ -783,9 +785,9 @@ Keep any information for a non-existing file."
     (widget-insert
      (propertize (concat notdeft-xapian-query ": ")
 		 'face 'notdeft-xapian-query-face)))
-  (when notdeft-filter-regexp
+  (when notdeft-filter-string
     (widget-insert
-     (propertize notdeft-filter-regexp 'face 'notdeft-filter-string-face)))
+     (propertize notdeft-filter-string 'face 'notdeft-filter-string-face)))
   (widget-insert "\n\n"))
 
 (eval-when-compile
@@ -916,7 +918,7 @@ It is one of:
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `notdeft-all-files' and
 `notdeft-current-file' lists to reflect those changes,
-or changes to `notdeft-filter-regexp' or `notdeft-xapian-query'."
+or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
   (cond
    (notdeft-xapian-program
      (cl-case what
@@ -1002,7 +1004,7 @@ Refresh `notdeft-all-files' and other state accordingly."
 		   (t (format "Found %d notes" n))))
 	   (shown (cond
 		   (is-none "")
-		   (notdeft-filter-regexp
+		   (notdeft-filter-string
 		     (format ", showing %d of them"
 			     (length notdeft-current-files)))
 		   (t ", showing all of them"))))
@@ -1016,7 +1018,7 @@ NotDeft directories whose contents might be listed."
 
 (defun notdeft-no-files-message ()
   "Return a short message to display if no files are found."
-  (if notdeft-filter-regexp
+  (if notdeft-filter-string
       "No files match the current filter string.\n"
     "No files found."))
 
@@ -1177,7 +1179,7 @@ Return the filename of the created file."
 (defun notdeft-new-file (pfx)
   "Create a new file quickly.
 Create it with an automatically generated name, one based
-on the `notdeft-filter-regexp' filter string if it is non-nil.
+on the `notdeft-filter-string' filter string if it is non-nil.
 With a prefix argument PFX, offer a choice of NotDeft
 directories, when `notdeft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
@@ -1185,11 +1187,11 @@ extensions when `notdeft-secondary-extensions' is non-empty.
 Return the filename of the created file."
   (interactive "P")
   (notdeft-ensure-init)
-  (let ((data (and notdeft-filter-regexp
-		   (concat notdeft-filter-regexp "\n\n")))
+  (let ((data (and notdeft-filter-string
+		   (concat notdeft-filter-string "\n\n")))
 	(notename
-	 (and notdeft-filter-regexp
-	      (notdeft-title-to-notename notdeft-filter-regexp))))
+	 (and notdeft-filter-string
+	      (notdeft-title-to-notename notdeft-filter-string))))
     (notdeft-sub-new-file data notename pfx)))
 
 (defun notdeft-file-under-dir-p (dir file)
@@ -1518,19 +1520,27 @@ Show filename, title, summary, etc."
   (sort files (lambda (f1 f2) (notdeft-file-newer-p f1 f2))))
 
 (defun notdeft-filter-update ()
-  "Update the filtered files list using the current filter regexp.
-Refer to `notdeft-filter-regexp' for the regular expression.
+  "Update the filtered files list using the current filter string.
+Refer to `notdeft-filter-string' for the string.
 Modify the variable `notdeft-current-files' to set the result."
-  (if (not notdeft-filter-regexp)
+  (if (not notdeft-filter-string)
       (setq notdeft-current-files notdeft-all-files)
-    (setq notdeft-current-files (mapcar 'notdeft-filter-match-file notdeft-all-files))
+    (setq notdeft-current-files
+	  (mapcar 'notdeft-filter-match-file notdeft-all-files))
     (setq notdeft-current-files (delq nil notdeft-current-files))))
 
 (defun notdeft-filter-match-file (file)
-  "Return FILE if it passes the current filter regexp."
-  (when (string-match-p notdeft-filter-regexp (notdeft-file-contents file))
-    file))
-
+  "Return FILE if it is a match against the current filter string.
+Treat `notdeft-filter-string' as a list of whitespace-separated
+strings and require all elements to match."
+  (let ((contents (notdeft-file-contents file))
+	(filter-lst
+	 (mapcar 'regexp-quote (split-string notdeft-filter-string))))
+    (when (cl-every (lambda (filter)
+		      (string-match-p filter contents))
+		    filter-lst)
+      file)))
+  
 ;; Filters that cause a refresh
 
 (defun notdeft-filter-clear (&optional pfx)
@@ -1539,25 +1549,25 @@ With a prefix argument PFX, also clear any Xapian query."
   (interactive "P")
   (cond
    ((and pfx notdeft-xapian-query)
-    (setq notdeft-filter-regexp nil)
+    (setq notdeft-filter-string nil)
     (setq notdeft-xapian-query nil)
     (notdeft-changed/query))
-   (notdeft-filter-regexp
-     (setq notdeft-filter-regexp nil)
+   (notdeft-filter-string
+     (setq notdeft-filter-string nil)
      (notdeft-changed/filter))))
 
 (defun notdeft-filter (str)
   "Set the filter string to STR and update the file browser."
   (interactive "sFilter: ")
-  (let ((old-regexp notdeft-filter-regexp))
+  (let ((old-regexp notdeft-filter-string))
     (if (string= "" str)
-	(setq notdeft-filter-regexp nil)
-      (setq notdeft-filter-regexp str))
-    (unless (equal old-regexp notdeft-filter-regexp)
+	(setq notdeft-filter-string nil)
+      (setq notdeft-filter-string str))
+    (unless (equal old-regexp notdeft-filter-string)
       (notdeft-changed/filter))))
 
 (defun notdeft-filter-increment ()
-  "Append character to the filter regexp and update state.
+  "Append character to the filter string and update state.
 In particular, update `notdeft-current-files'.
 Get the character from the variable `last-command-event'."
   (interactive)
@@ -1565,15 +1575,15 @@ Get the character from the variable `last-command-event'."
     (when (= char ?\S-\ )
       (setq char ?\s))
     (setq char (char-to-string char))
-    (setq notdeft-filter-regexp (concat notdeft-filter-regexp char))
+    (setq notdeft-filter-string (concat notdeft-filter-string char))
     (notdeft-changed/filter)))
 
 (defun notdeft-filter-decrement ()
-  "Remove last character from the filter regexp and update state.
+  "Remove last character from the filter string and update state.
 In particular, update `notdeft-current-files'."
   (interactive)
-  (if (> (length notdeft-filter-regexp) 1)
-      (notdeft-filter (substring notdeft-filter-regexp 0 -1))
+  (if (> (length notdeft-filter-string) 1)
+      (notdeft-filter (substring notdeft-filter-string 0 -1))
     (notdeft-filter-clear)))
 
 (defun notdeft-complete ()
@@ -1589,7 +1599,7 @@ Otherwise, quickly create a new file."
    ((widget-at)
     (widget-button-press (point)))
    ;; Active filter string with match
-   ((and notdeft-filter-regexp notdeft-current-files)
+   ((and notdeft-filter-string notdeft-current-files)
     (notdeft-find-file (car notdeft-current-files)))
    ;; Default
    (t
@@ -1714,7 +1724,7 @@ The optional argument DIR specifies the initial `notdeft-directory'
 to set, or a function for determining it from among DIRS."
   (when (or reset (not notdeft-hash-mtimes))
     (notdeft-cache-initialize)
-    (setq notdeft-filter-regexp nil)
+    (setq notdeft-filter-string nil)
     (setq notdeft-xapian-query nil)
     (let ((dirs (notdeft-resolve-directories)))
       (when (or reset (not notdeft-directory))
