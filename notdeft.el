@@ -1957,6 +1957,18 @@ Open the file directly, without switching to any `notdeft-buffer'."
     (notdeft-ensure-init)
     (notdeft-xapian-search notdeft-directories query)))
 
+;;;###autoload
+(define-minor-mode notdeft-note-mode
+  "Manage NotDeft state for a note buffer.
+A minor mode that is enabled automatically for notes opened from
+within a `notdeft-buffer'."
+  :lighter "¬D"
+  ;;:group 'notdeft :require 'notdeft
+  (if (not notdeft-note-mode)
+      (remove-hook 'after-save-hook 'notdeft-refresh-after-save t)
+    (notdeft-ensure-init)
+    (add-hook 'after-save-hook 'notdeft-refresh-after-save nil t)))
+
 (provide 'notdeft)
 
 ;;; notdeft.el ends here

@@ -5,8 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23115 57488 780046
-;;;;;;  223000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23117 9519 183581 855000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -93,7 +92,7 @@ Return the filename of the created file.
 (autoload 'notdeft-new-file "notdeft" "\
 Create a new file quickly.
 Create it with an automatically generated name, one based
-on the `notdeft-filter-regexp' filter string if it is non-nil.
+on the `notdeft-filter-string' filter string if it is non-nil.
 With a prefix argument PFX, offer a choice of NotDeft
 directories, when `notdeft-path' has more than one of them.
 With two prefix arguments, also offer a choice of filename
@@ -219,6 +218,13 @@ Open the file directly, without switching to any `notdeft-buffer'.
 Return a list of files matching Xapian QUERY.
 
 \(fn QUERY)" nil nil)
+
+(autoload 'notdeft-note-mode "notdeft" "\
+Manage NotDeft state for a note buffer.
+A minor mode that is enabled automatically for notes opened from
+within a `notdeft-buffer'.
+
+\(fn &optional ARG)" t nil)
 
 ;;;***
 
