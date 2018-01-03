@@ -1560,9 +1560,7 @@ With a prefix argument PFX, also clear any Xapian query."
   "Set the filter string to STR and update the file browser."
   (interactive "sFilter: ")
   (let ((old-filter notdeft-filter-string))
-    (if (equal "" str)
-	(setq notdeft-filter-string nil)
-      (setq notdeft-filter-string str))
+    (setq notdeft-filter-string (and (not (equal "" str)) str))
     (unless (equal old-filter notdeft-filter-string)
       (notdeft-changed/filter))))
 
@@ -1585,6 +1583,20 @@ In particular, update `notdeft-current-files'."
   (if (> (length notdeft-filter-string) 1)
       (notdeft-filter (substring notdeft-filter-string 0 -1))
     (notdeft-filter-clear)))
+
+(defun notdeft-filter-decrement-word ()
+  "Remove last word from the filter, if possible, and update.
+This is like `backward-kill-word' on the filter string, but the
+kill ring is not affected."
+  (interactive)
+  (when notdeft-filter-string
+    (let ((new-filter
+	   (with-temp-buffer
+	     (insert notdeft-filter-string)
+	     (goto-char (point-max))
+	     (backward-word)
+	     (buffer-substring-no-properties (point-min) (point)))))
+      (notdeft-filter new-filter))))
 
 (defun notdeft-filter-yank ()
   "Append the most recently killed or yanked text to the filter."
@@ -1682,6 +1694,7 @@ With two prefix arguments, also offer to save any modified buffers."
     (define-key map (kbd "C-c C-l") 'notdeft-filter)
     (define-key map (kbd "C-c C-c") 'notdeft-filter-clear)
     (define-key map (kbd "C-y") 'notdeft-filter-yank)
+    (define-key map (kbd "M-DEL") 'notdeft-filter-decrement-word)
     (define-key map (kbd "<C-S-backspace>") 'notdeft-filter-clear)
     ;; File management
     (define-key map (kbd "C-c i") 'notdeft-show-file-info)
