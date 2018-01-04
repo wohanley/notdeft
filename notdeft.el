@@ -107,11 +107,6 @@
 ;; Files will be moved to `notdeft-archive-directory' under a NotDeft
 ;; data directory (e.g., current `notdeft-directory').
 
-;; Files opened with NotDeft can be automatically saved after Emacs has
-;; been idle for a customizable number of seconds. To enable this
-;; feature, configure `notdeft-auto-save-interval' with the desired
-;; floating point value.
-
 ;; Getting Started
 ;; ---------------
 
@@ -244,14 +239,6 @@ indexing for Xapian searches."
   :safe 'stringp
   :group 'notdeft)
 
-(defcustom notdeft-auto-save-interval 0.0
-  "Idle time before automatically saving buffers opened by NotDeft.
-Specified as a number of seconds.
-Set to zero to disable."
-  :type 'float
-  :safe 'floatp
-  :group 'notdeft)
-
 (defcustom notdeft-time-format " %Y-%m-%d %H:%M"
   "Format string for modification times in the NotDeft browser.
 Set to nil to hide."
@@ -356,9 +343,6 @@ May not have been initialized if nil.")
 
 (defvar notdeft-hash-summaries nil
   "Hash containing cached file summaries, keyed by filename.")
-
-(defvar notdeft-auto-save-buffers nil
-  "List of buffers that will be automatically saved.")
 
 (defvar notdeft-window-width nil
   "Width of NotDeft buffer, as currently drawn, or nil.")
@@ -1075,12 +1059,10 @@ within a `notdeft-buffer'. Does nothing but manage calls to
 (defun notdeft-register-buffer (&optional buffer)
   "Register BUFFER for saving as a NotDeft note.
 Use `current-buffer' as the default buffer.
-Ensure that BUFFER gets auto-saved, as configured for NotDeft,
-and that NotDeft state gets refreshed on save."
+Ensure that global NotDeft state gets refreshed on save."
   (notdeft-ensure-init)
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (add-to-list 'notdeft-auto-save-buffers buffer)
       (add-hook 'after-save-hook 'notdeft-refresh-after-save nil t))))
 
 (defun notdeft-deregister-buffer (&optional buffer)
@@ -1088,8 +1070,6 @@ and that NotDeft state gets refreshed on save."
 Use `current-buffer' as the default buffer."
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (setq notdeft-auto-save-buffers
-	    (delq buffer notdeft-auto-save-buffers))
       (remove-hook 'after-save-hook 'notdeft-refresh-after-save t))))
 
 ;;;###autoload
@@ -1109,17 +1089,31 @@ Set up a hook for refreshing NotDeft state on save."
     (notdeft-register-buffer)
     (notdeft-refresh-after-save)))
 
+(defun notdeft-note-mode-buffers ()
+  "Return a list of NotDeft note buffers.
+The list contains references to buffers with for which the
+NotDeft note minor mode has been enabled, and thus the variable
+`notdeft-note-mode' is bound and set."
+  (notdeft-map-drop-false
+   (lambda (buffer)
+     (with-current-buffer buffer
+       (and (boundp notdeft-note-mode)
+	    notdeft-note-mode
+	    buffer)))
+   (buffer-list) t))
+
 (defun notdeft-switch-to-buffer ()
   "Switch to an existing NotDeft note buffer."
   (interactive)
-  (let ((names (notdeft-map-drop-false 'buffer-name notdeft-auto-save-buffers)))
+  (let ((buffers (notdeft-note-mode-buffers)))
     (cond
-     ((not names)
+     ((not buffers)
       (message "No NotDeft notes open"))
-     ((null (cdr names))
-      (switch-to-buffer (car names)))
+     ((null (cdr buffers))
+      (switch-to-buffer (car buffers)))
      (t
-      (let ((name (ido-completing-read "Buffer: " names nil t)))
+      (let* ((names (mapcar 'buffer-name buffers))
+	     (name (ido-completing-read "Buffer: " names nil t)))
 	(switch-to-buffer name))))))
 		     
 ;;;###autoload
@@ -1695,53 +1689,11 @@ Otherwise, quickly create a new file."
    (t
     (notdeft-new-file 1))))
 
-;;; Automatic File Saving
-
-(defun notdeft-auto-save ()
-  "Save any modified files in `notdeft-auto-save-buffers'."
-  (save-excursion
-    (dolist (buf notdeft-auto-save-buffers)
-      (if (buffer-name buf)
-          ;; Save open buffers that have been modified.
-          (progn
-            (set-buffer buf)
-            (when (buffer-modified-p)
-              (basic-save-buffer)))
-        ;; If a buffer is no longer open, remove it from auto save list.
-        (delq buf notdeft-auto-save-buffers)))))
-
-(defun notdeft-buffers-gc (kill save)
-  "Garbage collect obsolete buffer information.
-That is, remove non-existing buffers from `notdeft-auto-save-buffers'.
-Optionally, first KILL unmodified `notdeft-auto-save-buffers'.
-Optionally, SAVE modified buffers before killing any buffers
-\(asking for confirmation unless `notdeft-auto-save-interval' > 0).
-Return the buffers removed from `notdeft-auto-save-buffers'."
-  (when save
-    (save-some-buffers
-     (> notdeft-auto-save-interval 0)
-     (lambda ()
-       (memq (current-buffer) notdeft-auto-save-buffers))))
-  (when kill
-    (dolist (buf notdeft-auto-save-buffers)
-      (when (buffer-name buf)
-	(unless (buffer-modified-p buf)
-	  (kill-buffer buf)))))
-  (let (dropped)
-    (dolist (buf notdeft-auto-save-buffers)
-      (unless (buffer-name buf)
-	(setq dropped (cons buf dropped))))
-    (dolist (buf dropped dropped)
-      (delq buf notdeft-auto-save-buffers))))
-
-(defun notdeft-gc (pfx)
+(defun notdeft-gc ()
   "Garbage collect to remove uncurrent NotDeft state.
-With one prefix argument PFX, also kill unmodified NotDeft note buffers
-\(i.e., all unmodified `notdeft-auto-save-buffers').
-With two prefix arguments, also offer to save any modified buffers."
-  (interactive "p")
-  (notdeft-cache-gc)
-  (notdeft-buffers-gc (>= pfx 4) (>= pfx 16)))
+More specifically, delete obsolete cached file information."
+  (interactive)
+  (notdeft-cache-gc))
 
 ;;; Mode definition
 
@@ -1841,8 +1793,6 @@ Only run this function when a `notdeft-buffer' is current.
   (setq mode-name "NotDeft")
   (add-hook 'window-configuration-change-hook ;; buffer locally
 	    'notdeft-window-configuration-changed nil t)
-  (when (> notdeft-auto-save-interval 0)
-    (run-with-idle-timer notdeft-auto-save-interval t 'notdeft-auto-save))
   (run-mode-hooks 'notdeft-mode-hook))
 
 (put 'notdeft-mode 'mode-class 'special)
