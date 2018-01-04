@@ -1074,20 +1074,20 @@ Use `current-buffer' as the default buffer."
 
 ;;;###autoload
 (defun notdeft-register-file (file)
-  "Register FILE as storing a NotDeft note."
+  "Enable NotDeft note mode for any buffer of FILE."
   (let ((buf (get-file-buffer file)))
     (when buf
-      (notdeft-register-buffer buf))))
+      (with-current-buffer buf
+	(notdeft-note-mode 1)))))
 
 ;;;###autoload
-(defun notdeft-save-buffer (pfx)
+(defun notdeft-save-buffer (prefix)
   "Save the current buffer as a NotDeft note.
-The prefix argument PFX is passed to `save-buffer'.
-Set up a hook for refreshing NotDeft state on save."
+Enable NotDeft note minor mode before saving.
+The PREFIX argument is passed to `save-buffer'."
   (interactive "P")
-  (prog1 (save-buffer pfx)
-    (notdeft-register-buffer)
-    (notdeft-refresh-after-save)))
+  (notdeft-note-mode 1)
+  (save-buffer prefix))
 
 (defun notdeft-note-mode-buffers ()
   "Return a list of NotDeft note buffers.
@@ -1103,7 +1103,9 @@ NotDeft note minor mode has been enabled, and thus the variable
    (buffer-list) t))
 
 (defun notdeft-switch-to-buffer ()
-  "Switch to an existing NotDeft note buffer."
+  "Switch to an existing NotDeft note buffer.
+The list of choices is determined by the function
+`notdeft-note-mode-buffers'."
   (interactive)
   (let ((buffers (notdeft-note-mode-buffers)))
     (cond
@@ -1119,10 +1121,11 @@ NotDeft note minor mode has been enabled, and thus the variable
 ;;;###autoload
 (defun notdeft-find-file (file)
   "Edit NotDeft note FILE.
+Enable NotDeft note mode for the buffer for editing the file.
 Called interactively, query for the FILE using the minibuffer."
   (interactive "FFind NotDeft file: ")
   (prog1 (find-file file)
-    (notdeft-register-buffer)))
+    (notdeft-note-mode 1)))
 
 ;;;###autoload
 (defun notdeft-create-file (&optional dir notename ext data)
@@ -1287,7 +1290,7 @@ FILE need not actually exist for this predicate to hold."
 (defun notdeft-file-member (file list)
   "Whether FILE is a member of LIST.
 Return the matching member of the list, or nil."
-  (cl-some (lambda (x) (file-equal-p file x)) list))
+  (cl-some (lambda (elem) (file-equal-p file elem) elem) list))
 
 (defun notdeft-directories-member (file)
   "Whether FILE is a NotDeft directory.
@@ -1399,7 +1402,9 @@ Operate on the selected or current NotDeft note file."
 				  "." new-ext)))
 	    (notdeft-rename-file+buffer old-file new-file)
 	    (when (get-buffer notdeft-buffer)
-	      (notdeft-changed/fs 'dirs (list (notdeft-dir-of-notdeft-file new-file))))
+	      (notdeft-changed/fs
+	       'dirs
+	       (list (notdeft-dir-of-notdeft-file new-file))))
 	    (message "Renamed as `%s`" new-file))))))))
 
 ;;;###autoload
@@ -1446,7 +1451,9 @@ Used by `notdeft-rename-file' and `notdeft-rename-current-file'."
     (unless (string= old-file new-file)
       (notdeft-rename-file+buffer old-file new-file)
       (when (get-buffer notdeft-buffer)
-	(notdeft-changed/fs 'dirs (list (notdeft-dir-of-notdeft-file new-file)))))
+	(notdeft-changed/fs
+	 'dirs
+	 (list (notdeft-dir-of-notdeft-file new-file)))))
     new-file))
 
 (defun notdeft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
@@ -1744,10 +1751,12 @@ More specifically, delete obsolete cached file information."
 (defun notdeft-refresh (prefix)
   "Refresh or reset NotDeft state.
 Refresh NotDeft state so that filesystem changes get noticed.
-With a PREFIX argument, reset state, so that caches and
-queries and such are also cleared.
-Invoke this command manually if NotDeft files change outside of
-`notdeft-mode', as such changes are not detected automatically."
+With a PREFIX argument, reset state, so that caches and queries
+and such are also cleared. Invoke this command manually if
+NotDeft files change outside of NotDeft mode and NotDeft note
+minor mode \(as toggled by the command `notdeft-mode' and the
+command `notdeft-note-mode'), as such changes are not detected
+automatically."
   (interactive "P")
   (if prefix
       (notdeft-ensure-init t)

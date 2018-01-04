@@ -267,7 +267,7 @@ This is body text.
   : C-u C-u M-x org-capture
   The capture facility supports the definition and use of =org-capture-templates= for different purposes.
 
-  A caveat with Org capturing is that unless you have already opened the capture file under NotDeft, any newly captured items may not immediately get noticed by NotDeft. To ensure that NotDeft is aware of any changes, one could write custom commands which register the capture file, for example with
+  A caveat with Org capturing is that unless you have already opened the capture file under NotDeft, any newly captured items may not immediately get noticed by NotDeft. To ensure that NotDeft is aware of any changes, one might arrange for the capture file to include file variables for enabling the =notdeft-note-mode= minor mode for any buffers opened for that file. Alternatively, one could write custom commands which enable the minor mode for the capture file, for example with
   : (notdeft-register-file org-default-notes-file)
   Note that different =org-capture-templates= may define different capture locations.
 

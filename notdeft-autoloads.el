@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23118 26515 983015
-;;;;;;  563000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23118 38153 598776
+;;;;;;  878000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -48,19 +48,20 @@ within a `notdeft-buffer'. Does nothing but manage calls to
 \(fn &optional ARG)" t nil)
 
 (autoload 'notdeft-register-file "notdeft" "\
-Register FILE as storing a NotDeft note.
+Enable NotDeft note mode for any buffer of FILE.
 
 \(fn FILE)" nil nil)
 
 (autoload 'notdeft-save-buffer "notdeft" "\
 Save the current buffer as a NotDeft note.
-The prefix argument PFX is passed to `save-buffer'.
-Set up a hook for refreshing NotDeft state on save.
+Enable NotDeft note minor mode before saving.
+The PREFIX argument is passed to `save-buffer'.
 
-\(fn PFX)" t nil)
+\(fn PREFIX)" t nil)
 
 (autoload 'notdeft-find-file "notdeft" "\
 Edit NotDeft note FILE.
+Enable NotDeft note mode for the buffer for editing the file.
 Called interactively, query for the FILE using the minibuffer.
 
 \(fn FILE)" t nil)
@@ -162,10 +163,12 @@ implementation makes assumptions about Deft.
 (autoload 'notdeft-refresh "notdeft" "\
 Refresh or reset NotDeft state.
 Refresh NotDeft state so that filesystem changes get noticed.
-With a PREFIX argument, reset state, so that caches and
-queries and such are also cleared.
-Invoke this command manually if NotDeft files change outside of
-`notdeft-mode', as such changes are not detected automatically.
+With a PREFIX argument, reset state, so that caches and queries
+and such are also cleared. Invoke this command manually if
+NotDeft files change outside of NotDeft mode and NotDeft note
+minor mode (as toggled by the command `notdeft-mode' and the
+command `notdeft-note-mode'), as such changes are not detected
+automatically.
 
 \(fn PREFIX)" t nil)
 
