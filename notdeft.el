@@ -885,7 +885,7 @@ Return the results as absolute paths, in any order."
   "Update Xapian index for FILES (at least)."
   (let ((dirs
 	 (delete-dups
-	  (mapcar 'notdeft-dir-of-notdeft-file files))))
+	  (mapcar 'notdeft-dir-of-file files))))
     (notdeft-xapian-index-dirs dirs)))
 
 (defun notdeft-xapian-re-index ()
@@ -894,6 +894,19 @@ Return the results as absolute paths, in any order."
   (when notdeft-xapian-program
     (notdeft-xapian-index-dirs notdeft-directories t)
     (notdeft-changed/query)))
+
+(defmacro notdeft-if2 (cnd thn els)
+  "Two-armed `if'.
+Equivalent to (if CND THN ELS)."
+  `(if ,cnd ,thn ,els))
+
+(defmacro notdeft-setq-cons (x v)
+  "Prepend into list X the value V."
+  `(setq ,x (cons ,v ,x)))
+
+(defmacro notdeft-setq-non-nil (x v)
+  "To X, assign the result of deleting nils from list V."
+  `(setq ,x (delete nil ,v)))
 
 (defun notdeft-pending-lessp (x y)
   "Whether pending status value X < Y."
@@ -915,32 +928,50 @@ It is one of:
 - `files' to assume changes in THINGS NotDeft files; or
 - `anything' to make no assumptions about filesystem changes.
 
+Ignore THINGS outside NotDeft directory trees.
+
 As appropriate, refresh both file information cache and
 any Xapian indexes, and update `notdeft-all-files' and
-`notdeft-current-file' lists to reflect those changes,
+`notdeft-current-files' lists to reflect those changes,
 or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
-  (cond
-   (notdeft-xapian-program
-     (cl-case what
-       (anything (notdeft-xapian-index-dirs notdeft-directories))
-       (dirs (notdeft-xapian-index-dirs things))
-       (files (notdeft-xapian-index-files things)))
-     (setq notdeft-all-files
-	   (notdeft-xapian-search notdeft-directories notdeft-xapian-query))
-     (notdeft-cache-update notdeft-all-files))
-   (t
+  (let (dirs files) ;; filtered to Deft ones
     (cl-case what
+      (dirs
+       (notdeft-setq-non-nil
+	dirs
+	(mapcar 'notdeft-directories-member things)))
       (files
-       (notdeft-cache-update things)
        (dolist (file things)
-	 (setq notdeft-all-files (delete file notdeft-all-files))
-	 (when (file-exists-p file)
-	   (setq notdeft-all-files (cons file notdeft-all-files)))))
-      (t
-       (setq notdeft-all-files (notdeft-files-under-all-roots))
-       (notdeft-cache-update notdeft-all-files)))
-    (setq notdeft-all-files (notdeft-sort-files notdeft-all-files))))
-  (notdeft-changed/filter))
+	 (let ((dir (notdeft-dir-of-file file)))
+	   (when dir
+	     (notdeft-setq-cons files file)
+	     (notdeft-setq-cons dirs dir))))))
+    (if (or (and (eq what 'files) (not files))
+	    (and (eq what 'dirs) (not dirs)))
+	(progn) ;; no filesystem change
+      (notdeft-if2
+       notdeft-xapian-program
+       (progn
+	 (cl-case what
+	   (anything (notdeft-xapian-index-dirs notdeft-directories))
+	   ((dirs files) (notdeft-xapian-index-dirs (delete-dups dirs))))
+	 (setq notdeft-all-files
+	       (notdeft-xapian-search notdeft-directories
+				      notdeft-xapian-query))
+	 (notdeft-cache-update notdeft-all-files))
+       (progn
+	 (cl-case what
+	   (files
+	    (notdeft-cache-update files)
+	    (dolist (file files)
+	      (setq notdeft-all-files (delete file notdeft-all-files))
+	      (when (file-exists-p file)
+		(setq notdeft-all-files (cons file notdeft-all-files)))))
+	   (t
+	    (setq notdeft-all-files (notdeft-files-under-all-roots))
+	    (notdeft-cache-update notdeft-all-files)))
+	 (setq notdeft-all-files (notdeft-sort-files notdeft-all-files))))
+      (notdeft-changed/filter))))
 
 (defun notdeft-changed/query ()
   "Refresh NotDeft buffer after query change."
@@ -1194,6 +1225,14 @@ Return the filename of the created file."
 	      (notdeft-title-to-notename notdeft-filter-string))))
     (notdeft-sub-new-file data notename pfx)))
 
+(defun notdeft-dir-of-file (file)
+  "Return NotDeft root of FILE, or nil.
+FILE may also itself be one of the `notdeft-directories'."
+  (cl-some (lambda (dir)
+	     (when (file-in-directory-p file dir)
+	       dir))
+	   notdeft-directories))
+
 (defun notdeft-file-under-dir-p (dir file)
   "Whether DIR is strictly the parent of FILE."
   (and
@@ -1230,6 +1269,16 @@ FILE need not actually exist for this predicate to hold."
     (and root
 	 (let ((dir (file-name-directory file)))
 	   (not (file-equal-p dir root))))))
+
+(defun notdeft-file-member (file list)
+  "Whether FILE is a member of LIST.
+Return the matching member of the list, or nil."
+  (cl-some (lambda (x) (file-equal-p file x)) list))
+
+(defun notdeft-directories-member (file)
+  "Whether FILE is a NotDeft directory.
+Return the matching member of `notdeft-directories'."
+  (notdeft-file-member file notdeft-directories))
 
 (defun notdeft-buffer-p (&optional buffer)
   "Whether BUFFER is a `notdeft-buffer'."
@@ -1735,10 +1784,6 @@ Invoke this command manually if NotDeft files change outside of
       (notdeft-filter-existing-dirs (notdeft-resolve-directories)))
     (notdeft-changed/fs 'anything)
     (run-hooks 'notdeft-directories-changed-hook)))
-
-(defun notdeft-file-member (file list)
-  "Whether FILE is a member of LIST."
-  (and (cl-some (lambda (x) (file-equal-p file x)) list) t))
 
 (defun notdeft-ensure-init (&optional reset dir)
   "Initialize NotDeft state unless already initialized.
