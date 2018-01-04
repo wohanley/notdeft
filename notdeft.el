@@ -1055,8 +1055,19 @@ NotDeft directories whose contents might be listed."
 
 ;; File list file management actions
 
+;;;###autoload
+(define-minor-mode notdeft-note-mode
+  "Manage NotDeft state for a note buffer.
+A minor mode that is enabled automatically for notes opened from
+within a `notdeft-buffer'. Does nothing but manage calls to
+`notdeft-register-buffer' and `notdeft-deregister-buffer'."
+  :lighter " ¬D"
+  (if notdeft-note-mode
+      (notdeft-register-buffer)
+    (notdeft-deregister-buffer)))
+  
 (defun notdeft-refresh-after-save ()
-  "Refresh NotDeft state after saving a NotDeft note file."
+  "Refresh global NotDeft state after saving a NotDeft note."
   (let ((file (buffer-file-name)))
     (when file
       (notdeft-changed/fs 'files (list file)))))
@@ -1071,6 +1082,15 @@ and that NotDeft state gets refreshed on save."
     (with-current-buffer buffer
       (add-to-list 'notdeft-auto-save-buffers buffer)
       (add-hook 'after-save-hook 'notdeft-refresh-after-save nil t))))
+
+(defun notdeft-deregister-buffer (&optional buffer)
+  "Deregister a NotDeft BUFFER.
+Use `current-buffer' as the default buffer."
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (setq notdeft-auto-save-buffers
+	    (delq buffer notdeft-auto-save-buffers))
+      (remove-hook 'after-save-hook 'notdeft-refresh-after-save t))))
 
 ;;;###autoload
 (defun notdeft-register-file (file)
@@ -2001,18 +2021,6 @@ Open the file directly, without switching to any `notdeft-buffer'."
   (when notdeft-xapian-program
     (notdeft-ensure-init)
     (notdeft-xapian-search notdeft-directories query)))
-
-;;;###autoload
-(define-minor-mode notdeft-note-mode
-  "Manage NotDeft state for a note buffer.
-A minor mode that is enabled automatically for notes opened from
-within a `notdeft-buffer'."
-  :lighter "¬D"
-  ;;:group 'notdeft :require 'notdeft
-  (if (not notdeft-note-mode)
-      (remove-hook 'after-save-hook 'notdeft-refresh-after-save t)
-    (notdeft-ensure-init)
-    (add-hook 'after-save-hook 'notdeft-refresh-after-save nil t)))
 
 (provide 'notdeft)
 

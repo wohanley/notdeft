@@ -5,7 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23117 9519 183581 855000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23118 26515 983015
+;;;;;;  563000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -37,6 +38,14 @@ Return string STR if non-empty, otherwise return nil.
 Optionally, use function TRIM to trim any result string.
 
 \(fn STR &optional TRIM)" nil nil)
+
+(autoload 'notdeft-note-mode "notdeft" "\
+Manage NotDeft state for a note buffer.
+A minor mode that is enabled automatically for notes opened from
+within a `notdeft-buffer'. Does nothing but manage calls to
+`notdeft-register-buffer' and `notdeft-deregister-buffer'.
+
+\(fn &optional ARG)" t nil)
 
 (autoload 'notdeft-register-file "notdeft" "\
 Register FILE as storing a NotDeft note.
@@ -218,13 +227,6 @@ Open the file directly, without switching to any `notdeft-buffer'.
 Return a list of files matching Xapian QUERY.
 
 \(fn QUERY)" nil nil)
-
-(autoload 'notdeft-note-mode "notdeft" "\
-Manage NotDeft state for a note buffer.
-A minor mode that is enabled automatically for notes opened from
-within a `notdeft-buffer'.
-
-\(fn &optional ARG)" t nil)
 
 ;;;***
 
