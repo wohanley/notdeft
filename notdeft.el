@@ -908,9 +908,9 @@ The arguments hint at what may need refreshing.
 
 WHAT is a symbolic hint for purposes of optimization.
 It is one of:
-- `dirs' to assume changes in THINGS NotDeft directories;
-- `files' to assume changes in THINGS NotDeft files; or
-- `anything' to make no assumptions about filesystem changes.
+- symbol `dirs' to assume changes in THINGS NotDeft directories;
+- symbol `files' to assume changes in THINGS NotDeft files; or
+- symbol `anything' to make no assumptions about filesystem changes.
 
 Ignore THINGS outside NotDeft directory trees.
 
@@ -1491,8 +1491,9 @@ Return the pathname of the file/directory that was moved."
 ;;;###autoload
 (defun notdeft-move-file (pfx)
   "Move the selected file under selected NotDeft root.
-If it resides in a subdirectory, move the entire
-directory, but only if given a prefix argument PFX."
+If it resides in a subdirectory, move the entire directory, but
+only if given a prefix argument PFX. Moving an external
+\(non-Deft) file under a NotDeft root is also allowed."
   (interactive "P")
   (notdeft-ensure-init)
   (let ((old-file (notdeft-current-filename)))
@@ -1500,9 +1501,11 @@ directory, but only if given a prefix argument PFX."
 	(message (notdeft-no-selected-file-message))
       (let ((new-root (file-name-as-directory (notdeft-select-directory)))
 	    (old-root (notdeft-dir-of-notdeft-file old-file)))
-	(unless (file-equal-p new-root old-root)
+	(when (or (not old-root)
+		  (not (file-equal-p new-root old-root)))
 	  (let ((moved-file (notdeft-sub-move-file old-file new-root pfx)))
-	    (notdeft-changed/fs 'dirs (list old-root new-root))
+	    (notdeft-changed/fs
+	     'dirs (delete nil (list old-root new-root)))
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
 
 ;;;###autoload

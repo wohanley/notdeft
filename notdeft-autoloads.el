@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23118 38153 598776
-;;;;;;  878000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23118 43199 751515
+;;;;;;  245000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -140,8 +140,9 @@ if called with a prefix argument PFX.
 
 (autoload 'notdeft-move-file "notdeft" "\
 Move the selected file under selected NotDeft root.
-If it resides in a subdirectory, move the entire
-directory, but only if given a prefix argument PFX.
+If it resides in a subdirectory, move the entire directory, but
+only if given a prefix argument PFX. Moving an external
+\(non-Deft) file under a NotDeft root is also allowed.
 
 \(fn PFX)" t nil)
 
