@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23118 43199 751515
-;;;;;;  245000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23121 22075 717445
+;;;;;;  924000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -214,11 +214,13 @@ FILENAME is a non-directory filename, with an extension
 (autoload 'notdeft-open-query "notdeft" "\
 Open NotDeft with an Xapian search query.
 If called interactively, read a search query interactively.
-Non-interactively, the QUERY may be given as an argument.
-Create a `notdeft-buffer' if one does not yet exist,
-otherwise merely switch to the existing NotDeft buffer.
+Non-interactively, the QUERY may be given as an argument. With a
+non-nil RANK, have results ranked by relevance; interactively, a
+prefix argument will set this option. Create a `notdeft-buffer'
+if one does not yet exist, otherwise merely switch to the
+existing NotDeft buffer.
 
-\(fn &optional QUERY)" t nil)
+\(fn &optional QUERY RANK)" t nil)
 
 (autoload 'notdeft-lucky-find-file "notdeft" "\
 Open the highest-ranked note matching a search query.

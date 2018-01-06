@@ -882,6 +882,7 @@ Return the results as absolute paths, in any order."
 (defmacro notdeft-if2 (cnd thn els)
   "Two-armed `if'.
 Equivalent to (if CND THN ELS)."
+  (declare (indent defun))
   `(if ,cnd ,thn ,els))
 
 (defmacro notdeft-setq-cons (x v)
@@ -1005,25 +1006,26 @@ is installed locally for NotDeft buffers only."
 
 (defun notdeft-xapian-query-set (new-query)
   "Set NEW-QUERY string as the current Xapian query.
-Refresh `notdeft-all-files' and other state accordingly."
-  (unless (equal notdeft-xapian-query new-query)
-    (setq notdeft-xapian-query new-query)
-    (notdeft-changed/query)
-    (let* ((n (length notdeft-all-files))
-	   (is-none (= n 0))
-	   (is-max (and (> notdeft-xapian-max-results 0)
-			(= n notdeft-xapian-max-results)))
-	   (found (cond
-		   (is-max (format "Found maximum of %d notes" n))
-		   (is-none "Found no notes")
-		   (t (format "Found %d notes" n))))
-	   (shown (cond
-		   (is-none "")
-		   (notdeft-filter-string
-		     (format ", showing %d of them"
-			     (length notdeft-current-files)))
-		   (t ", showing all of them"))))
-      (message (concat found shown)))))
+Refresh `notdeft-all-files' and other state accordingly, as
+`notdeft-changed/query' does it. Additionally, display a message
+summarizing some statistics about the results shown."
+  (setq notdeft-xapian-query new-query)
+  (notdeft-changed/query)
+  (let* ((n (length notdeft-all-files))
+	 (is-none (= n 0))
+	 (is-max (and (> notdeft-xapian-max-results 0)
+		      (= n notdeft-xapian-max-results)))
+	 (found (cond
+		 (is-max (format "Found maximum of %d notes" n))
+		 (is-none "Found no notes")
+		 (t (format "Found %d notes" n))))
+	 (shown (cond
+		 (is-none "")
+		 (notdeft-filter-string
+		  (format ", showing %d of them"
+			  (length notdeft-current-files)))
+		 (t ", showing all of them"))))
+    (message (concat found shown))))
 
 (defun notdeft-no-directory-message ()
   "Return an `notdeft-directories'-do-not-exist message.
@@ -1626,8 +1628,8 @@ With a prefix argument PFX, also clear any Xapian query."
     (setq notdeft-xapian-query nil)
     (notdeft-changed/query))
    (notdeft-filter-string
-     (setq notdeft-filter-string nil)
-     (notdeft-changed/filter))))
+    (setq notdeft-filter-string nil)
+    (notdeft-changed/filter))))
 
 (defun notdeft-filter (str)
   "Set the filter string to STR and update the file browser."
@@ -1949,15 +1951,19 @@ FILENAME is a non-directory filename, with an extension
       (notdeft-find-file fn))))
 
 ;;;###autoload
-(defun notdeft-open-query (&optional query)
+(defun notdeft-open-query (&optional query rank)
   "Open NotDeft with an Xapian search query.
 If called interactively, read a search query interactively.
-Non-interactively, the QUERY may be given as an argument.
-Create a `notdeft-buffer' if one does not yet exist,
-otherwise merely switch to the existing NotDeft buffer."
-  (interactive)
+Non-interactively, the QUERY may be given as an argument. With a
+non-nil RANK, have results ranked by relevance; interactively, a
+prefix argument will set this option. Create a `notdeft-buffer'
+if one does not yet exist, otherwise merely switch to the
+existing NotDeft buffer."
+  (interactive "i\nP")
   (when notdeft-xapian-program
-    (let ((query (or query (notdeft-xapian-read-query))))
+    (let ((query (or query (notdeft-xapian-read-query)))
+	  (notdeft-xapian-order-by-time
+	   (if rank nil notdeft-xapian-order-by-time)))
       (notdeft)
       (notdeft-xapian-query-set query))))
 
