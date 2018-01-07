@@ -923,8 +923,7 @@ or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
     (cl-case what
       (dirs
        (notdeft-setq-non-nil
-	dirs
-	(mapcar 'notdeft-directories-member things)))
+	dirs (mapcar 'notdeft-directories-member things)))
       (files
        (dolist (file things)
 	 (let ((dir (notdeft-dir-of-file file)))
@@ -1292,7 +1291,10 @@ FILE need not actually exist for this predicate to hold."
 (defun notdeft-file-member (file list)
   "Whether FILE is a member of LIST.
 Return the matching member of the list, or nil."
-  (cl-some (lambda (elem) (file-equal-p file elem) elem) list))
+  (cl-some (lambda (elem)
+	     (when (file-equal-p file elem)
+	       elem))
+	   list))
 
 (defun notdeft-directories-member (file)
   "Whether FILE is a NotDeft directory.
