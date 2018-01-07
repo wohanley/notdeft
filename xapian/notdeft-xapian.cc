@@ -173,6 +173,10 @@ static int doIndex(vector<string> subArgs) {
   TCLAP::SwitchArg
     resetArg("r", "recreate", "recreate database", false);
   cmdLine.add(resetArg);
+  TCLAP::ValueArg<int>
+    titleArg("t", "title-wdf", "title importance (default: 10)",
+	    false, 10, "wdf_inc");
+  cmdLine.add(titleArg);
   TCLAP::SwitchArg
     verboseArg("v", "verbose", "be verbose", false);
   cmdLine.add(verboseArg);
@@ -272,16 +276,20 @@ static int doIndex(vector<string> subArgs) {
 		  // non Org header mode
 		  if (!titleDone) {
 		    indexer.index_text(line, 1, "S");
+		    indexer.index_text(line, titleArg.getValue());
+		    indexer.increase_termpos();
+		  } else {
+		    indexer.index_text(line);
 		  }
-		  do {
+		  while (getline(infile, line)) {
 		    //cerr << "body line: '" << line << "'" << endl;
 		    indexer.index_text(line);
-		  } while (getline(infile, line));
+		  }
 		  break;
 		} else if (string_starts_with(line, "#+TITLE:")) {
 		  string s = line.substr(8);
 		  indexer.index_text(s, 1, "S");
-		  indexer.index_text(s);
+		  indexer.index_text(s, titleArg.getValue());
 		  indexer.increase_termpos();
 		  titleDone = true;
 		} else if (string_starts_with(line, "#+KEYWORDS:") ||
