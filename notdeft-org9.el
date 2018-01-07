@@ -12,23 +12,16 @@
 
 ;; The `org-link-set-parameters' API is available since Org version 9,
 ;; in the `org' feature; you probably want to load this `notdeft-org9'
-;; feature when you load Org itself. This feature requires some
-;; NotDeft definitions, which you get loaded on-demand with
-;; `notdeft-autoloads'.
+;; feature when you load Org itself.
 
 ;;; Code:
 
 (require 'org)
+(require 'notdeft-autoloads)
 
 ;; avoid warning if compiling with an earlier Org version
 (declare-function org-link-set-parameters "org" t t)
   
-(declare-function notdeft-open-file-by-basename "notdeft")
-(declare-function notdeft-make-basename-list "notdeft")
-(declare-function notdeft-file-by-basename "notdeft")
-(declare-function notdeft-chomp-nullify "notdeft")
-(declare-function notdeft-title-from-file-content "notdeft")
-
 (org-link-set-parameters
  "deft"
  :follow #'notdeft-org-open-deft-link
@@ -92,7 +85,6 @@ The PFX argument is as for `notdeft-insert-org-link'."
 
 (eval-when-compile
   (defvar notdeft-xapian-query))
-(declare-function notdeft-open-query "notdeft")
 
 (org-link-set-parameters
  "notdeft"

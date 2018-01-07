@@ -9,9 +9,11 @@
 ;;; Commentary:
 ;; A keymap of NotDeft commands usable from outside `notdeft-mode'. It is
 ;; bound both as a variable and a function, to the name
-;; `notdeft-global-name'.
+;; `notdeft-global-map'.
 
 ;;; Code:
+
+(require 'notdeft-autoloads)
 
 (defvar notdeft-global-map
   (let ((map (make-sparse-keymap)))
