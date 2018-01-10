@@ -250,6 +250,12 @@ This is body text.
   #+END_SRC
   after which the command =[f6] o= should invoke the =notdeft-open-query= command in any mode that does not override the binding for F6 with something else.
 
+  Alternatively, if it seems hard to remember those commands, one may wish to have a command selection dialog, similar to the one in [[https://magit.vc/][Magit]]. For implementing such “helpful” key bindings, one can use [[https://magit.vc/manual/magit-popup.html][Magit-Popup]] or [[https://github.com/abo-abo/hydra][Hydra]], for instance. As an example, NotDeft includes a predefined hydra for its mode-agnostic commands, provided by the =notdeft-global-hydra= feature. To bind =[f6]= to the hydra (instead of the =notdeft-global-map= keymap directly), one can use the configuration code 
+  #+BEGIN_SRC emacs-lisp
+    (autoload 'notdeft-global-hydra/body "notdeft-global-hydra" nil t)
+    (global-set-key [f6] 'notdeft-global-hydra/body)
+  #+END_SRC
+
 * Quick Note Capture
 
   To quickly create a new note file from any buffer, you can use

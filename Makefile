@@ -1,11 +1,14 @@
 default : compile
 
+# override this to add custom load paths to the required libraries, or perhaps to load the init file with `emacs --batch -l ~/.emacs`
+EMACS_BATCH := emacs --batch
+
 -include local.mk
 
 all : autoloads compile
 
 compile :
-	emacs --batch -L . -f batch-byte-compile $(filter-out %-pkg.el, $(wildcard *.el))
+	$(EMACS_BATCH) -L . -f batch-byte-compile $(filter-out %-pkg.el, $(wildcard *.el))
 
 autoloads :
 	emacs --batch -L . --eval '(update-file-autoloads "notdeft.el" t (expand-file-name "notdeft-autoloads.el"))'

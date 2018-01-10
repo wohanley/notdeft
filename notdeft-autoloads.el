@@ -5,8 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23121 22075 717445
-;;;;;;  924000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23126 15172 25259 233000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -58,6 +57,13 @@ Enable NotDeft note minor mode before saving.
 The PREFIX argument is passed to `save-buffer'.
 
 \(fn PREFIX)" t nil)
+
+(autoload 'notdeft-switch-to-buffer "notdeft" "\
+Switch to an existing NotDeft note buffer.
+The list of choices is determined by the function
+`notdeft-note-mode-buffers'.
+
+\(fn)" t nil)
 
 (autoload 'notdeft-find-file "notdeft" "\
 Edit NotDeft note FILE.
@@ -158,6 +164,11 @@ but only with a prefix argument PFX.
 Open the selected note's Deft directory in Deft.
 Do that only when the command `deft' is available. This
 implementation makes assumptions about Deft.
+
+\(fn)" t nil)
+
+(autoload 'notdeft-show-file-directory "notdeft" "\
+Show NotDeft directory of the selected note.
 
 \(fn)" t nil)
 

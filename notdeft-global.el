@@ -36,6 +36,7 @@
     (define-key map (kbd "e") 'notdeft)
     (define-key map (kbd "x d") 'notdeft-open-in-deft)
     (define-key map (kbd "C-j") 'notdeft-chdir)
+    (define-key map (kbd "i") 'notdeft-show-file-directory)
     (define-key map (kbd "C-g") 'notdeft-refresh)
     map)
   "Global keymap for NotDeft.

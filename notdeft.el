@@ -1103,11 +1103,13 @@ NotDeft note minor mode has been enabled, and thus the variable
 	    buffer)))
    (buffer-list) t))
 
+;;;###autoload
 (defun notdeft-switch-to-buffer ()
   "Switch to an existing NotDeft note buffer.
 The list of choices is determined by the function
 `notdeft-note-mode-buffers'."
   (interactive)
+  (notdeft-ensure-init)
   (let ((buffers (notdeft-note-mode-buffers)))
     (cond
      ((not buffers)
@@ -1335,6 +1337,14 @@ Otherwise return nil."
       "No file selected"
     "Not in a file buffer"))
 
+(defun notdeft-select-file ()
+  "Open the selected file, if any."
+  (interactive)
+  (let ((old-file (notdeft-current-filename)))
+    (if (not old-file)
+	(message (notdeft-no-selected-file-message))
+      (notdeft-find-file old-file))))
+
 ;;;###autoload
 (defun notdeft-delete-file (prefix)
   "Delete the selected or current NotDeft note file.
@@ -1557,6 +1567,18 @@ implementation makes assumptions about Deft."
 	      (when re-init
 		(deft-refresh)))))))))
 
+;;;###autoload
+(defun notdeft-show-file-directory ()
+  "Show NotDeft directory of the selected note."
+  (interactive)
+  (let ((old-file (notdeft-current-filename)))
+    (if (not old-file)
+	(message (notdeft-no-selected-file-message))
+      (let ((dir (notdeft-dir-of-notdeft-file old-file)))
+	(if (not dir)
+	    (message "Not on a NotDeft file")
+	  (message "%s" dir))))))
+
 (defun notdeft-show-file-info ()
   "Show information about the selected note.
 Show filename, title, summary, etc."
@@ -1732,7 +1754,7 @@ More specifically, delete obsolete cached file information."
     (define-key map (kbd "M-DEL") 'notdeft-filter-decrement-word)
     (define-key map (kbd "<C-S-backspace>") 'notdeft-filter-clear)
     ;; File management
-    (define-key map (kbd "C-c i") 'notdeft-show-file-info)
+    (define-key map (kbd "C-c I") 'notdeft-show-file-info)
     (define-key map (kbd "C-c p") 'notdeft-show-file-parse)
     (define-key map (kbd "C-c P") 'notdeft-show-find-file-parse)
     ;; Miscellaneous
