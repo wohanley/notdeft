@@ -993,12 +993,12 @@ is installed locally for NotDeft buffers only."
       (notdeft-set-pending-updates 'redraw)))
   (notdeft-changed/window))
 
-(defun notdeft-xapian-query-edit ()
+(defun notdeft-query-edit ()
   "Enter a Xapian query string, and make it current."
   (interactive)
   (notdeft-xapian-query-set (notdeft-xapian-read-query)))
 
-(defun notdeft-xapian-query-clear ()
+(defun notdeft-query-clear ()
   "Clear current Xapian query string."
   (interactive)
   (notdeft-xapian-query-set nil))
@@ -1767,9 +1767,9 @@ More specifically, delete obsolete cached file information."
     ;; Xapian
     (when notdeft-xapian-program
       (define-key map (kbd "C-c R") 'notdeft-xapian-re-index)
-      (define-key map (kbd "<tab>") 'notdeft-xapian-query-edit)
-      (define-key map (kbd "<backtab>") 'notdeft-xapian-query-clear)
-      (define-key map (kbd "<S-tab>") 'notdeft-xapian-query-clear))
+      (define-key map (kbd "<tab>") 'notdeft-query-edit)
+      (define-key map (kbd "<backtab>") 'notdeft-query-clear)
+      (define-key map (kbd "<S-tab>") 'notdeft-query-clear))
     (let ((parent-map (make-sparse-keymap)))
       (define-key parent-map (kbd "C-c") 'notdeft-global-map)
       (set-keymap-parent map parent-map)

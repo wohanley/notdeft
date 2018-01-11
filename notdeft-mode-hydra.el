@@ -28,6 +28,8 @@
 
 (declare-function notdeft-select-file "notdeft")
 (declare-function notdeft-gc "notdeft")
+(declare-function notdeft-query-edit "notdeft")
+(declare-function notdeft-query-clear "notdeft")
 (declare-function notdeft-xapian-re-index "notdeft")
 (declare-function notdeft-filter "notdeft")
 (declare-function notdeft-filter-clear "notdeft")
@@ -55,6 +57,9 @@
     ;; filtering
     ("l" notdeft-filter "filter" :exit t)
     ("c" notdeft-filter-clear "clear filter")
+    ;; querying
+    ("o" notdeft-query-edit "query")
+    ("O" notdeft-query-clear "clear query")
     ;; movement
     ("<up>" previous-line)
     ("<down>" next-line)
