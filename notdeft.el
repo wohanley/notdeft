@@ -1991,16 +1991,55 @@ existing NotDeft buffer."
       (notdeft)
       (notdeft-xapian-query-set query))))
 
+(defun notdeft-select-file/ido/nondirectory (files &optional prompt)
+  "Present a choice of FILES with `ido-completing-read'.
+Only present the non-directory component of each file.
+There may be duplicates of the same non-directory name.
+If given, use the specified PROMPT."
+  (let ((choices
+	 (mapcar
+	  (lambda (file)
+	    (propertize (file-name-nondirectory file) 'path file))
+	  files)))
+    (let ((file
+	   (get-text-property
+	    0 'path
+	    (ido-completing-read (or prompt "File: ") choices nil t))))
+      file)))
+
 ;;;###autoload
-(defun notdeft-lucky-find-file ()
-  "Open the highest-ranked note matching a search query.
-Read the query interactively, accounting for `notdeft-xapian-query-history'.
-Open the file directly, without switching to any `notdeft-buffer'."
-  (interactive)
+(defun notdeft-query-ido-find-file (&optional query)
+  "Open one of the files matching Xapian search QUERY.
+If called interactively, read a search query interactively,
+accounting for `notdeft-xapian-query-history'. If there is more
+than one match, present a choice list of non-directory filenames
+with `ido-completing-read', ordering the choices by relevance."
+  (interactive (list (notdeft-xapian-read-query)))
   (when notdeft-xapian-program
     (notdeft-ensure-init)
-    (let* ((query (notdeft-xapian-read-query))
-	   (notdeft-xapian-order-by-time nil)
+    (let* ((notdeft-xapian-order-by-time nil)
+	   (files (notdeft-xapian-search notdeft-directories query)))
+      (cond
+       ((not files)
+	(message "No matching notes found"))
+       ((null (cdr files))
+	(notdeft-find-file (car files)))
+       (t
+	(let ((file
+	       (notdeft-select-file/ido/nondirectory files)))
+	  (when file
+	    (notdeft-find-file file))))))))
+    
+;;;###autoload
+(defun notdeft-lucky-find-file (&optional query)
+  "Open the highest-ranked note matching a search QUERY.
+If called interactively, read a search query interactively,
+accounting for `notdeft-xapian-query-history'.
+Open the file directly, without switching to any `notdeft-buffer'."
+  (interactive (list (notdeft-xapian-read-query)))
+  (when notdeft-xapian-program
+    (notdeft-ensure-init)
+    (let* ((notdeft-xapian-order-by-time nil)
 	   (notdeft-xapian-max-results 1)
 	   (files (notdeft-xapian-search notdeft-directories query)))
       (if (not files)

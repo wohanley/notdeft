@@ -5,7 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23126 15172 25259 233000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23127 60489 766231
+;;;;;;  763000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -233,12 +234,22 @@ existing NotDeft buffer.
 
 \(fn &optional QUERY RANK)" t nil)
 
+(autoload 'notdeft-query-ido-find-file "notdeft" "\
+Open one of the files matching Xapian search QUERY.
+If called interactively, read a search query interactively,
+accounting for `notdeft-xapian-query-history'. If there is more
+than one match, present a choice list of non-directory filenames
+with `ido-completing-read', ordering the choices by relevance.
+
+\(fn &optional QUERY)" t nil)
+
 (autoload 'notdeft-lucky-find-file "notdeft" "\
-Open the highest-ranked note matching a search query.
-Read the query interactively, accounting for `notdeft-xapian-query-history'.
+Open the highest-ranked note matching a search QUERY.
+If called interactively, read a search query interactively,
+accounting for `notdeft-xapian-query-history'.
 Open the file directly, without switching to any `notdeft-buffer'.
 
-\(fn)" t nil)
+\(fn &optional QUERY)" t nil)
 
 (autoload 'notdeft-list-files-by-query "notdeft" "\
 Return a list of files matching Xapian QUERY.

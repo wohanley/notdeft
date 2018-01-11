@@ -32,6 +32,7 @@
     ;; Xapian search
     (define-key map (kbd "f") 'notdeft-lucky-find-file)
     (define-key map (kbd "o") 'notdeft-open-query)
+    (define-key map (kbd "O") 'notdeft-query-ido-find-file)
     ;; Miscellaneous
     (define-key map (kbd "e") 'notdeft)
     (define-key map (kbd "x d") 'notdeft-open-in-deft)
