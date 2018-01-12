@@ -127,9 +127,11 @@ The key differences of NotDeft are:
 ** Query Modifiers
 
    The following custom query syntax is supported:
-   - =!all= :: Prefix a query with =!all= to show all matching results.
-   - =!time= and =!rank= :: Prefix a query with =!time= to have results sorted by file modification time, or with =!rank= to have them sorted by relevance, regardless of the =notdeft-xapian-order-by-time= setting.
-   - =!file= :: Prefix a query with =!file= to have results sorted by (non-directory) file name. (This modifier does not affect ranking: the best results are still chosen according to modification time or relevance.)
+   - =!time= :: Prefix a query with =!time= to have the results sorted by decreasing file modification time, even if the =notdeft-xapian-order-by-time= configuration option is disabled.
+   - =!rank= :: Prefix a query with =!rank= to have the results sorted by decreasing relevance, regardless of the =notdeft-xapian-order-by-time= setting.
+   - =!file= :: Prefix a query with =!file= to have results sorted by (non-directory) file name, alphabetically, in decreasing order. Overrides all of the other sorting settings and modifiers.
+   - =!all= :: Prefix a query with =!all= to show /all/ matching results. Note that unless you specify this modifier, the contents of a query result list may differ depending on how the results are sorted, since less highly ranked notes may get excluded.
+
    A space character must be used to separate the above keywords from the rest of the query string.
 
    The =!file= modifier might be useful for instance when you have file names such as “2017-01-01-0001.JPG” and “2017-09-19-0123.JPG”, and you would like to see them in chronological order by “creation time”, even if some of the files have been edited, and consequently have had their modification times changed.

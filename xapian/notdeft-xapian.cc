@@ -100,7 +100,9 @@ string file_join(const string& x, const string& y) {
     return x + y;
   return x + "/" + y;
 }
-  
+
+/** Return the non-directory component of pathname `s`, or return `s`
+    itself if `s` has no directory components. */
 string file_non_directory(const string& s) {
   auto found = s.find_last_of('/');
   if (found == string::npos)
@@ -108,6 +110,8 @@ string file_non_directory(const string& s) {
   return string(s.substr(found + 1));
 }
 
+/** Return the non-directory component of `s`, with its last extension
+    (if any) removed. */
 string file_basename(const string& s) {
   auto basename = file_non_directory(s);
   auto found = basename.find_last_of('.');
@@ -116,6 +120,8 @@ string file_basename(const string& s) {
   return string(basename.substr(0, found));
 }
 
+/** Return the last filename extension of `s`, with its leading ".",
+    or return "" if `s` has no extension. */
 string file_extension(const string& s) {
   auto basename = file_non_directory(s);
   auto found = basename.find_last_of('.');
@@ -151,6 +157,7 @@ static void usage()
 }
 
 static constexpr Xapian::valueno DOC_MTIME = 0;
+static constexpr Xapian::valueno DOC_FILENAME = 1;
 
 static int doIndex(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine
@@ -250,13 +257,15 @@ static int doIndex(vector<string> subArgs) {
 	    Xapian::Document doc;
 	    doc.set_data(filePath);
 	    doc.add_value(DOC_MTIME, time_serialize(x.second));
+	    const string fileNonDir = file_non_directory(filePath);
+	    doc.add_value(DOC_FILENAME, fileNonDir);
 	    indexer.set_document(doc);
 	    {
-	      const string& fileBase = file_basename(filePath);
+	      const string fileBase = file_basename(fileNonDir);
 	      indexer.index_text(fileBase, 1, "F");
 	    }
 	    {
-	      string fileExt = file_extension(filePath);
+	      string fileExt = file_extension(fileNonDir);
 	      if (!fileExt.empty()) {
 		fileExt = fileExt.substr(1);
 	      }
@@ -391,6 +400,9 @@ static int doSearch(vector<string> subArgs) {
     timeArg("t", "time-sort", "sort by modification time", false);
   cmdLine.add(timeArg);
   TCLAP::SwitchArg
+    nameArg("f", "name-sort", "sort by file name (overrides '-t')", false);
+  cmdLine.add(nameArg);
+  TCLAP::SwitchArg
     verboseArg("v", "verbose", "be verbose", false);
   cmdLine.add(verboseArg);
   TCLAP::SwitchArg
@@ -406,6 +418,7 @@ static int doSearch(vector<string> subArgs) {
   cmdLine.parse(subArgs);
   
   auto maxDocCount = countArg.getValue();
+  bool nameSort = nameArg.getValue();
   bool timeSort = timeArg.getValue();
   auto verbose = verboseArg.getValue();
   
@@ -426,7 +439,9 @@ static int doSearch(vector<string> subArgs) {
       return 0;
     
     Xapian::Enquire enquire(db);
-    if (timeSort) // by modification time, descending
+    if (nameSort) // by filename, descending
+      enquire.set_sort_by_value(DOC_FILENAME, true);
+    else if (timeSort) // by modification time, descending
       enquire.set_sort_by_value(DOC_MTIME, true);
 
     Xapian::QueryParser qp;

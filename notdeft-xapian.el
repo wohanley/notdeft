@@ -36,7 +36,9 @@ No limit if 0."
   :group 'notdeft)
 
 (defcustom notdeft-xapian-order-by-time t
-  "Whether to order file list by decreasing modification time."
+  "Whether to order file list by decreasing modification time.
+Otherwise order by decreasing relevance, unless overridden by
+a query modifier."
   :type 'boolean
   :safe 'booleanp
   :group 'notdeft)
@@ -114,15 +116,16 @@ The return value is as for `call-process'."
 
 (defun notdeft-xapian-search (dirs &optional query)
   "On the Xapian indexes in DIRS, perform the search QUERY.
-I.e., perform the query in terms of the Xapian indexes
-in the specified DIRS. Where a query is not specified,
-use a query that matches any file, and in that case
-results are ordered by file timestamp regardless of
-the value of the variable `notdeft-xapian-order-by-time'.
-Return at most `notdeft-xapian-max-results' results, as
-pathnames of the matching files. Sort the results
-based on file modification time, most recent first."
+I.e., perform the query in terms of the Xapian indexes in the
+specified DIRS. Where a query is not specified, use a query that
+matches any file, and in that case consider
+`notdeft-xapian-order-by-time' to be true. Return at most
+`notdeft-xapian-max-results' results, as pathnames of the
+matching files. Sort by relevance, modification time, or
+non-directory filename, all descending, based on the
+`notdeft-xapian-order-by-time' setting and any query modifiers."
   (let ((time-sort (if query notdeft-xapian-order-by-time t))
+	(name-sort nil)
 	(max-results notdeft-xapian-max-results)
 	name-sort)
     (when query
@@ -138,6 +141,7 @@ based on file modification time, most recent first."
     (let* ((s (shell-command-to-string
 	       (concat
 		(shell-quote-argument notdeft-xapian-program) " search"
+		(if name-sort " --name-sort" "")
 		(if time-sort " --time-sort" "")
 		" --lang " (shell-quote-argument notdeft-xapian-language)
 		(if notdeft-xapian-boolean-any-case
@@ -160,20 +164,7 @@ based on file modification time, most recent first."
 	     (lambda (file)
 	       (expand-file-name file "~"))
 	     (split-string s "\n" t))))
-      (if name-sort
-	  (notdeft-sort-files-by-name files)
-	files))))
-
-(defun notdeft-sort-files-by-name (files)
-  "Sort FILES alphabetically by non-directory name.
-Return the file names in decreasing order."
-  (let* ((lst (mapcar (lambda (file)
-		       (cons (file-name-nondirectory file) file))
-		     files))
-	 (lst (sort lst (lambda (x y)
-			  (string-lessp (car y) (car x)))))
-	 (lst (mapcar 'cdr lst)))
-    lst))
+      files)))
 
 (provide 'notdeft-xapian)
 
