@@ -22,6 +22,7 @@
     (define-key map (kbd "C-m") 'notdeft-new-file-named)
     (define-key map (kbd "C-f") 'notdeft-find-file)
     (define-key map (kbd "C-w") 'notdeft-save-buffer)
+    (define-key map (kbd "b") 'notdeft-switch-to-buffer)
     ;; File management
     (define-key map (kbd "C-d") 'notdeft-delete-file)
     (define-key map (kbd "C-r") 'notdeft-rename-file)

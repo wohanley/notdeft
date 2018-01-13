@@ -224,39 +224,60 @@ This is body text.
   : (setq notdeft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
   Now, whenever you =notdeft-refresh=, your recomputation of =notdeft-directories= will also re-evaluate any such code forms.
 
-* Invoking NotDeft from Another Mode
+* Using NotDeft from Outside NotDeft Mode
 
-  To quickly find relevant notes when in another buffer, you might use
-  : M-x notdeft-open-query
-  which then interactively asks for a search query for opening up in a NotDeft buffer. That command can of course be bound onto a key.
+Several of NotDeft's commands are autoloadable, and may be invoked from outside a =*NotDeft*= buffer. For example, to quickly find relevant notes when in another buffer, you might use
+: M-x notdeft-open-query
+which then interactively asks for a search query for opening up in a NotDeft buffer. That command can of course be bound onto a key.
 
-  You might also implement additional commands in terms of the above, for example for quickly listing documents tagged in a certain way:
-  #+BEGIN_SRC emacs-lisp
-(defun my-open-todo-notes ()
-  (interactive)
-  (notdeft-open-query "tag:todo"))
-  #+END_SRC
+A command similar to =notdeft-open-query= is
+: M-x notdeft-lucky-find-file
+which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*NotDeft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
 
-  A command similar to =notdeft-open-query= is
-  : M-x notdeft-lucky-find-file
-  which also asks for a search query, but then proceeds to open up the most highly ranked result file directly, without going via a =*NotDeft*= buffer. This command is similar to =find-file= in Emacs, but avoids having to specify the path of the file you're interested in; instead, this approach to “file finding” relies on sufficiently unique titling or tagging of the notes involved.
-
-  The =notdeft-rename-file= command can be useful for renaming a note file that was perhaps created without a proper name (e.g., by using =C-c C-n=). Having written a note in a current buffer, issue the command
-  : C-u M-x notdeft-rename-file
-  to enter a new basename for the file of that buffer. The =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. The same command also works in a =*NotDeft*= buffer, affecting the currently selected file.
-
-  The NotDeft commands that are usable from outside =notdeft-mode= might be bound to key combinations for convenient access. To facilitate this, NotDeft provides a =notdeft-global= feature, which exports a keymap for those commands. That keymap can be bound to a prefix key. For example:
-  #+BEGIN_SRC emacs-lisp
+NotDeft commands that are usable from outside =notdeft-mode= might be bound to key combinations for convenient access. To facilitate this, NotDeft provides a =notdeft-global= feature, which exports a keymap for such commands. That keymap can be bound to a prefix key. For example:
+#+BEGIN_SRC emacs-lisp
 (require 'notdeft-global)
 (global-set-key [f6] 'notdeft-global-map)
-  #+END_SRC
-  after which the command =[f6] o= should invoke the =notdeft-open-query= command in any mode that does not override the binding for F6 with something else.
+#+END_SRC
+after which the command =[f6] o= should invoke the =notdeft-open-query= command in any mode that does not override the binding for F6 with something else.
 
-  Alternatively, if it seems hard to remember those commands, one may wish to have a command selection dialog, similar to the one in [[https://magit.vc/][Magit]]. For implementing such “helpful” key bindings, one can use [[https://magit.vc/manual/magit-popup.html][Magit-Popup]] or [[https://github.com/abo-abo/hydra][Hydra]], for instance. As an example, NotDeft includes a predefined hydra for its mode-agnostic commands, provided by the =notdeft-global-hydra= feature. To bind =[f6]= to the hydra (instead of the =notdeft-global-map= keymap directly), one can use the configuration code 
-  #+BEGIN_SRC emacs-lisp
-    (autoload 'notdeft-global-hydra/body "notdeft-global-hydra" nil t)
-    (global-set-key [f6] 'notdeft-global-hydra/body)
-  #+END_SRC
+** Access from NotDeft Note Buffers
+
+Some of NotDeft's commands have specific support for use from within NotDeft note buffers. For example, the =notdeft-rename-file= command can be useful for renaming a note file that was perhaps created without a proper name (e.g., by using =C-c C-n=). Having written a note in a current buffer, issue the command
+: M-x notdeft-rename-file
+to enter a new basename for the file of that buffer. Any =C-u= prefix causes the default value to be derived from the title of the note, as extracted from the buffer contents. (The same command also works in a =*NotDeft*= buffer, affecting the currently selected file.)
+
+NotDeft also defines a =notdeft-note-mode= minor mode, whose sole purpose is to take care of keeping NotDeft's knowledge of the note collection up to date. Whenever a note file is saved, =notdeft-note-mode= sees to it that the search index is updated with the new file contents. If a note file is opened by a command that is not NotDeft aware (e.g., =org-cycle-agenda-files=), that command may not enable the minor mode. A possible solution is to try enabling =notdeft-note-mode= for every NotDeft directory in terms of [[https://www.gnu.org/software/emacs/manual/html%255Fnode/emacs/Directory-Variables.html][per-directory local variables]]. For example, have your “.dir-locals.el” file state
+#+BEGIN_SRC emacs-lisp
+((org-mode . ((mode . org)
+              (mode . notdeft-note))))
+#+END_SRC
+This way of declaring both a major and minor =mode= appears to work at least in some versions of Emacs.
+
+** Programmatic NotDeft Access
+
+You might also implement additional commands in terms of the globally accessible commands and Emacs Lisp functions, for example for quickly listing documents tagged in a certain way:
+#+BEGIN_SRC emacs-lisp
+  (defun my-open-todo-notes ()
+    (interactive)
+    (notdeft-open-query "tag:todo"))
+#+END_SRC
+An intended use case for NotDeft is to support other applications that wish to locate files in terms of search queries instead of path names.
+
+* Command Popup Buffers
+
+If it seems hard to remember the various NotDeft commands, one may wish to have a command selection dialog, similar to the one in [[https://magit.vc/][Magit]]. For implementing such “helpful key bindings,” one can use [[https://magit.vc/manual/magit-popup.html][Magit-Popup]] or [[https://github.com/abo-abo/hydra][Hydra]], for instance. As an example, NotDeft includes a predefined hydra for its mode-agnostic commands, provided by the =notdeft-global-hydra= feature. To bind =[f6]= to the hydra (instead of the =notdeft-global-map= keymap directly), one can use the configuration code 
+#+BEGIN_SRC emacs-lisp
+  (autoload 'notdeft-global-hydra/body "notdeft-global-hydra" nil t)
+  (global-set-key [f6] 'notdeft-global-hydra/body)
+#+END_SRC
+
+There is also an optional hydra for =notdeft-mode=, which can be made available with code such as
+#+BEGIN_SRC emacs-lisp
+  (autoload 'notdeft-mode-hydra/body "notdeft-mode-hydra")
+  (eval-after-load "notdeft"
+    '(define-key notdeft-mode-map (kbd "C-c h") 'notdeft-mode-hydra/body))
+#+END_SRC
 
 * Quick Note Capture
 
