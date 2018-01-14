@@ -1513,8 +1513,16 @@ only if given a prefix argument PFX. Moving an external
   (let ((old-file (notdeft-current-filename)))
     (if (not old-file)
 	(message (notdeft-no-selected-file-message))
-      (let ((new-root (file-name-as-directory (notdeft-select-directory)))
-	    (old-root (notdeft-dir-of-notdeft-file old-file)))
+      (let* ((old-root (notdeft-dir-of-notdeft-file old-file))
+	     (new-root
+	      (file-name-as-directory
+	       (notdeft-select-directory ;; exclude any `old-root'
+		(if (not old-root)
+		    notdeft-directories
+		  (cl-delete-if (lambda (dir)
+				  (file-equal-p dir old-root))
+				notdeft-directories))
+		nil t))))
 	(when (or (not old-root)
 		  (not (file-equal-p new-root old-root)))
 	  (let ((moved-file (notdeft-sub-move-file old-file new-root pfx)))
@@ -1924,12 +1932,13 @@ Return CHOICES as is if there are no matching elements."
     (if ix (drop-nth-cons ix choices) choices)))
 
 ;;;###autoload
-(defun notdeft-select-directory (&optional dirs prompt)
+(defun notdeft-select-directory (&optional dirs prompt confirm)
   "Select a NotDeft directory, possibly interactively.
 If DIRS is non-nil, select from among those directories;
 otherwise select from `notdeft-directories'.
 Use the specified PROMPT in querying, if given.
-Return the selected directory, or error out."
+Return the selected directory, or error out.
+If CONFIRM is non-nil, query even if there is a single choice."
   (let ((roots (or dirs notdeft-directories)))
     (if (not roots)
 	(error "No specified NotDeft data directories")
@@ -1937,7 +1946,7 @@ Return the selected directory, or error out."
 	(cond
 	 ((not lst)
 	  (error "No existing NotDeft data directories"))
-	 ((= (length lst) 1)
+	 ((and (not confirm) (= (length lst) 1))
 	  (car lst))
 	 (t
 	  (when notdeft-directory

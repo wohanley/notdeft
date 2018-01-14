@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23127 60489 766231
-;;;;;;  763000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23131 31325 786863
+;;;;;;  132000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -207,8 +207,9 @@ If DIRS is non-nil, select from among those directories;
 otherwise select from `notdeft-directories'.
 Use the specified PROMPT in querying, if given.
 Return the selected directory, or error out.
+If CONFIRM is non-nil, query even if there is a single choice.
 
-\(fn &optional DIRS PROMPT)" nil nil)
+\(fn &optional DIRS PROMPT CONFIRM)" nil nil)
 
 (autoload 'notdeft-chdir "notdeft" "\
 Change `notdeft-directory' according to interactive selection.
