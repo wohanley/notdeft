@@ -307,6 +307,10 @@ Set to nil to hide."
 (defvar notdeft-directories-changed-hook nil
   "Hook run after each change to `notdeft-directories'.")
 
+(defvar notdeft-directories nil
+  "A cache of NotDeft directories corresponding to `notdeft-path'.
+May not have been initialized if nil.")
+
 (defvar notdeft-directory nil
   "Chosen default NotDeft data directory.
 An absolute path, or nil if none.")
@@ -328,10 +332,6 @@ regular expressions) that are required to match.")
 (defvar notdeft-all-files nil
   "List of all files to list or filter.")
 
-(defvar notdeft-directories nil
-  "A cache of NotDeft directories corresponding to `notdeft-path'.
-May not have been initialized if nil.")
-
 (defvar notdeft-hash-contents nil
   "Hash containing complete cached file contents, keyed by filename.")
 
@@ -348,10 +348,10 @@ May not have been initialized if nil.")
   "Width of NotDeft buffer, as currently drawn, or nil.")
 
 (defvar notdeft-pending-updates nil
-  "Whether there are pending updates for `notdeft-buffer'.
-Either nil for no pending updates, `redraw' for a pending refresh
-of the buffer, or `recompute' for a pending recomputation of
-`notdeft-current-files'.")
+  "Whether there are pending updates for NotDeft buffers.
+Either nil for no pending updates, the symbol `redraw' for a
+pending redrawing of the buffer, or the symbol `recompute' for a
+pending recomputation of `notdeft-current-files'.")
 
 ;; NotDeft path and directory
 
@@ -972,16 +972,18 @@ or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
 
 (defun notdeft-changed/window ()
   "Perform any pending operations on a buffer.
-Only do that if the buffer is visible.
+Only do that if a `notdeft-buffer' is visible.
 Update `notdeft-pending-updates' accordingly."
   (when notdeft-pending-updates
     (let ((buf (get-buffer notdeft-buffer)))
-      (when (and buf (get-buffer-window buf 'visible))
-	(when (eq notdeft-pending-updates 'recompute)
-	  (notdeft-filter-update))
-	(with-current-buffer buf
-	  (notdeft-buffer-setup))
-	(setq notdeft-pending-updates nil)))))
+      (if (not buf)
+	  (setq notdeft-pending-updates nil)
+	(when (get-buffer-window buf 'visible)
+	  (when (eq notdeft-pending-updates 'recompute)
+	    (notdeft-filter-update))
+	  (with-current-buffer buf
+	    (notdeft-buffer-setup))
+	  (setq notdeft-pending-updates nil))))))
 
 (defun notdeft-window-configuration-changed ()
   "A `window-configuration-change-hook' for NotDeft.
@@ -1044,7 +1046,7 @@ NotDeft directories whose contents might be listed."
 (define-minor-mode notdeft-note-mode
   "Manage NotDeft state for a note buffer.
 A minor mode that is enabled automatically for notes opened from
-within a `notdeft-buffer'. Does nothing but manage calls to
+within a `notdeft-mode' buffer. Does nothing but manage calls to
 `notdeft-register-buffer' and `notdeft-deregister-buffer'."
   :lighter " ¬D"
   (if notdeft-note-mode
@@ -1095,13 +1097,7 @@ The PREFIX argument is passed to `save-buffer'."
 The list contains references to buffers with for which the
 NotDeft note minor mode has been enabled, and thus the variable
 `notdeft-note-mode' is bound and set."
-  (notdeft-map-drop-false
-   (lambda (buffer)
-     (with-current-buffer buffer
-       (and (boundp notdeft-note-mode)
-	    notdeft-note-mode
-	    buffer)))
-   (buffer-list) t))
+  (notdeft-map-drop-false 'notdeft-note-buffer-p (buffer-list) t))
 
 ;;;###autoload
 (defun notdeft-switch-to-buffer ()
@@ -1303,17 +1299,31 @@ Return the matching member of the list, or nil."
 Return the matching member of `notdeft-directories'."
   (notdeft-file-member file notdeft-directories))
 
-(defun notdeft-buffer-p (&optional buffer)
-  "Whether BUFFER is a `notdeft-buffer'."
-  (eq (or buffer (current-buffer)) (get-buffer notdeft-buffer)))
+(defun notdeft-note-buffer-p (&optional buffer)
+  "Whether BUFFER is a `notdeft-note-mode' buffer.
+Default to `current-buffer' if BUFFER is nil.
+Return the buffer, or nil."
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (when notdeft-note-mode
+	buffer))))
 
-(defun notdeft-get-directory (&optional buffer)
+(defun notdeft-buffer-p (&optional buffer)
+  "Whether BUFFER is a `notdeft-mode' buffer.
+Default to `current-buffer' if BUFFER is nil.
+Return the buffer, or nil."
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (when (eq major-mode 'notdeft-mode)
+	buffer))))
+
+(defun notdeft-get-directory ()
   "Select a NotDeft directory for a new file.
-As appropriate, try to pick a directory based on BUFFER
-\(default: the current buffer) as context information.
-Otherwise, use any `notdeft-directory'.
-All else failing, query using `notdeft-select-directory'."
-  (or (unless (notdeft-buffer-p buffer)
+If in a NotDeft note buffer, and `default-directory' or one of
+its parents is a NotDeft directory, then use that directory.
+Otherwise, use any previously selected `notdeft-directory'. All
+else failing, query using `notdeft-select-directory'."
+  (or (when (notdeft-note-buffer-p)
 	(cl-some
 	 (lambda (root)
 	   (when (file-in-directory-p default-directory root)
@@ -1324,8 +1334,8 @@ All else failing, query using `notdeft-select-directory'."
 	 
 (defun notdeft-current-filename ()
   "Return the current NotDeft note filename.
-In a `notdeft-buffer', return the currently selected file's name.
-Otherwise return the current buffer's file name, if any.
+In a `notdeft-mode' buffer, return the currently selected file's
+name. Otherwise return the current buffer's file name, if any.
 Otherwise return nil."
   (if (notdeft-buffer-p)
       (widget-get (widget-at) :tag)
@@ -1805,9 +1815,9 @@ automatically."
 
 (defun notdeft-ensure-init (&optional reset dir)
   "Initialize NotDeft state unless already initialized.
-If RESET is non-nil, initialize unconditionally.
-The optional argument DIR specifies the initial `notdeft-directory'
-to set, or a function for determining it from among DIRS."
+If RESET is non-nil, initialize unconditionally. The optional
+argument DIR specifies the initial `notdeft-directory' to set, or
+a function for determining it from among `notdeft-directories'."
   (when (or reset (not notdeft-hash-mtimes))
     (notdeft-cache-initialize)
     (setq notdeft-filter-string nil)
@@ -1826,9 +1836,10 @@ to set, or a function for determining it from among DIRS."
       (run-hooks 'notdeft-directories-changed-hook))))
 
 (defun notdeft-mode ()
-  "Major mode for quickly browsing, filtering, and editing plain text notes.
-Turning on `notdeft-mode' runs the hook `notdeft-mode-hook'.
-Only run this function when a `notdeft-buffer' is current.
+  "Major mode for quickly listing and managing plain text notes.
+Turning on `notdeft-mode' runs the hook `notdeft-mode-hook'. Only
+run this function when a buffer named `notdeft-buffer' is
+current.
 
 \\{notdeft-mode-map}"
   (kill-all-local-variables)
@@ -1991,7 +2002,7 @@ Non-interactively, the QUERY may be given as an argument. With a
 non-nil RANK, have results ranked by relevance; interactively, a
 prefix argument will set this option. Create a `notdeft-buffer'
 if one does not yet exist, otherwise merely switch to the
-existing NotDeft buffer."
+existing one."
   (interactive "i\nP")
   (when notdeft-xapian-program
     (let ((query (or query (notdeft-xapian-read-query)))

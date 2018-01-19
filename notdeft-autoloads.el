@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23131 31325 786863
-;;;;;;  132000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23138 24619 190692
+;;;;;;  880000))
 ;;; Generated autoloads from notdeft.el
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
@@ -42,7 +42,7 @@ Optionally, use function TRIM to trim any result string.
 (autoload 'notdeft-note-mode "notdeft" "\
 Manage NotDeft state for a note buffer.
 A minor mode that is enabled automatically for notes opened from
-within a `notdeft-buffer'. Does nothing but manage calls to
+within a `notdeft-mode' buffer. Does nothing but manage calls to
 `notdeft-register-buffer' and `notdeft-deregister-buffer'.
 
 \(fn &optional ARG)" t nil)
@@ -231,7 +231,7 @@ Non-interactively, the QUERY may be given as an argument. With a
 non-nil RANK, have results ranked by relevance; interactively, a
 prefix argument will set this option. Create a `notdeft-buffer'
 if one does not yet exist, otherwise merely switch to the
-existing NotDeft buffer.
+existing one.
 
 \(fn &optional QUERY RANK)" t nil)
 
