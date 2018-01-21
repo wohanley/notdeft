@@ -16,7 +16,7 @@
 ;; To set the hydra up for use, you may:
 ;;  (autoload 'notdeft-mode-hydra/body "notdeft-mode-hydra")
 ;;  (eval-after-load "notdeft"
-;;    '(define-key notdeft-mode-map (kbd "C-c h") 'notdeft-mode-hydra/body))
+;;   '(define-key notdeft-mode-map (kbd "C-c h") 'notdeft-mode-hydra/body))
 ;;
 ;; This feature will define nothing unless the `hydra' feature is
 ;; available.

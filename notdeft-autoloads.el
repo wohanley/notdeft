@@ -5,9 +5,10 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23138 24619 190692
-;;;;;;  880000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23140 9328 580334 590000))
 ;;; Generated autoloads from notdeft.el
+
+(let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
 
 (autoload 'notdeft-title-from-file-content "notdeft" "\
 Extract a title from FILE content.
@@ -18,8 +19,8 @@ Return nil on failure.
 (autoload 'notdeft-file-by-basename "notdeft" "\
 Resolve a NotDeft note NAME to a full pathname.
 NAME is a non-directory filename, with extension.
-Resolve it to the path of a file under a `notdeft-path'
-directory, if such a note file does exist.
+Resolve it to the path of a file under `notdeft-directories',
+if such a note file does exist.
 If multiple such files exist, return one of them.
 If none exist, return nil.
 
@@ -27,7 +28,7 @@ If none exist, return nil.
 
 (autoload 'notdeft-make-basename-list "notdeft" "\
 Return the names of all NotDeft notes.
-Search all existing `notdeft-path' directories.
+Search all existing `notdeft-directories'.
 The result list is sorted by the `string-lessp' relation.
 It may contain duplicates.
 
@@ -111,7 +112,7 @@ Create a new file quickly.
 Create it with an automatically generated name, one based
 on the `notdeft-filter-string' filter string if it is non-nil.
 With a prefix argument PFX, offer a choice of NotDeft
-directories, when `notdeft-path' has more than one of them.
+directories, when there is more than one of them.
 With two prefix arguments, also offer a choice of filename
 extensions when `notdeft-secondary-extensions' is non-empty.
 Return the filename of the created file.
@@ -155,9 +156,9 @@ only if given a prefix argument PFX. Moving an external
 
 (autoload 'notdeft-archive-file "notdeft" "\
 Archive the selected NotDeft note file.
-Archive it under `notdeft-archive-directory', under its NotDeft root directory.
-If it resides in a subdirectory, archive the entire directory,
-but only with a prefix argument PFX.
+Archive it under `notdeft-archive-directory', under its NotDeft
+root directory. If it resides in a subdirectory, archive the
+entire directory, but only with a prefix argument PFX.
 
 \(fn PFX)" t nil)
 
@@ -175,23 +176,23 @@ Show NotDeft directory of the selected note.
 
 (autoload 'notdeft-refresh "notdeft" "\
 Refresh or reset NotDeft state.
-Refresh NotDeft state so that filesystem changes get noticed.
-With a PREFIX argument, reset state, so that caches and queries
-and such are also cleared. Invoke this command manually if
-NotDeft files change outside of NotDeft mode and NotDeft note
-minor mode (as toggled by the command `notdeft-mode' and the
-command `notdeft-note-mode'), as such changes are not detected
-automatically.
+Refresh NotDeft state so that outside filesystem changes get
+noticed. With a non-nil prefix argument RESET, also reset state
+to clear caches and queries and such. Invoke this command
+manually if NotDeft files change outside of NotDeft mode and
+NotDeft note minor mode (as toggled by the command
+`notdeft-mode' and the command `notdeft-note-mode'), as such
+changes are not detected automatically.
 
-\(fn PREFIX)" t nil)
+\(fn &optional RESET)" t nil)
 
 (autoload 'notdeft "notdeft" "\
 Switch to `notdeft-buffer', creating it if not yet created.
-With a PREFIX argument, start NotDeft with fresh state. With two
-PREFIX arguments, also interactively query for an initial choice of
-`notdeft-directory', except where NotDeft has already been initialized.
+With a non-nil prefix argument RESET, start NotDeft with fresh
+state. With two prefix arguments, also interactively query for an
+initial choice of `notdeft-directory'.
 
-\(fn &optional PREFIX)" t nil)
+\(fn &optional RESET)" t nil)
 
 (autoload 'notdeft-read-extension "notdeft" "\
 Read a NotDeft filename extension, interactively.

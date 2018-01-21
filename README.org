@@ -1,13 +1,15 @@
 #+TITLE: NotDeft
 #+AUTHOR: Tero Hasu
 
-/NotDeft/ is an experimental variant of [[http://jblevins.org/projects/deft/][Deft]], an “Emacs mode for quickly browsing, filtering, and editing directories of plain text notes.” This variant is somewhat less configurable than mainline [[https://github.com/jrblevin/deft][Deft]], but (like the [[http://notmuchmail.org/][Notmuch]] Emacs mode for managing email) it features a Xapian backend for efficient free-text search over potentially very large numbers of note files.
+/NotDeft/ is an experimental spin-off of [[http://jblevins.org/projects/deft/][Deft]], an “Emacs mode for quickly browsing, filtering, and editing directories of plain text notes.” NotDeft is less configurable than mainline [[https://github.com/jrblevin/deft][Deft]], but it features a Xapian backend for efficient free-text search over potentially very large numbers of note files; in that respect it is like the [[http://notmuchmail.org/][Notmuch]] Emacs mode for managing email.
 
 The key differences of NotDeft are:
-  1. Rather than supporting a single, customizable =notdeft-directory= (tree) of note files, it supports a customizable =notdeft-path= search path of directory trees.
+  1. Rather than supporting a single, customizable =deft-directory= (tree) of note files, it supports a customizable =notdeft-directories= search path of directory trees.
      - If the search path includes multiple directories, then many file creation and management operations involve choosing a directory, making NotDeft not so deft.
-  2. It supports optional invocation of a =notdeft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all directory trees on =notdeft-path=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in Deft).
+  2. It supports optional invocation of a =notdeft-xapian-program=, which uses the [[http://xapian.org/][Xapian]] library to implement free-text search across note files, with convenient query syntax. The search is performed across all =notdeft-directories=, and further narrowing down of the result set can then be done incrementally by typing in a search string for purposes of filtering (as in Deft).
      - That is, when =notdeft-xapian-program= is set, the file browser of NotDeft lists Xapian search results instead of listing directory contents.
+
+The added complication of having to manage multiple directories and having two stages to the process of looking for interesting files makes NotDeft less simple and intuitive than Deft. NotDeft is not Deft---it is not a Notational Velocity type application, but rather it aims to be a local search engine, one that is also accessible by other Emacs-based applications.
 
 * Source Code
 
@@ -65,10 +67,10 @@ The key differences of NotDeft are:
 
   The most essential settings are
   - =notdeft-xapian-program= :: to specify the path of the Xapian search tool
-  - =notdeft-path= :: to specify the location(s) of your notes
+  - =notdeft-directories= :: to specify the location(s) of your notes
 
-  If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =notdeft-path= in your startup file. For example:
-  : (setq notdeft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
+  If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =notdeft-directories= in your startup file. For example:
+  : (setq notdeft-directories (cons "~/notes" (file-expand-wildcards "~/*/notes")))
 
 ** Org Mode Integration
 
@@ -112,7 +114,9 @@ The key differences of NotDeft are:
 
 * Search Query Syntax
 
-  Press Tab in a =*NotDeft*= buffer to enter a search query. The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =notdeft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =notdeft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in NotDeft).
+  Press Tab in a =*NotDeft*= buffer to enter a search query, or use the command =notdeft-open-query= from any buffer.
+
+  The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax]] is available. Operators such as =AND=, =OR=, and =XOR= are available, and they may also be written in lowercase (or mixed case) if =notdeft-xapian-boolean-any-case= is set to =t=. The =NOT= operator is also available if =notdeft-xapian-pure-not= is =t=. It is possible to query for a phrase by quoting the phrase (e.g., "Deft for Emacs"). To look for a search term without stemming, give it capitalized (e.g., "Abstract" will not match “abstraction”). Wildcards in search terms are not supported (trailing wildcards /are/ supported by Xapian, but not enabled in NotDeft).
 
 ** Prefixes
 
@@ -210,20 +214,6 @@ This is body text.
   Filename extensions should be quoted to avoid any stemming. For example, to find all Org documents that may contain open to-do entries, we might query with:
   : !all ext:"org" AND "TODO"
 
-* Transient Directories
-
-  It is acceptable for the =notdeft-path= to contain transient directories, as any non-existing directories are simply ignored; if and when they re-appear, they can be included in subsequent searches by first refreshing the searched =notdeft-directories= with the =notdeft-refresh= command (or =C-c C-g= in =*NotDeft*=).
-
-  Note, however, that =notdeft-path= is normally set only once, and if you use wildcards, it may not contain directories that get mounted or copied over later. Thus, if your Emacs startup file says
-  : (setq notdeft-path `("~/notes" ,@(file-expand-wildcards "~/*/notes")))
-  and the directory
-  : ~/phone/notes
-  becomes available after Emacs has already started, your =notdeft-path= may not include the newly available directory.
-
-  To make it more convenient to deal with directories that appear after Emacs startup, you are allowed to include restricted /code/ forms in your =notdeft-path= definition:
-  : (setq notdeft-path '("~/notes" (file-expand-wildcards "~/*/notes")))
-  Now, whenever you =notdeft-refresh=, your recomputation of =notdeft-directories= will also re-evaluate any such code forms.
-
 * Using NotDeft from Outside NotDeft Mode
 
 Several of NotDeft's commands are autoloadable, and may be invoked from outside a =*NotDeft*= buffer. For example, to quickly find relevant notes when in another buffer, you might use
@@ -288,7 +278,7 @@ There is also an optional hydra for =notdeft-mode=, which can be made available 
   Org mode has its own “capture” mechanism, and you can certainly configure capturing into a file that resides in a NotDeft directory. For example:
   #+BEGIN_SRC emacs-lisp
 (setq org-directory "~/notes") ;; default Org files location
-(setq notdeft-path (list org-directory)) ;; NotDeft search path
+(setq notdeft-directories (list org-directory)) ;; NotDeft search path
 (setq org-default-notes-file (concat org-directory "/notes.org"))
 (global-set-key [f7] 'org-capture)
   #+END_SRC

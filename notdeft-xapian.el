@@ -11,6 +11,8 @@
 
 ;;; Code:
 
+(require 'notdeft-autoloads)
+
 (defcustom notdeft-xapian-program nil
   "Xapian backend's executable program path.
 Specified as an absolute path.
