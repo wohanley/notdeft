@@ -311,6 +311,9 @@ Set to nil to hide."
 
 ;; Global variables
 
+(defvar notdeft-load-hook nil
+  "Hook run immediately after `notdeft' feature load.")
+
 (defvar notdeft-mode-hook nil
   "Hook run when entering NotDeft mode.")
 
@@ -2007,5 +2010,7 @@ Open the file directly, without switching to any `notdeft-buffer'."
     (notdeft-xapian-search notdeft-directories query)))
 
 (provide 'notdeft)
+
+(run-hooks 'notdeft-load-hook)
 
 ;;; notdeft.el ends here
