@@ -1480,6 +1480,11 @@ Return the pathname of the file/directory that was moved."
     (notdeft-rename-file+buffer old-file new-file)
     old-file))
 
+(defvar notdeft-previous-target nil
+  "Previous file move target NotDeft directory.
+Set to nil if `notdeft-move-file' has not been used to move a
+file.")
+
 ;;;###autoload
 (defun notdeft-move-file (pfx)
   "Move the selected file under selected NotDeft root.
@@ -1491,18 +1496,26 @@ only if given a prefix argument PFX. Moving an external
     (if (not old-file)
 	(message (notdeft-no-selected-file-message))
       (let* ((old-root (notdeft-dir-of-notdeft-file old-file))
+	     (choices ;; exclude any `old-root'
+	      (if (not old-root)
+		  notdeft-directories
+		(cl-remove-if (lambda (dir)
+				(file-equal-p dir old-root))
+			      notdeft-directories)))
+	     (choices ;; default to any `notdeft-previous-target'
+	      (if (not notdeft-previous-target)
+		  choices
+		(notdeft-list-prefer
+		 choices
+		 (lambda (dir)
+		   (file-equal-p dir notdeft-previous-target)))))
 	     (new-root
 	      (file-name-as-directory
-	       (notdeft-select-directory ;; exclude any `old-root'
-		(if (not old-root)
-		    notdeft-directories
-		  (cl-remove-if (lambda (dir)
-				  (file-equal-p dir old-root))
-				notdeft-directories))
-		nil t))))
+	       (notdeft-select-directory choices nil t t))))
 	(when (or (not old-root)
 		  (not (file-equal-p new-root old-root)))
 	  (let ((moved-file (notdeft-sub-move-file old-file new-root pfx)))
+	    (setq notdeft-previous-target new-root)
 	    (notdeft-changed/fs
 	     'dirs (delete nil (list old-root new-root)))
 	    (message "Moved `%s` under root `%s`" old-file new-root)))))))
@@ -1890,13 +1903,15 @@ Return CHOICES as is if there are no matching elements."
     (if ix (drop-nth-cons ix choices) choices)))
 
 ;;;###autoload
-(defun notdeft-select-directory (&optional dirs prompt confirm)
+(defun notdeft-select-directory (&optional dirs prompt confirm preserve)
   "Select a NotDeft directory, possibly interactively.
 If DIRS is non-nil, select from among those directories;
-otherwise select from `notdeft-directories'.
-Use the specified PROMPT in querying, if given.
-Return the selected directory, or error out.
-If CONFIRM is non-nil, query even if there is a single choice."
+otherwise select from `notdeft-directories'. Use the specified
+PROMPT in querying, if given. Return the selected directory, or
+error out. If CONFIRM is non-nil, query even if there is a single
+choice. Present any `notdeft-directory' as the first choice,
+except with a true PRESERVE argument, which preserves DIRS
+order."
   (let ((dirs (or dirs notdeft-directories)))
     (if (not dirs)
 	(error "No specified NotDeft data directories")
@@ -1907,13 +1922,13 @@ If CONFIRM is non-nil, query even if there is a single choice."
 	 ((and (not confirm) (= (length dirs) 1))
 	  (car dirs))
 	 (t
-	  (when notdeft-directory
+	  (when (and notdeft-directory (not preserve))
 	    (setq dirs (notdeft-list-prefer
 		       dirs
 		       (lambda (file)
 			 (file-equal-p notdeft-directory file)))))
-	  (ido-completing-read
-	   (or prompt "Data directory: ") dirs nil t)))))))
+	  (ido-completing-read (or prompt "Data directory: ")
+			       dirs nil t)))))))
 
 ;;;###autoload
 (defun notdeft-chdir ()

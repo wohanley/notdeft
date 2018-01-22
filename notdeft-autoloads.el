@@ -5,7 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23140 9328 580334 590000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23141 23284 400776
+;;;;;;  631000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -205,12 +206,14 @@ With a PREFER argument, use that extension as the first choice.
 (autoload 'notdeft-select-directory "notdeft" "\
 Select a NotDeft directory, possibly interactively.
 If DIRS is non-nil, select from among those directories;
-otherwise select from `notdeft-directories'.
-Use the specified PROMPT in querying, if given.
-Return the selected directory, or error out.
-If CONFIRM is non-nil, query even if there is a single choice.
+otherwise select from `notdeft-directories'. Use the specified
+PROMPT in querying, if given. Return the selected directory, or
+error out. If CONFIRM is non-nil, query even if there is a single
+choice. Present any `notdeft-directory' as the first choice,
+except with a true PRESERVE argument, which preserves DIRS
+order.
 
-\(fn &optional DIRS PROMPT CONFIRM)" nil nil)
+\(fn &optional DIRS PROMPT CONFIRM PRESERVE)" nil nil)
 
 (autoload 'notdeft-chdir "notdeft" "\
 Change `notdeft-directory' according to interactive selection.
