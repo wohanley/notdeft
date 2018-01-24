@@ -1465,11 +1465,12 @@ but do not create its parent directories."
         (set-buffer buf)
         (set-visited-file-name new-file nil t)))))
 
-(defun notdeft-sub-move-file (old-file new-dir &optional whole-dir)
+(defun notdeft-sub-move-file (old-file new-dir &optional whole-dir mkdir)
   "Move the OLD-FILE note file into the NEW-DIR directory.
 If OLD-FILE has its own subdirectory, then move the entire
-subdirectory, but only if WHOLE-DIR is true.
-Return the pathname of the file/directory that was moved."
+subdirectory, but only if WHOLE-DIR is true. With non-nil
+argument MKDIR, create any missing target directory \(one level
+only). Return the pathname of the file/directory that was moved."
   (when (notdeft-file-in-subdir-p old-file)
     (unless whole-dir
       (error "Attempt to move file in a sub-directory: %s" old-file))
@@ -1477,7 +1478,7 @@ Return the pathname of the file/directory that was moved."
 		    (file-name-directory old-file))))
   (let ((new-file (concat (file-name-as-directory new-dir)
 			  (file-name-nondirectory old-file))))
-    (notdeft-rename-file+buffer old-file new-file)
+    (notdeft-rename-file+buffer old-file new-file nil mkdir)
     old-file))
 
 (defvar notdeft-previous-target nil
@@ -1533,7 +1534,7 @@ entire directory, but only with a prefix argument PFX."
       (let ((new-dir
 	     (concat (file-name-directory old-file)
 		     (file-name-as-directory notdeft-archive-directory))))
-	(let ((moved-file (notdeft-sub-move-file old-file new-dir pfx)))
+	(let ((moved-file (notdeft-sub-move-file old-file new-dir pfx t)))
 	  (notdeft-changed/fs 'files (list old-file))
 	  (message "Archived `%s` into `%s`" old-file new-dir))))))
 
