@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23141 23284 400776
-;;;;;;  631000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23145 49855 524013
+;;;;;;  957000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -149,9 +149,12 @@ if called with a prefix argument PFX.
 
 (autoload 'notdeft-move-file "notdeft" "\
 Move the selected file under selected NotDeft root.
-If it resides in a subdirectory, move the entire directory, but
-only if given a prefix argument PFX. Moving an external
-\(non-Deft) file under a NotDeft root is also allowed.
+Query the user for a target from among `notdeft-directories'.
+Offer to create the chosen NotDeft root directory if it does not
+already exist. If the file resides in a subdirectory, move the
+entire subdirectory, but only if given a prefix argument PFX.
+Moving an external (non-Deft) file under a NotDeft root is also
+allowed.
 
 \(fn PFX)" t nil)
 
@@ -208,12 +211,12 @@ Select a NotDeft directory, possibly interactively.
 If DIRS is non-nil, select from among those directories;
 otherwise select from `notdeft-directories'. Use the specified
 PROMPT in querying, if given. Return the selected directory, or
-error out. If CONFIRM is non-nil, query even if there is a single
-choice. Present any `notdeft-directory' as the first choice,
-except with a true PRESERVE argument, which preserves DIRS
-order.
+error out. If CONFIRM is non-nil, query even if there is only a
+single choice. Present any `notdeft-directory' as the first
+choice, except with a true PRESERVE argument, which preserves
+DIRS order.
 
-\(fn &optional DIRS PROMPT CONFIRM PRESERVE)" nil nil)
+\(fn &optional PROMPT CONFIRM PRESERVE)" nil nil)
 
 (autoload 'notdeft-chdir "notdeft" "\
 Change `notdeft-directory' according to interactive selection.

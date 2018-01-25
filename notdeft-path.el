@@ -64,8 +64,8 @@ directory names, and name existing directories."
 
 (defun notdeft-refresh-directories ()
   "Update `notdeft-directories' based on `notdeft-path'.
-Perhaps also clear `notdeft-directory', if it is no longer one of
-the `notdeft-directories'."
+Only include existing directories. Also clear `notdeft-directory'
+if it is no longer one of the `notdeft-directories'."
   (setq notdeft-directories (notdeft-resolve-directories))
   (when (and (boundp 'notdeft-directory) notdeft-directory)
     (unless (cl-some (lambda (elem)

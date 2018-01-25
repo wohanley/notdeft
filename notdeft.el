@@ -47,17 +47,18 @@
 
 ;; File Browser
 
-;; The NotDeft buffer is simply a file browser which lists the titles of
-;; all text files in the NotDeft directory (or directories) followed by
-;; short summaries and last modified times. The title is taken to be
-;; the first line of the file (or as specified by an Org "TITLE" file
-;; property) and the summary is extracted from the text that follows.
-;; Files are sorted in terms of the last modified date, from newest to
+;; The NotDeft buffer is simply a local search engine result browser
+;; which lists the titles of all text files matching a search query
+;; (entered by first pressing TAB) followed by short summaries and
+;; last modified times. The title is taken to be the first line of the
+;; file (or as specified by an Org "TITLE" file property) and the
+;; summary is extracted from the text that follows. By default, files
+;; are sorted in terms of the last modified date, from newest to
 ;; oldest.
 
-;; All NotDeft files or notes are simple plain text files (or Org markup
-;; files). As an example, the following directory structure generated
-;; the screenshot above.
+;; All NotDeft files or notes are simple plain text files (e.g., Org
+;; markup files). As an example, the following directory structure
+;; generated the screenshot above.
 ;;
 ;;     % ls ~/.deft
 ;;     about.org    browser.org     directory.org   operations.org
@@ -71,11 +72,11 @@
 
 ;; Filtering
 
-;; NotDeft's primary operation is searching and filtering.  The list of
-;; files can be limited or filtered using a search string, which will
-;; match both the title and the body text.  To initiate a filter,
-;; simply start typing.  Filtering happens on the fly.  As you type,
-;; the file browser is updated to include only files that match the
+;; NotDeft's primary operations are searching and filtering. The list
+;; of files can be limited or filtered using a search string, which
+;; will match both the title and the body text. To initiate a filter,
+;; simply start typing. Filtering happens on the fly. As you type, the
+;; file browser is updated to include only files that match the
 ;; current string.
 
 ;; To open the first matching file, simply press `RET`.  If no files
@@ -98,27 +99,29 @@
 ;; Common file operations can also be carried out from within NotDeft.
 ;; Files can be renamed using `C-c C-r` or deleted using `C-c C-d`.
 ;; New files can also be created using `C-c C-n` for quick creation or
-;; `C-c C-m` for a filename prompt.  You can leave NotDeft at any time
-;; with `C-c C-q`.
+;; `C-c C-m` for a filename prompt. You can leave NotDeft at any time
+;; with `C-c C-q`, which buries the buffer, or kills it with a prefix
+;; argument `C-u`.
 
 ;; Archiving unused files can be carried out by pressing `C-c C-a`.
 ;; Files will be moved to `notdeft-archive-directory' under a NotDeft
-;; data directory (e.g., current `notdeft-directory').
+;; data directory (e.g., current `notdeft-directory'), which by
+;; default is named so that it gets excluded from searches.
 
 ;; Getting Started
 ;; ---------------
 
-;; To start using it, place it somewhere in your Emacs load-path and
-;; add the line
+;; To start using NotDeft, place it somewhere in your Emacs load-path
+;; and add the line
 
 ;;     (require 'notdeft-autoloads)
 
 ;; in your `.emacs` file.  Then run `M-x notdeft` to start.  It is useful
 ;; to create a global keybinding for the `notdeft` function (e.g., a
-;; function key) to start it quickly (see below for details).
+;; function key) to start it quickly.
 
 ;; One useful way to use NotDeft is to keep a directory of notes in a
-;; Dropbox folder.  This can be used with other applications and
+;; synchronized folder.  This can be used with other applications and
 ;; mobile devices, for example, Notational Velocity or Simplenote
 ;; on OS X, Elements on iOS, or Epistle on Android.
 
@@ -126,6 +129,8 @@
 ;; -------------
 
 ;; Customize the `notdeft` group to change the functionality.
+
+;;     (customize-group "notdeft")
 
 ;; By default, NotDeft looks for notes by searching for files with the
 ;; extension `.org` in the `~/.deft` directory.  You can customize
@@ -142,8 +147,7 @@
 ;; files that are also considered to be NotDeft notes.
 
 ;; While you can choose a `notdeft-extension' that is not ".org",
-;; this fork of NotDeft is somewhat optimized to working with
-;; files in Org format.
+;; NotDeft is somewhat optimized to working with files in Org format.
 
 ;; You can easily set up a global keyboard binding for NotDeft.  For
 ;; example, to bind it to F8, add the following code to your `.emacs`
@@ -168,7 +172,7 @@
 ;; History
 ;; -------
 
-;; NotDeft version 0.3:
+;; NotDeft:
 
 ;; * Most notably, add a Xapian-based query engine.
 ;; * Add support for multiple notes directories.
@@ -442,6 +446,75 @@ Strip any extension with `notdeft-strip-extension'."
   "Extract the basename of the note FILE."
   (file-name-nondirectory file))
 
+(defun notdeft-file-equal-p (x y)
+  "Whether X and Y are the same file.
+Compare based on path names only, without consulting the
+filesystem, unlike `file-equal-p'. Disregard directory syntax, so
+that \"x\" is equal to \"x/\"."
+  (string= (file-name-as-directory (expand-file-name x))
+	   (file-name-as-directory (expand-file-name y))))
+
+(defun notdeft-file-in-directory-p (file dir)
+  "Whether FILE is in DIR, syntactically.
+A directory is considered to be in itself.
+Compare based on path names only, without consulting the
+filesystem, unlike `file-in-directory-p'."
+  (let ((dir (file-name-as-directory (expand-file-name dir)))
+	(file (file-name-as-directory (expand-file-name file))))
+    (string-prefix-p dir file)))
+
+(defun notdeft-file-strictly-in-directory-p (file dir)
+  "Whether FILE is strictly in DIR, syntactically.
+Like `notdeft-file-in-directory-p', but a directory is not
+considered to be in itself."
+  (let ((dir (file-name-as-directory (expand-file-name dir)))
+	(file (file-name-as-directory (expand-file-name file))))
+    (and (string-prefix-p dir file)
+	 (not (string= dir file)))))
+
+(defun notdeft-dir-of-file (file)
+  "Return the NotDeft directory for FILE, or nil.
+FILE may also itself be one of the `notdeft-directories'.
+Compare syntactically, without consulting the file system."
+  (cl-some (lambda (dir)
+	     (when (notdeft-file-in-directory-p file dir)
+	       dir))
+	   notdeft-directories))
+
+(defun notdeft-dir-of-notdeft-file (file)
+  "Return the containing NotDeft directory for FILE.
+Return nil if FILE is not strictly under some NotDeft root.
+Compare syntactically, without consulting the file system."
+  (cl-some (lambda (dir)
+	     (when (notdeft-file-strictly-in-directory-p file dir)
+	       dir))
+	   notdeft-directories))
+
+(defun notdeft-file-in-subdir-p (file)
+  "Whether NotDeft note FILE is in a sub-directory.
+I.e., whether FILE names a file or directory that is in a
+sub-directory of one of the `notdeft-directories'. FILE need not
+actually exist for this predicate to hold, nor does the
+containing NotDeft directory."
+  (let ((root (notdeft-dir-of-notdeft-file file)))
+    (and root
+	 (let ((dir (file-name-directory file)))
+	   (not (notdeft-file-equal-p dir root))))))
+
+(defun notdeft-file-member (file list)
+  "Whether FILE is a member of LIST.
+Comparisons are syntactic only.
+Return the matching member of the list, or nil."
+  (cl-some (lambda (elem)
+	     (when (notdeft-file-equal-p file elem)
+	       elem))
+	   list))
+
+(defun notdeft-directories-member (file)
+  "Whether FILE is a NotDeft directory.
+Return the matching member of `notdeft-directories'."
+  (notdeft-file-member file notdeft-directories))
+
 (defun notdeft-file-readable-p (file)
   "Whether FILE is a readable non-directory."
   (and (file-readable-p file)
@@ -485,18 +558,20 @@ If none exist, return nil."
 	(setq result (notdeft-root-find-file file-p abs-root))))
     result))
 
-(defun notdeft-root-find-file (file-p abs-dir)
-  "Find a file matching predicate FILE-P under ABS-DIR.
-ABS-DIR is assumed to be a NotDeft root.
-Return nil if no matching file is found."
+(defun notdeft-root-find-file (file-p root)
+  "Find a file matching predicate FILE-P under ROOT.
+FILE-P is called with the file path name \(including the ROOT
+component) as its sole argument. ROOT is assumed to be a NotDeft
+root, which need not exist. Return nil if no matching file is
+found."
   (and
-   (file-readable-p abs-dir)
-   (file-directory-p abs-dir)
-   (let ((abs-dir (file-name-as-directory abs-dir))
-	 (files (directory-files abs-dir nil "^[^._#]" t))
+   (file-readable-p root)
+   (file-directory-p root)
+   (let ((root (file-name-as-directory root))
+	 (files (directory-files root nil "^[^._#]" t))
 	 result)
      (while (and files (not result))
-       (let* ((abs-file (concat abs-dir (car files))))
+       (let* ((abs-file (concat root (car files))))
 	 (setq files (cdr files))
 	 (cond
 	  ((file-directory-p abs-file)
@@ -507,14 +582,13 @@ Return nil if no matching file is found."
 
 (defun notdeft-glob (root &optional dir result file-re)
   "Return a list of all NotDeft files in a directory tree.
-List the NotDeft files under the specified NotDeft ROOT and
-its directory DIR, with DIR given as a path relative
-to the directory ROOT.
-If DIR is nil, then list NotDeft files under ROOT.
-Add to the RESULT list in an undefined order,
-and return the resulting value.
-Only include files matching regexp FILE-RE, defaulting
-to the result of `notdeft-make-file-re'."
+List the NotDeft files under the specified NotDeft ROOT and its
+directory DIR, with DIR given as a path relative to the directory
+ROOT. If DIR is nil, then list NotDeft files under ROOT. Add to
+the RESULT list in undefined order, and return the resulting
+value. Only include files whose non-directory names match the
+regexp FILE-RE, defaulting to the result of
+`notdeft-make-file-re'. If ROOT does not exist, return nil."
   (let* ((root (file-name-as-directory (expand-file-name root)))
 	 (dir (file-name-as-directory (or dir ".")))
 	 (abs-dir (expand-file-name dir root)))
@@ -1116,9 +1190,9 @@ from STR."
 	       ((pred stringp)
 		dir)
 	       ((pred consp)
-		(notdeft-select-directory dir "Directory for new file: "))
+		(notdeft-select-directory-from dir "Directory for new file: "))
 	       (`ask
-		(notdeft-select-directory nil "Directory for new file: "))
+		(notdeft-select-directory "Directory for new file: "))
 	       (_
 		(notdeft-get-directory))))
 	 (ext (pcase ext
@@ -1139,6 +1213,7 @@ from STR."
 		 (notdeft-generate-filename ext dir fmt))
 		(_
 		 (notdeft-generate-filename ext dir)))))
+    (notdeft-ensure-root file)
     (if (not data)
 	(notdeft-find-file file)
       (write-region data nil file nil nil nil 'excl)
@@ -1210,64 +1285,6 @@ Return the filename of the created file."
 	      (notdeft-title-to-notename notdeft-filter-string))))
     (notdeft-sub-new-file data notename pfx)))
 
-(defun notdeft-dir-of-file (file)
-  "Return NotDeft root of FILE, or nil.
-FILE may also itself be one of the `notdeft-directories'."
-  (cl-some (lambda (dir)
-	     (when (file-in-directory-p file dir)
-	       dir))
-	   notdeft-directories))
-
-(defun notdeft-file-under-dir-p (dir file)
-  "Whether DIR is strictly the parent of FILE."
-  (and
-   (file-in-directory-p file dir)
-   (not (file-equal-p file dir))))
-
-(defun notdeft-dir-of-notdeft-file (file)
-  "Return the containing NotDeft directory for FILE.
-Return nil if FILE is not strictly under some NotDeft root."
-  (cl-some (lambda (dir)
-	     (when (notdeft-file-under-dir-p dir file)
-	       dir))
-	   notdeft-directories))
-
-(defun notdeft-direct-file-p (file)
-  "Whether FILE is directly in a NotDeft directory.
-More specifically, return non-nil if FILE names
-a file or directory that is a direct child of
-one of the `notdeft-directories'.
-FILE need not actually exist for this predicate to hold."
-  (let ((root (notdeft-dir-of-notdeft-file file)))
-    (and root
-	 (file-equal-p file
-		       (expand-file-name
-			(file-name-nondirectory file)
-			root)))))
-
-(defun notdeft-file-in-subdir-p (file)
-  "Whether NotDeft note FILE is in a sub-directory.
-I.e., whether the absolute path FILE names a file or directory
-that is in a sub-directory of one of the `notdeft-directories'.
-FILE need not actually exist for this predicate to hold."
-  (let ((root (notdeft-dir-of-notdeft-file file)))
-    (and root
-	 (let ((dir (file-name-directory file)))
-	   (not (file-equal-p dir root))))))
-
-(defun notdeft-file-member (file list)
-  "Whether FILE is a member of LIST.
-Return the matching member of the list, or nil."
-  (cl-some (lambda (elem)
-	     (when (file-equal-p file elem)
-	       elem))
-	   list))
-
-(defun notdeft-directories-member (file)
-  "Whether FILE is a NotDeft directory.
-Return the matching member of `notdeft-directories'."
-  (notdeft-file-member file notdeft-directories))
-
 (defun notdeft-note-buffer-p (&optional buffer)
   "Whether BUFFER is a NotDeft Note mode buffer.
 Default to `current-buffer' if BUFFER is nil.
@@ -1303,7 +1320,7 @@ the result into `notdeft-directory'."
       (let ((dir (notdeft-select-directory)))
 	(setq notdeft-directory (file-name-as-directory dir))
 	dir)))
-	 
+
 (defun notdeft-current-filename ()
   "Return the current NotDeft note filename.
 In a `notdeft-mode' buffer, return the currently selected file's
@@ -1489,9 +1506,12 @@ file.")
 ;;;###autoload
 (defun notdeft-move-file (pfx)
   "Move the selected file under selected NotDeft root.
-If it resides in a subdirectory, move the entire directory, but
-only if given a prefix argument PFX. Moving an external
-\(non-Deft) file under a NotDeft root is also allowed."
+Query the user for a target from among `notdeft-directories'.
+Offer to create the chosen NotDeft root directory if it does not
+already exist. If the file resides in a subdirectory, move the
+entire subdirectory, but only if given a prefix argument PFX.
+Moving an external \(non-Deft) file under a NotDeft root is also
+allowed."
   (interactive "P")
   (let ((old-file (notdeft-current-filename)))
     (if (not old-file)
@@ -1509,12 +1529,13 @@ only if given a prefix argument PFX. Moving an external
 		(notdeft-list-prefer
 		 choices
 		 (lambda (dir)
-		   (file-equal-p dir notdeft-previous-target)))))
+		   (notdeft-file-equal-p dir notdeft-previous-target)))))
 	     (new-root
 	      (file-name-as-directory
-	       (notdeft-select-directory choices nil t t))))
+	       (notdeft-select-directory-from choices nil t t))))
 	(when (or (not old-root)
 		  (not (file-equal-p new-root old-root)))
+	  (notdeft-ensure-root new-root)
 	  (let ((moved-file (notdeft-sub-move-file old-file new-root pfx)))
 	    (setq notdeft-previous-target new-root)
 	    (notdeft-changed/fs
@@ -1827,19 +1848,20 @@ If a NotDeft buffer already exists, its state is reset."
   (when notdeft-directory
     (message "Using NotDeft data directory '%s'" notdeft-directory)))
 
-(defun notdeft-maybe-offer-create-directory ()
-  "Maybe offer to create a NotDeft directory.
-If no `notdeft-directories' exist, offer to create one of them.
-Return any created directory, or nil."
+(defun notdeft-ensure-root (file)
+  "Maybe offer to create a NotDeft directory for FILE.
+If FILE is one of the `notdeft-directories' or a file or
+directory under it, offer to create that root directory if it
+does not exist. Create directories recursively if necessary.
+Always return FILE."
   (when notdeft-directories
-    (let ((roots (notdeft-filter-existing-dirs notdeft-directories)))
-      (unless roots
-	(let ((root (car notdeft-directories)))
-	  (if (file-exists-p root)
-	      (error "Data \"directory\" is a non-directory: %s" root)
-	    (when (y-or-n-p (concat "Create directory " root "? "))
-	      (make-directory root t)
-	      root)))))))
+    (let ((root (notdeft-dir-of-file file)))
+      (when (and root (not (file-directory-p root)))
+	(when (file-exists-p root)
+	  (error "Data \"directory\" is a non-directory: %s" root))
+	(when (y-or-n-p (concat "Create directory " root "? "))
+	  (make-directory root t)))))
+  file)
 
 ;;;###autoload
 (defun notdeft (&optional reset)
@@ -1859,19 +1881,8 @@ initial choice of `notdeft-directory'."
 	  (switch-to-buffer buf)
 	  (when reset
 	    (notdeft-changed/window)))
-      (notdeft-maybe-offer-create-directory)
       (notdeft-set-pending-updates 'redraw)
       (notdeft-create-buffer))))
-
-(defun notdeft-filter-existing-dirs (lst)
-  "Pick existing directories in LST.
-That is, filter the argument list, rejecting anything
-except for names of existing directories."
-  (notdeft-map-drop-false
-    (lambda (d)
-      (when (file-directory-p d)
-	d))
-    lst))
 
 (defun drop-nth-cons (n lst)
   "Make list element at position N the first one of LST.
@@ -1903,33 +1914,36 @@ Return CHOICES as is if there are no matching elements."
   (let ((ix (cl-position-if prefer choices)))
     (if ix (drop-nth-cons ix choices) choices)))
 
+(defun notdeft-select-directory-from (dirs &optional prompt confirm preserve)
+  "Like `notdeft-select-directory', but select from DIRS.
+The PROMPT, CONFIRM, and PRESERVE arguments are as for
+`notdeft-select-directory'."
+  (cond
+   ((not dirs)
+    (error "No data directory choices"))
+   ((and (not confirm) (= (length dirs) 1))
+    (car dirs))
+   (t
+    (when (and notdeft-directory (not preserve))
+      (setq dirs (notdeft-list-prefer
+		  dirs
+		  (lambda (file)
+		    (notdeft-file-equal-p notdeft-directory file)))))
+    (ido-completing-read (or prompt "Data directory: ")
+			 dirs nil t))))
+
 ;;;###autoload
-(defun notdeft-select-directory (&optional dirs prompt confirm preserve)
+(defun notdeft-select-directory (&optional prompt confirm preserve)
   "Select a NotDeft directory, possibly interactively.
 If DIRS is non-nil, select from among those directories;
 otherwise select from `notdeft-directories'. Use the specified
 PROMPT in querying, if given. Return the selected directory, or
-error out. If CONFIRM is non-nil, query even if there is a single
-choice. Present any `notdeft-directory' as the first choice,
-except with a true PRESERVE argument, which preserves DIRS
-order."
-  (let ((dirs (or dirs notdeft-directories)))
-    (if (not dirs)
-	(error "No specified NotDeft data directories")
-      (let ((dirs (notdeft-filter-existing-dirs dirs)))
-	(cond
-	 ((not dirs)
-	  (error "No existing NotDeft data directories"))
-	 ((and (not confirm) (= (length dirs) 1))
-	  (car dirs))
-	 (t
-	  (when (and notdeft-directory (not preserve))
-	    (setq dirs (notdeft-list-prefer
-		       dirs
-		       (lambda (file)
-			 (file-equal-p notdeft-directory file)))))
-	  (ido-completing-read (or prompt "Data directory: ")
-			       dirs nil t)))))))
+error out. If CONFIRM is non-nil, query even if there is only a
+single choice. Present any `notdeft-directory' as the first
+choice, except with a true PRESERVE argument, which preserves
+DIRS order."
+  (notdeft-select-directory-from notdeft-directories
+				 prompt confirm preserve))
 
 ;;;###autoload
 (defun notdeft-chdir ()
