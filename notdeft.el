@@ -960,9 +960,11 @@ It is one of:
 Ignore THINGS outside NotDeft directory trees.
 
 As appropriate, refresh both file information cache and
-any Xapian indexes, and update `notdeft-all-files' and
-`notdeft-current-files' lists to reflect those changes,
-or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
+any Xapian indexes, and update `notdeft-all-files' to reflect those changes.
+
+Also set `notdeft-pending-updates' if the state changes should be
+reflected in any open NotDeft buffers, and then call
+`notdeft-changed/window' to make that happen."
   (let (dirs files) ;; filtered to Deft ones
     (cl-case what
       (dirs
@@ -977,41 +979,38 @@ or changes to `notdeft-filter-string' or `notdeft-xapian-query'."
     (if (or (and (eq what 'files) (not files))
 	    (and (eq what 'dirs) (not dirs)))
 	(progn) ;; no filesystem change
-      (notdeft-if2
-       notdeft-xapian-program
-       (progn
-	 (cl-case what
-	   (anything (notdeft-xapian-index-dirs notdeft-directories))
-	   ((dirs files) (notdeft-xapian-index-dirs (delete-dups dirs))))
-	 (setq notdeft-all-files
-	       (notdeft-xapian-search notdeft-directories
-				      notdeft-xapian-query))
-	 (notdeft-cache-update notdeft-all-files))
-       (progn
-	 (cl-case what
-	   (files
-	    (notdeft-cache-update files)
-	    (dolist (file files)
-	      (setq notdeft-all-files (delete file notdeft-all-files))
-	      (when (file-exists-p file)
-		(setq notdeft-all-files (cons file notdeft-all-files)))))
-	   (t
-	    (setq notdeft-all-files (notdeft-files-under-all-roots))
-	    (notdeft-cache-update notdeft-all-files)))
-	 (setq notdeft-all-files (notdeft-sort-files notdeft-all-files))))
+      (notdeft-if2 notdeft-xapian-program
+	(progn
+	  (cl-case what
+	    (anything (notdeft-xapian-index-dirs notdeft-directories))
+	    ((dirs files) (notdeft-xapian-index-dirs (delete-dups dirs))))
+	  (setq notdeft-all-files
+		(notdeft-xapian-search notdeft-directories
+				       notdeft-xapian-query))
+	  (notdeft-cache-update notdeft-all-files))
+	(progn
+	  (cl-case what
+	    (files
+	     (notdeft-cache-update files)
+	     (dolist (file files)
+	       (setq notdeft-all-files (delete file notdeft-all-files))
+	       (when (file-exists-p file)
+		 (setq notdeft-all-files (cons file notdeft-all-files)))))
+	    (t
+	     (setq notdeft-all-files (notdeft-files-under-all-roots))
+	     (notdeft-cache-update notdeft-all-files)))
+	  (setq notdeft-all-files (notdeft-sort-files notdeft-all-files))))
       (setq notdeft-pending-updates 'recompute)
       (notdeft-changed/window))))
 
 (defun notdeft-rescan-all-files ()
   "Fully recompute `notdeft-all-files'.
-Also update file information cache.
-Do nothing else."
+Also update file information cache. Do nothing else."
   (notdeft-if2 notdeft-xapian-program
-    (progn
-      (setq notdeft-all-files
-	    (notdeft-xapian-search notdeft-directories
-				   notdeft-xapian-query))
-      (notdeft-cache-update notdeft-all-files))
+    (let ((files (notdeft-xapian-search notdeft-directories
+					notdeft-xapian-query)))
+      (notdeft-cache-update files)
+      (setq notdeft-all-files files))
     (let ((files (notdeft-files-under-all-roots)))
       (notdeft-cache-update files)
       (setq notdeft-all-files (notdeft-sort-files files)))))
@@ -1019,10 +1018,8 @@ Do nothing else."
 (defun notdeft-changed/query ()
   "Refresh NotDeft buffer after query change."
   (when notdeft-xapian-program
-    (setq notdeft-all-files
-	  (notdeft-xapian-search notdeft-directories notdeft-xapian-query))
-    (notdeft-cache-update notdeft-all-files)
-    (notdeft-changed/filter)))
+    (notdeft-set-pending-updates 'rescan)
+    (notdeft-changed/window)))
 
 (defun notdeft-changed/filter ()
   "Refresh NotDeft buffer after filter change."
