@@ -358,12 +358,13 @@ regular expressions) that are required to match.")
 (defvar notdeft-window-width nil
   "Width of NotDeft buffer, as currently drawn, or nil.")
 
-(defvar notdeft-pending-updates 'rescan
+(defvar notdeft-pending-updates 'reindex
   "Whether there are pending updates for any NotDeft buffer.
 Either nil for no pending updates, the symbol `redraw' for a
-pending redrawing of the buffer, the symbol `recompute' for a
+pending redrawing of the buffer, the symbol `refilter' for a
 pending recomputation of `notdeft-current-files', the symbol
-`rescan' for a pending rescanning of `notdeft-all-files'.")
+`requery' for a pending querying/listing of `notdeft-all-files',
+and the symbol `reindex' for a pending Xapian index refresh.")
 
 ;; File processing
 
@@ -931,21 +932,53 @@ Equivalent to (if CND THN ELS)."
 
 (defmacro notdeft-setq-cons (x v)
   "Prepend into list X the value V."
+  (declare (indent 1))
   `(setq ,x (cons ,v ,x)))
 
 (defmacro notdeft-setq-non-nil (x v)
   "To X, assign the result of deleting nils from list V."
+  (declare (indent 1))
   `(setq ,x (delete nil ,v)))
 
 (defun notdeft-pending-lessp (x y)
   "Whether pending status value X < Y."
-  (let ((lst '(() redraw recompute rescan)))
+  (let ((lst '(() redraw refilter requery reindex)))
     (< (cl-position x lst) (cl-position y lst))))
 
 (defun notdeft-set-pending-updates (value)
   "Set `notdeft-pending-updates' to at least VALUE."
   (when (notdeft-pending-lessp notdeft-pending-updates value)
     (setq notdeft-pending-updates value)))
+
+(defun notdeft-visible-buffer ()
+  "Return visible NotDeft buffer, or nil."
+  (let ((buf (get-buffer notdeft-buffer)))
+    (when (and buf (get-buffer-window buf 'visible))
+      buf)))
+
+(defun notdeft-compute-changes (what things)
+  "Compute optimized file system change lists.
+Optimize the WHAT and THINGS change specification to some extent,
+and return a result of the form (cons DIRS FILES), or nil if no
+changes remain."
+  (let (dirs files) ;; filtered to Deft ones
+    (cl-case what
+      (dirs
+       (notdeft-setq-non-nil dirs
+	 (mapcar 'notdeft-directories-member things)))
+      (files
+       (dolist (file things)
+	 (let ((dir (notdeft-dir-of-file file)))
+	   (when dir
+	     (notdeft-setq-cons files file)
+	     (notdeft-setq-cons dirs dir)))))
+      (anything
+       (setq dirs notdeft-directories)))
+    (if (or (and (eq what 'files) (not files))
+	    (and (eq what 'dirs) (not dirs)))
+	nil
+      (cons (cl-delete-duplicates dirs :test 'notdeft-file-equal-p)
+	    files))))
 
 (defun notdeft-changed/fs (what &optional things)
   "Refresh NotDeft file list, cache, and search index state.
@@ -959,52 +992,53 @@ It is one of:
 
 Ignore THINGS outside NotDeft directory trees.
 
-As appropriate, refresh both file information cache and
-any Xapian indexes, and update `notdeft-all-files' to reflect those changes.
+Refresh both file information cache and any Xapian indexes to
+reflect the file system changes. Where `notdeft-all-files' is
+determined based on scanning directories, refresh its value also
+if that value is immediately needed.
 
-Also set `notdeft-pending-updates' if the state changes should be
-reflected in any open NotDeft buffers, and then call
-`notdeft-changed/window' to make that happen."
-  (let (dirs files) ;; filtered to Deft ones
-    (cl-case what
-      (dirs
-       (notdeft-setq-non-nil
-	dirs (mapcar 'notdeft-directories-member things)))
-      (files
-       (dolist (file things)
-	 (let ((dir (notdeft-dir-of-file file)))
-	   (when dir
-	     (notdeft-setq-cons files file)
-	     (notdeft-setq-cons dirs dir))))))
-    (if (or (and (eq what 'files) (not files))
-	    (and (eq what 'dirs) (not dirs)))
-	(progn) ;; no filesystem change
-      (notdeft-if2 notdeft-xapian-program
-	(progn
-	  (cl-case what
-	    (anything (notdeft-xapian-index-dirs notdeft-directories))
-	    ((dirs files) (notdeft-xapian-index-dirs (delete-dups dirs))))
-	  (setq notdeft-all-files
-		(notdeft-xapian-search notdeft-directories
-				       notdeft-xapian-query))
-	  (notdeft-cache-update notdeft-all-files))
-	(progn
-	  (cl-case what
-	    (files
-	     (notdeft-cache-update files)
-	     (dolist (file files)
-	       (setq notdeft-all-files (delete file notdeft-all-files))
-	       (when (file-exists-p file)
-		 (setq notdeft-all-files (cons file notdeft-all-files)))))
-	    (t
-	     (setq notdeft-all-files (notdeft-files-under-all-roots))
-	     (notdeft-cache-update notdeft-all-files)))
-	  (setq notdeft-all-files (notdeft-sort-files notdeft-all-files))))
-      (setq notdeft-pending-updates 'recompute)
-      (notdeft-changed/window))))
-
+For further work set `notdeft-pending-updates', and call
+`notdeft-do-pending'."
+  (notdeft-if2 notdeft-xapian-program
+    (let ((changes (notdeft-compute-changes what things)))
+      (when changes
+	(let ((dirs (car changes)))
+	  (notdeft-xapian-index-dirs dirs) ;; rebuild search index
+	  (setq notdeft-pending-updates 'requery)
+	  (notdeft-do-pending))))
+    (if (not (notdeft-visible-buffer))
+	;; No `notdeft-all-files' needed at present, so schedule
+	;; directory scan for later.
+	(setq notdeft-pending-updates 'requery)
+      ;; Determine `notdeft-all-files' immediately based on the
+      ;; received hints.
+      (if (eq what 'anything)
+	  (let ((files (notdeft-files-under-all-roots)))
+	    (notdeft-cache-update files)
+	    (setq notdeft-all-files (notdeft-sort-files files))
+	    (setq notdeft-pending-updates 'refilter)
+	    (notdeft-do-pending))
+	(let ((changes (notdeft-compute-changes what things)))
+	  (when changes
+	    (notdeft-if2 (eq what 'files)
+	      ;; Only certain files have changed.
+	      (let ((chg-files (cdr changes))
+		    (files notdeft-all-files))
+		(notdeft-cache-update chg-files)
+		(dolist (file chg-files)
+		  (setq files (delete file files))
+		  (when (file-exists-p file)
+		    (setq files (cons file files))))
+		(setq notdeft-all-files (notdeft-sort-files files)))
+	      (let ((files (notdeft-files-under-all-roots)))
+		(notdeft-cache-update files)
+		(setq notdeft-all-files (notdeft-sort-files files))))
+	    (setq notdeft-pending-updates 'refilter)
+	    (notdeft-do-pending)))))))
+	    
 (defun notdeft-rescan-all-files ()
   "Fully recompute `notdeft-all-files'.
+Do that without any hints about what has changed.
 Also update file information cache. Do nothing else."
   (notdeft-if2 notdeft-xapian-program
     (let ((files (notdeft-xapian-search notdeft-directories
@@ -1018,32 +1052,15 @@ Also update file information cache. Do nothing else."
 (defun notdeft-changed/query ()
   "Refresh NotDeft buffer after query change."
   (when notdeft-xapian-program
-    (notdeft-set-pending-updates 'rescan)
-    (notdeft-changed/window)))
+    (notdeft-set-pending-updates 'requery)
+    (notdeft-do-pending)))
 
 (defun notdeft-changed/filter ()
   "Refresh NotDeft buffer after filter change."
-  (notdeft-set-pending-updates 'recompute)
-  (notdeft-changed/window))
+  (notdeft-set-pending-updates 'refilter)
+  (notdeft-do-pending))
 
 (defun notdeft-changed/window ()
-  "Perform any pending operations on a buffer.
-Only do that if a `notdeft-buffer' is visible.
-Update `notdeft-pending-updates' accordingly."
-  (when notdeft-pending-updates
-    (let ((buf (get-buffer notdeft-buffer)))
-      (when (and buf (get-buffer-window buf 'visible))
-	(cond
-	 ((eq notdeft-pending-updates 'rescan)
-	  (notdeft-rescan-all-files)
-	  (notdeft-filter-update))
-	 ((eq notdeft-pending-updates 'recompute)
-	  (notdeft-filter-update)))
-	(with-current-buffer buf
-	  (notdeft-buffer-setup))
-	(setq notdeft-pending-updates nil)))))
-
-(defun notdeft-window-configuration-changed ()
   "A `window-configuration-change-hook' for NotDeft.
 Called with the change event concerning the `selected-window',
 whose current buffer should be a NotDeft buffer, as the hook
@@ -1051,7 +1068,30 @@ is installed locally for NotDeft buffers only."
   (unless (equal notdeft-window-width (window-width))
     (unless notdeft-pending-updates
       (notdeft-set-pending-updates 'redraw)))
-  (notdeft-changed/window))
+  (notdeft-do-pending))
+
+(defun notdeft-do-pending ()
+  "Perform any pending operations.
+Postpone most operations until such time that a `notdeft-buffer'
+is visible. Update `notdeft-pending-updates' to indicate the
+operations \(if any) that still remain pending afterwards."
+  (when notdeft-pending-updates
+    (when (eq notdeft-pending-updates 'reindex)
+      (when notdeft-xapian-program
+	(notdeft-xapian-index-dirs notdeft-directories))
+      (setq notdeft-pending-updates 'requery))
+    (let ((buf (get-buffer notdeft-buffer)))
+      (when (and buf (get-buffer-window buf 'visible))
+	(when (eq notdeft-pending-updates 'requery)
+	  (notdeft-rescan-all-files)
+	  (setq notdeft-pending-updates 'refilter))
+	(when (eq notdeft-pending-updates 'refilter)
+	  (notdeft-filter-update)
+	  (setq notdeft-pending-updates 'redraw))
+	(when (eq notdeft-pending-updates 'redraw)
+	  (with-current-buffer buf
+	    (notdeft-buffer-setup)))
+	(setq notdeft-pending-updates nil)))))
 
 (defun notdeft-query-edit ()
   "Enter a Xapian query string, and make it current."
@@ -1798,7 +1838,7 @@ cache, search query, and filter string."
   (notdeft-cache-clear)
   (setq notdeft-xapian-query nil)
   (setq notdeft-filter-string nil)
-  (setq notdeft-pending-updates 'rescan))
+  (setq notdeft-pending-updates 'reindex))
 
 ;;;###autoload
 (defun notdeft-refresh (&optional reset)
@@ -1831,7 +1871,7 @@ current.
   (setq major-mode 'notdeft-mode)
   (setq mode-name "NotDeft")
   (add-hook 'window-configuration-change-hook ;; buffer locally
-	    'notdeft-window-configuration-changed nil t)
+	    'notdeft-changed/window nil t)
   (run-mode-hooks 'notdeft-mode-hook))
 
 (put 'notdeft-mode 'mode-class 'special)
@@ -1841,7 +1881,7 @@ current.
 If a NotDeft buffer already exists, its state is reset."
   (switch-to-buffer notdeft-buffer)
   (notdeft-mode)
-  (notdeft-changed/window)
+  (notdeft-do-pending)
   (when notdeft-directory
     (message "Using NotDeft data directory '%s'" notdeft-directory)))
 
@@ -1877,7 +1917,7 @@ initial choice of `notdeft-directory'."
 	(progn
 	  (switch-to-buffer buf)
 	  (when reset
-	    (notdeft-changed/window)))
+	    (notdeft-do-pending)))
       (notdeft-set-pending-updates 'redraw)
       (notdeft-create-buffer))))
 
