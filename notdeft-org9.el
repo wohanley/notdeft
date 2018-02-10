@@ -42,6 +42,11 @@ The optional PFX argument is ignored."
     (let ((fn (and fn-lst (ido-completing-read "NotDeft note: " fn-lst))))
       (concat "deft:" (or fn "")))))
 
+(defvar notdeft-describe-link 'notdeft-title-from-file-content
+  "Function to determine NotDeft note file link description.
+The function is given the file name as its sole argument.
+Used by `notdeft-make-org-link'.")
+
 (defun notdeft-make-org-link (pfx)
   "Return an Org \"deft:\" link as a string.
 Choose the link target interactively.
@@ -55,7 +60,7 @@ The PFX argument is as for `notdeft-insert-org-link'."
 		(pcase pfx
 		  (1 (notdeft-chomp-nullify
 		       (read-string "Description: "
-				    (notdeft-title-from-file-content file)
+				    (funcall notdeft-describe-link file)
 				    nil nil t)))
 		  (4 nil)
 		  (16 (notdeft-title-from-file-content file)))))
