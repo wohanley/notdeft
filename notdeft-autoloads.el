@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23189 20917 990730
-;;;;;;  820000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23194 24953 860063
+;;;;;;  484000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -194,10 +194,11 @@ changes are not detected automatically.
 Switch to a `notdeft-buffer', creating one if not yet created.
 With a non-nil prefix argument RESET, switch to any selected
 NotDeft buffer with fresh state. With two prefix arguments, also
-interactively query for an initial choice of
-`notdeft-directory'.
+interactively query for an initial choice of `notdeft-directory'.
+When called programmatically, if the argument NEW is non-nil,
+always create a new buffer.
 
-\(fn &optional RESET)" t nil)
+\(fn &optional RESET NEW)" t nil)
 
 (autoload 'notdeft-read-extension "notdeft" "\
 Read a NotDeft filename extension, interactively.
@@ -238,8 +239,8 @@ If called interactively, read a search query interactively.
 Non-interactively, the QUERY may be given as an argument. With a
 non-nil RANK, have results ranked by relevance; interactively, a
 prefix argument will set this option. Create a `notdeft-buffer'
-if one does not yet exist, otherwise merely switch to an existing
-one.
+if one does not yet exist; otherwise refer to the
+`notdeft-open-query-in-new-buffer' configuration option.
 
 \(fn &optional QUERY RANK)" t nil)
 

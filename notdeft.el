@@ -263,6 +263,15 @@ Set to nil to hide."
   :safe 'null
   :group 'notdeft)
 
+(defcustom notdeft-open-query-in-new-buffer t
+  "Whether to open query results in a new buffer.
+More specifically, when this variable is non-nil, the
+`notdeft-open-query' command shows its matches in a freshly
+created NotDeft buffer."
+  :type 'boolean
+  :safe 'booleanp
+  :group 'notdeft)
+
 ;; Faces
 
 (defgroup notdeft-faces nil
@@ -1977,8 +1986,8 @@ hook `notdeft-mode-hook'.
 (defun notdeft-create-buffer (&optional new)
   "Create and switch to a `notdeft-mode' buffer.
 Name it `notdeft-buffer'. If a NotDeft buffer by that name
-already exists, its state is reset. If NEW is non-nil, then
-always create a new buffer."
+already exists, reuse it, resetting its state. If NEW is non-nil,
+then always create a new buffer."
   (switch-to-buffer (if new
 			(generate-new-buffer notdeft-buffer)
 		      notdeft-buffer))
@@ -2000,23 +2009,24 @@ Always return FILE."
   file)
 
 ;;;###autoload
-(defun notdeft (&optional reset)
+(defun notdeft (&optional reset new)
   "Switch to a `notdeft-buffer', creating one if not yet created.
 With a non-nil prefix argument RESET, switch to any selected
 NotDeft buffer with fresh state. With two prefix arguments, also
-interactively query for an initial choice of
-`notdeft-directory'."
+interactively query for an initial choice of `notdeft-directory'.
+When called programmatically, if the argument NEW is non-nil,
+always create a new buffer."
   (interactive "P")
   (when (equal reset '(16))
     (setq notdeft-directory
 	  (file-name-as-directory (notdeft-select-directory))))
-  (let ((buf (get-buffer notdeft-buffer)))
+  (let ((buf (and (not new) (get-buffer notdeft-buffer))))
     (if buf
 	(progn
 	  (switch-to-buffer buf)
 	  (when reset
 	    (notdeft-reset)))
-      (notdeft-create-buffer))
+      (notdeft-create-buffer t))
     (notdeft-global-do-pending)
     (when (and notdeft-directory (or (not buf) reset))
       (message "Using NotDeft data directory '%s'" notdeft-directory))))
@@ -2108,14 +2118,14 @@ If called interactively, read a search query interactively.
 Non-interactively, the QUERY may be given as an argument. With a
 non-nil RANK, have results ranked by relevance; interactively, a
 prefix argument will set this option. Create a `notdeft-buffer'
-if one does not yet exist, otherwise merely switch to an existing
-one."
+if one does not yet exist; otherwise refer to the
+`notdeft-open-query-in-new-buffer' configuration option."
   (interactive "i\nP")
   (when notdeft-xapian-program
     (let ((query (or query (notdeft-xapian-read-query)))
 	  (notdeft-xapian-order-by-time
 	   (if rank nil notdeft-xapian-order-by-time)))
-      (notdeft)
+      (notdeft nil notdeft-open-query-in-new-buffer)
       (notdeft-xapian-query-set query))))
 
 (defun notdeft-select-file/ido/nondirectory (files &optional prompt)
