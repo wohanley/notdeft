@@ -53,7 +53,8 @@
     ("l" notdeft-lucky-find-file "lucky search")
     ;; other
     ("v" notdeft "NotDeft")
-    ("b" notdeft-switch-to-buffer "switch to note")
+    ("b" notdeft-switch-to-note-buffer "switch to note")
+    ("B" notdeft-switch-to-buffer "switch to buffer")
     ("q" nil "cancel")))
 
 (provide 'notdeft-global-hydra)

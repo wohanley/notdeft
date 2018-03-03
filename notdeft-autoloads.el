@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23194 24953 860063
-;;;;;;  484000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23194 28042 414860
+;;;;;;  632000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -62,9 +62,16 @@ The PREFIX argument is passed to `save-buffer'.
 \(fn PREFIX)" t nil)
 
 (autoload 'notdeft-switch-to-buffer "notdeft" "\
+Switch to an existing NotDeft buffer.
+Where multiple buffers exist, query for the desired buffer
+interactively.
+
+\(fn)" t nil)
+
+(autoload 'notdeft-switch-to-note-buffer "notdeft" "\
 Switch to an existing NotDeft note buffer.
 The list of choices is determined by the function
-`notdeft-note-mode-buffers'.
+`notdeft-note-buffer-list'.
 
 \(fn)" t nil)
 

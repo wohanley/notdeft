@@ -64,7 +64,7 @@
     ("<up>" previous-line)
     ("<down>" next-line)
     ;; other
-    ("b" notdeft-switch-to-buffer "switch to note" :exit t)
+    ("b" notdeft-switch-to-note-buffer "switch to note" :exit t)
     ("x" quit-window "quit" :exit t)
     ("q" nil "cancel" :exit t)))
 

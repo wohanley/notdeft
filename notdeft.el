@@ -1261,7 +1261,7 @@ The PREFIX argument is passed to `save-buffer'."
   (notdeft-note-mode 1)
   (save-buffer prefix))
 
-(defun notdeft-note-mode-buffers ()
+(defun notdeft-note-buffer-list ()
   "Return a list of NotDeft note buffers.
 The list contains references to buffers with for which the
 NotDeft note minor mode has been enabled, and thus the variable
@@ -1270,11 +1270,41 @@ NotDeft note minor mode has been enabled, and thus the variable
 
 ;;;###autoload
 (defun notdeft-switch-to-buffer ()
+  "Switch to an existing NotDeft buffer.
+Where multiple buffers exist, query for the desired buffer
+interactively."
+  (interactive)
+  (let ((buffers (notdeft-buffer-list)))
+    (cond
+     ((not buffers)
+      (message "No NotDeft notes open"))
+     ((null (cdr buffers))
+      (switch-to-buffer (car buffers)))
+     (t
+      (let* ((choices
+	      (mapcar
+	       (lambda (buf)
+		 (let (query filter)
+		   (with-current-buffer buf
+		     (setq query notdeft-xapian-query
+			   filter notdeft-filter-string))
+		   (format "%s: %s: %s"
+			   (buffer-name buf)
+			   (or query "-")
+			   (or filter "-"))))
+	       buffers))
+	     (chosen (ido-completing-read "Buffer: " choices nil t))
+	     (ix (cl-position chosen choices))
+	     (buffer (nth ix buffers)))
+	(switch-to-buffer buffer))))))
+
+;;;###autoload
+(defun notdeft-switch-to-note-buffer ()
   "Switch to an existing NotDeft note buffer.
 The list of choices is determined by the function
-`notdeft-note-mode-buffers'."
+`notdeft-note-buffer-list'."
   (interactive)
-  (let ((buffers (notdeft-note-mode-buffers)))
+  (let ((buffers (notdeft-note-buffer-list)))
     (cond
      ((not buffers)
       (message "No NotDeft notes open"))
@@ -1427,6 +1457,14 @@ Return the buffer, or nil."
 (defun notdeft-get-buffer ()
   "Return a NotDeft buffer, or nil."
   (cl-some #'notdeft-buffer-p (buffer-list)))
+
+(defun notdeft-buffer-list ()
+  "Return a list of NotDeft buffers.
+That is, behave like `buffer-list', but exclude all non-NotDeft
+buffers."
+  (cl-loop for buf in (buffer-list)
+	   if (notdeft-buffer-p buf)
+	   collect buf))
 
 (defun notdeft-get-directory ()
   "Select a NotDeft directory for an operation.
@@ -1901,7 +1939,8 @@ More specifically, delete obsolete cached file information."
     (define-key map (kbd "C-c p") 'notdeft-show-file-parse)
     (define-key map (kbd "C-c P") 'notdeft-show-find-file-parse)
     ;; Miscellaneous
-    (define-key map (kbd "C-c b") 'notdeft-switch-to-buffer)
+    (define-key map (kbd "C-c b") 'notdeft-switch-to-note-buffer)
+    (define-key map (kbd "C-c B") 'notdeft-switch-to-buffer)
     (define-key map (kbd "C-c G") 'notdeft-gc)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
