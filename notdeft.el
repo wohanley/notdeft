@@ -343,8 +343,8 @@ contents of `notdeft-all-files' for a NotDeft buffer.")
 
 (defvar notdeft-filter-string nil
   "Current filter string used by NotDeft.
-It is treated as a list of whitespace-separated strings (not
-regular expressions) that are required to match.")
+A string that is treated as a list of whitespace-separated
+strings (not regular expressions) that are required to match.")
 
 (defvar notdeft-dirlist-cache nil
   "A cache of lists of notes in `notdeft-directories'.
@@ -1827,17 +1827,16 @@ strings and require all elements to match."
   "Clear the current filter string and refresh the file browser.
 With a prefix argument PFX, also clear any Xapian query."
   (interactive "P")
-  (cond
-   ((and pfx notdeft-xapian-query)
-    (setq notdeft-xapian-query nil)
-    (setq notdeft-filter-string nil)
-    (notdeft-changed/query))
-   (notdeft-filter-string
-    (setq notdeft-filter-string nil)
-    (notdeft-changed/filter))))
+  (if (and pfx notdeft-xapian-query)
+      (progn
+	(setq notdeft-xapian-query nil)
+	(setq notdeft-filter-string nil)
+	(notdeft-changed/query))
+    (notdeft-filter nil)))
 
 (defun notdeft-filter (str)
-  "Set the filter string to STR and update the file browser."
+  "Set the filter string to STR and update the file browser.
+If STR is nil, clear the filter."
   (interactive "sFilter: ")
   (let ((old-filter notdeft-filter-string))
     (setq notdeft-filter-string (and (not (equal "" str)) str))
@@ -1860,9 +1859,9 @@ Get the character from the variable `last-command-event'."
   "Remove last character from the filter string and update state.
 In particular, update `notdeft-current-files'."
   (interactive)
-  (if (> (length notdeft-filter-string) 1)
-      (notdeft-filter (substring notdeft-filter-string 0 -1))
-    (notdeft-filter-clear)))
+  (notdeft-filter
+   (and (> (length notdeft-filter-string) 1)
+	(substring notdeft-filter-string 0 -1))))
 
 (defun notdeft-filter-decrement-word ()
   "Remove last word from the filter, if possible, and update.
@@ -1870,13 +1869,14 @@ This is like `backward-kill-word' on the filter string, but the
 kill ring is not affected."
   (interactive)
   (when notdeft-filter-string
-    (let ((new-filter
-	   (with-temp-buffer
-	     (insert notdeft-filter-string)
-	     (goto-char (point-max))
-	     (backward-word)
-	     (buffer-substring-no-properties (point-min) (point)))))
-      (notdeft-filter new-filter))))
+    (let* ((str notdeft-filter-string) ;; store buffer local value
+	   (new-filter
+	    (with-temp-buffer
+	      (insert str)
+	      (goto-char (point-max))
+	      (backward-word)
+	      (buffer-substring-no-properties (point-min) (point)))))
+      (notdeft-filter (and (not (equal "" new-filter)) new-filter)))))
 
 (defun notdeft-filter-yank ()
   "Append the most recently killed or yanked text to the filter."
