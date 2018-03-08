@@ -1663,8 +1663,8 @@ only). Return the pathname of the file/directory that was moved."
 
 (defvar notdeft-previous-target nil
   "Previous file move target NotDeft directory.
-Set to nil if `notdeft-move-file' has not been used to move a
-file.")
+Local to NotDeft mode buffers. Set to nil if `notdeft-move-file'
+has not been used to move a file.")
 
 ;;;###autoload
 (defun notdeft-move-file (pfx)
@@ -2016,6 +2016,7 @@ hook `notdeft-mode-hook'.
   (make-local-variable 'notdeft-filter-string)
   (make-local-variable 'notdeft-pending-updates)
   (make-local-variable 'notdeft-buffer-width)
+  (make-local-variable 'notdeft-previous-target)
   (add-hook 'window-configuration-change-hook ;; buffer locally
 	    'notdeft-changed/window nil t)
   (run-mode-hooks 'notdeft-mode-hook))
