@@ -760,7 +760,7 @@ Do nothing if FILE is not in the cache."
   (remhash file notdeft-hash-contents))
 
 (defun notdeft-cache-gc ()
-  "Remove obsolete entries from the cache.
+  "Remove obsolete file information from the cache.
 That is, remove information for files that no longer exist.
 Return a list of the files whose information was removed."
   (let (lst)
@@ -955,6 +955,19 @@ Return the results as absolute paths, in any order."
 Do that by scanning `notdeft-directories'."
   (cons t (notdeft-dirlist-scan-entries notdeft-directories)))
 
+(defun notdeft-dirlist-gc ()
+  "Garbage collect `notdeft-dirlist-cache'.
+That is, remove cached information for directories no longer in
+`notdeft-directories'."
+  (when notdeft-dirlist-cache
+    (setq notdeft-dirlist-cache
+	  (cons t (delete nil
+			  (mapcar
+			   (lambda (entry)
+			     (when (notdeft-directories-member (car entry))
+			       entry))
+			   (cdr notdeft-dirlist-cache)))))))
+
 (defun notdeft-dirlist-cache-rebuild ()
   "Rebuild, set, and return the value for `notdeft-dirlist-cache'."
   (let ((cache (notdeft-dirlist-cache-new)))
@@ -990,9 +1003,13 @@ Update the dirlist cache, and return the updated cache."
 	     (setq xs (cons y xs)))))))))
 
 (defun notdeft-dirlist-get-all-files ()
-  "Like `notdeft-dirlist-cache-get', but return a file list."
+  "Like `notdeft-dirlist-cache-get', but return a file list.
+Only include files under `notdeft-directories'."
   (let ((cache (notdeft-dirlist-cache-get)))
-    (apply #'append (mapcar #'cdr (cdr cache)))))
+    (apply #'append (mapcar (lambda (x)
+			      (when (notdeft-directories-member (car x))
+				(cdr x)))
+			    (cdr cache)))))
 
 (defmacro notdeft-if2 (cnd thn els)
   "Two-armed `if'.
@@ -1180,12 +1197,14 @@ REBUILD is non-nil, always rebuild the entire index."
 (defun notdeft-query-edit ()
   "Enter a Xapian query string, and make it current."
   (interactive)
-  (notdeft-xapian-query-set (notdeft-xapian-read-query)))
+  (when notdeft-xapian-program
+    (notdeft-xapian-query-set (notdeft-xapian-read-query))))
 
 (defun notdeft-query-clear ()
   "Clear current Xapian query string."
   (interactive)
-  (notdeft-xapian-query-set nil))
+  (when notdeft-xapian-program
+    (notdeft-xapian-query-set nil)))
 
 (defun notdeft-xapian-query-set (new-query)
   "Set NEW-QUERY string as the current Xapian query.
@@ -1908,9 +1927,11 @@ Otherwise, quickly create a new file."
 
 (defun notdeft-gc ()
   "Garbage collect to remove uncurrent NotDeft state.
-More specifically, delete obsolete cached file information."
+More specifically, delete obsolete cached file and directory
+information."
   (interactive)
-  (notdeft-cache-gc))
+  (notdeft-cache-gc)
+  (notdeft-dirlist-gc))
 
 ;;; Mode definition
 
@@ -1942,24 +1963,26 @@ More specifically, delete obsolete cached file information."
     (define-key map (kbd "C-c b") 'notdeft-switch-to-note-buffer)
     (define-key map (kbd "C-c B") 'notdeft-switch-to-buffer)
     (define-key map (kbd "C-c G") 'notdeft-gc)
+    (define-key map (kbd "C-c R") 'notdeft-reindex)
     (define-key map (kbd "C-c C-q") 'quit-window)
     ;; Widgets
     (define-key map [down-mouse-1] 'widget-button-click)
     (define-key map [down-mouse-2] 'widget-button-click)
     ;; Xapian
-    (when notdeft-xapian-program
-      (define-key map (kbd "C-c R") 'notdeft-xapian-re-index)
-      (define-key map (kbd "<tab>") 'notdeft-query-edit)
-      (define-key map (kbd "<backtab>") 'notdeft-query-clear)
-      (define-key map (kbd "<S-tab>") 'notdeft-query-clear))
+    (define-key map (kbd "<tab>") 'notdeft-query-edit)
+    (define-key map (kbd "<backtab>") 'notdeft-query-clear)
+    (define-key map (kbd "<S-tab>") 'notdeft-query-clear)
     (let ((parent-map (make-sparse-keymap)))
       (define-key parent-map (kbd "C-c") 'notdeft-global-map)
       (set-keymap-parent map parent-map)
       map))
   "Keymap for NotDeft mode.")
 
-(defun notdeft-xapian-re-index ()
-  "Recreate all indexes for `notdeft-directories'."
+(defun notdeft-reindex ()
+  "Recreate all indexes for `notdeft-directories'.
+A `notdeft-refresh' is normally sufficient, but this command
+should help if the Xapian search index becomes corrupted for some
+reason, as indexes are re-built from scratch."
   (interactive)
   (notdeft-global-do-pending nil t))
 
@@ -1986,15 +2009,17 @@ optionally for ALL-BUFFERS."
   "Refresh or reset NotDeft state.
 Refresh NotDeft state so that outside filesystem changes get
 noticed. With a non-nil prefix argument RESET, also reset state
-to clear caches and queries and such. Invoke this command
-manually if NotDeft files change outside of NotDeft mode and
-NotDeft note minor mode \(as toggled by the command
+to clear caches and queries and such. With two prefix arguments,
+clear queries and filters for all NotDeft mode buffers. Invoke
+this command manually if NotDeft files change outside of NotDeft
+mode and NotDeft note minor mode \(as toggled by the command
 `notdeft-mode' and the command `notdeft-note-mode'), as such
-changes are not detected automatically."
+changes are not detected automatically. Also invoke this if you
+change `notdeft-directories'."
   (interactive "P")
   (run-hooks 'notdeft-pre-refresh-hook)
   (when reset
-    (notdeft-reset))
+    (notdeft-reset (equal reset '(16))))
   (notdeft-changed/fs 'anything)
   (run-hooks 'notdeft-post-refresh-hook))
 

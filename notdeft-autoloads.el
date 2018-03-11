@@ -5,8 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23194 28042 414860
-;;;;;;  632000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23205 7156 0 0))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -189,9 +188,10 @@ Show NotDeft directory of the selected note.
 Refresh or reset NotDeft state.
 Refresh NotDeft state so that outside filesystem changes get
 noticed. With a non-nil prefix argument RESET, also reset state
-to clear caches and queries and such. Invoke this command
-manually if NotDeft files change outside of NotDeft mode and
-NotDeft note minor mode (as toggled by the command
+to clear caches and queries and such. With two prefix arguments,
+clear queries and filters for all NotDeft mode buffers. Invoke
+this command manually if NotDeft files change outside of NotDeft
+mode and NotDeft note minor mode (as toggled by the command
 `notdeft-mode' and the command `notdeft-note-mode'), as such
 changes are not detected automatically.
 

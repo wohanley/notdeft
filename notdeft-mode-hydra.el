@@ -30,7 +30,7 @@
 (declare-function notdeft-gc "notdeft")
 (declare-function notdeft-query-edit "notdeft")
 (declare-function notdeft-query-clear "notdeft")
-(declare-function notdeft-xapian-re-index "notdeft")
+(declare-function notdeft-reindex "notdeft")
 (declare-function notdeft-filter "notdeft")
 (declare-function notdeft-filter-clear "notdeft")
 
@@ -53,7 +53,7 @@
     ("j" notdeft-chdir "chdir")
     ("g" notdeft-refresh "refresh")
     ("G" notdeft-gc "GC")
-    ("R" notdeft-xapian-re-index "re-index")
+    ("R" notdeft-reindex "re-index")
     ;; filtering
     ("l" notdeft-filter "filter" :exit t)
     ("c" notdeft-filter-clear "clear filter")

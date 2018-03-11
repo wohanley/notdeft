@@ -76,7 +76,7 @@ With one prefix argument PFX, include no description.
 With two prefix arguments, insert any note title
 as the link description. (If multiple notes have the same
 name, pick any one of them for title extraction.)"
-  (interactive "p")
+  (interactive "*p")
   (let ((s (notdeft-make-org-link pfx)))
     (when s
       (insert s))))

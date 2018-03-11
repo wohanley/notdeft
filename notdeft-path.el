@@ -25,6 +25,8 @@
 (require 'cl-lib)
 (require 'notdeft-autoloads)
 
+(declare-function notdeft-directories-member "notdeft")
+
 (defcustom notdeft-path '("~/.deft/")
   "NotDeft directory search path.
 A list of strings, or a function returning a list of strings. The
@@ -68,9 +70,7 @@ Only include existing directories. Also clear `notdeft-directory'
 if it is no longer one of the `notdeft-directories'."
   (setq notdeft-directories (notdeft-resolve-directories))
   (when (and (boundp 'notdeft-directory) notdeft-directory)
-    (unless (cl-some (lambda (elem)
-		       (file-equal-p notdeft-directory elem))
-		     notdeft-directories)
+    (unless (notdeft-directories-member notdeft-directory)
       (setq notdeft-directory nil)))
   (run-hooks 'notdeft-directories-changed-hook)
   notdeft-directories)
