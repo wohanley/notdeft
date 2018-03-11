@@ -104,9 +104,9 @@
 ;; argument `C-u`.
 
 ;; Archiving unused files can be carried out by pressing `C-c C-a`.
-;; Files will be moved to `notdeft-archive-directory' under a NotDeft
-;; data directory (e.g., current `notdeft-directory'), which by
-;; default is named so that it gets excluded from searches.
+;; Files will be moved to `notdeft-archive-directory' under the note
+;; file's NotDeft data directory. The archive directory is by default
+;; named so that it gets excluded from searches.
 
 ;; Getting Started
 ;; ---------------
@@ -1933,6 +1933,16 @@ information."
   (notdeft-cache-gc)
   (notdeft-dirlist-gc))
 
+(defun notdeft-quit (prefix)
+  "Quit NotDeft mode.
+With one prefix argument, kill the buffer. With two prefix
+arguments, kill all NotDeft mode buffers."
+  (interactive "P")
+  (quit-window prefix)
+  (when (equal prefix '(16))
+    (dolist (buf (notdeft-buffer-list))
+      (kill-buffer buf))))
+
 ;;; Mode definition
 
 (defvar notdeft-mode-map
@@ -1964,7 +1974,7 @@ information."
     (define-key map (kbd "C-c B") 'notdeft-switch-to-buffer)
     (define-key map (kbd "C-c G") 'notdeft-gc)
     (define-key map (kbd "C-c R") 'notdeft-reindex)
-    (define-key map (kbd "C-c C-q") 'quit-window)
+    (define-key map (kbd "C-c C-q") 'notdeft-quit)
     ;; Widgets
     (define-key map [down-mouse-1] 'widget-button-click)
     (define-key map [down-mouse-2] 'widget-button-click)
