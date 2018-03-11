@@ -213,7 +213,8 @@ Each named directory may or may not exist."
 
 (defcustom notdeft-directory nil
   "Default or previously selected NotDeft data directory.
-One of the `notdeft-directories', or nil if none."
+One of the `notdeft-directories', or nil if none. The value may
+be modified locally for each NotDeft mode buffer."
   :type '(choice (string :tag "Default directory")
 		 (const :tag "None" nil))
   :safe 'string-or-null-p
@@ -339,12 +340,14 @@ created NotDeft buffer."
 (defvar notdeft-xapian-query nil
   "Current Xapian query string.
 Where `notdeft-xapian-program' is available, it determines the
-contents of `notdeft-all-files' for a NotDeft buffer.")
+contents of `notdeft-all-files' for a NotDeft buffer. Local to
+NotDeft mode buffers.")
 
 (defvar notdeft-filter-string nil
   "Current filter string used by NotDeft.
 A string that is treated as a list of whitespace-separated
-strings (not regular expressions) that are required to match.")
+strings (not regular expressions) that are required to match.
+Local to a NotDeft mode buffer.")
 
 (defvar notdeft-dirlist-cache nil
   "A cache of lists of notes in `notdeft-directories'.
@@ -354,10 +357,11 @@ instead of a search index.")
 
 (defvar notdeft-all-files nil
   "List of all files to list or filter.
-Buffer local when using the Xapian backend")
+Local to a NotDeft mode buffer.")
 
 (defvar notdeft-current-files nil
-  "List of files matching current filter.")
+  "List of files matching current filter.
+Local to a NotDeft mode buffer.")
 
 (defvar notdeft-hash-contents (make-hash-table :test 'equal)
   "Hash containing complete cached file contents, keyed by filename.")
@@ -372,7 +376,8 @@ Buffer local when using the Xapian backend")
   "Hash containing cached file summaries, keyed by filename.")
 
 (defvar notdeft-buffer-width nil
-  "Width of NotDeft buffer, as currently drawn, or nil.")
+  "Width of NotDeft buffer, as currently drawn, or nil.
+Local to a NotDeft mode buffer.")
 
 (defvar notdeft-pending-reindex t
   "Whether to do initial, one-off search indexing.
@@ -386,7 +391,8 @@ making changes to a note collection.")
 Either nil for no pending updates, the symbol `redraw' for a
 pending redrawing of the buffer, the symbol `refilter' for a
 pending recomputation of `notdeft-current-files', or the symbol
-`requery' for a pending querying of `notdeft-all-files'.")
+`requery' for a pending querying of `notdeft-all-files'. Local to
+a NotDeft mode buffer.")
 
 ;; File processing
 
@@ -1296,9 +1302,12 @@ interactively."
   (let ((buffers (notdeft-buffer-list)))
     (cond
      ((not buffers)
-      (message "No NotDeft notes open"))
+      (message "No NotDeft buffers"))
      ((null (cdr buffers))
-      (switch-to-buffer (car buffers)))
+      (let ((buf (car buffers)))
+	(if (eq (current-buffer) buf)
+	    (message "No other NotDeft buffers")
+	  (switch-to-buffer buf))))
      (t
       (let* ((choices
 	      (mapcar
@@ -1682,7 +1691,7 @@ only). Return the pathname of the file/directory that was moved."
 
 (defvar notdeft-previous-target nil
   "Previous file move target NotDeft directory.
-Local to NotDeft mode buffers. Set to nil if `notdeft-move-file'
+Local to a NotDeft mode buffer. Set to nil if `notdeft-move-file'
 has not been used to move a file.")
 
 ;;;###autoload
@@ -2045,6 +2054,7 @@ hook `notdeft-mode-hook'.
   (use-local-map notdeft-mode-map)
   (setq major-mode 'notdeft-mode)
   (setq mode-name "NotDeft")
+  (make-local-variable 'notdeft-directory)
   (make-local-variable 'notdeft-all-files)
   (make-local-variable 'notdeft-current-files)
   (make-local-variable 'notdeft-xapian-query)
