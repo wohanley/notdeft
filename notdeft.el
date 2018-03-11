@@ -2076,15 +2076,13 @@ Always return FILE."
 ;;;###autoload
 (defun notdeft (&optional reset new)
   "Switch to a `notdeft-buffer', creating one if not yet created.
-With a non-nil prefix argument RESET, switch to any selected
-NotDeft buffer with fresh state. With two prefix arguments, also
-interactively query for an initial choice of `notdeft-directory'.
-When called programmatically, if the argument NEW is non-nil,
-always create a new buffer."
-  (interactive "P")
-  (when (equal reset '(16))
-    (setq notdeft-directory
-	  (file-name-as-directory (notdeft-select-directory))))
+With a non-nil argument RESET, switch to any existing NotDeft
+buffer with fresh state. With a non-nil argument NEW, always
+create a new buffer, even when a `notdeft-buffer' already exists.
+When called interactively, one prefix argument means NEW, whereas
+two prefix arguments means RESET."
+  (interactive (list (equal current-prefix-arg '(16))
+		     (equal current-prefix-arg '(4))))
   (let ((buf (and (not new) (get-buffer notdeft-buffer))))
     (if buf
 	(progn
@@ -2181,11 +2179,11 @@ FILENAME is a non-directory filename, with an extension
   "Open NotDeft with an Xapian search QUERY.
 When called interactively, read the QUERY interactively. With
 non-nil RANK, have results ranked by relevance; when called
-interactively, the command prefix C-u 1 will set this option.
-Open the query in a new buffer as specified by the
-`notdeft-open-query-in-new-buffer' configuration option; a
+interactively, the command prefix \\[universal-argument] 1 will
+set this option. Open the query in a new buffer as specified by
+the `notdeft-open-query-in-new-buffer' configuration option; a
 non-nil NEGATE argument reverses that setting, as does the prefix
-C-u when called interactively."
+\\[universal-argument] when called interactively."
   (interactive (let ((prefix current-prefix-arg))
 		 (list (notdeft-xapian-read-query)
 		       (equal prefix 1)
