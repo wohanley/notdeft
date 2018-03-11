@@ -2210,15 +2210,16 @@ If given, use the specified PROMPT."
       file)))
 
 ;;;###autoload
-(defun notdeft-query-ido-find-file (&optional query)
+(defun notdeft-query-ido-find-file (&optional query by-time)
   "Open one of the files matching Xapian search QUERY.
 If called interactively, read a search query interactively,
 accounting for `notdeft-xapian-query-history'. If there is more
 than one match, present a choice list of non-directory filenames
-with `ido-completing-read', ordering the choices by relevance."
-  (interactive (list (notdeft-xapian-read-query)))
+with `ido-completing-read'. Order the choices by relevance, or
+BY-TIME if requested."
+  (interactive (list (notdeft-xapian-read-query) current-prefix-arg))
   (when notdeft-xapian-program
-    (let* ((notdeft-xapian-order-by-time nil)
+    (let* ((notdeft-xapian-order-by-time by-time)
 	   (files (notdeft-xapian-search notdeft-directories query)))
       (cond
        ((not files)
