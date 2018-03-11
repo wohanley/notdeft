@@ -263,7 +263,7 @@ Set to nil to hide."
   :safe 'null
   :group 'notdeft)
 
-(defcustom notdeft-open-query-in-new-buffer t
+(defcustom notdeft-open-query-in-new-buffer nil
   "Whether to open query results in a new buffer.
 More specifically, when this variable is non-nil, the
 `notdeft-open-query' command shows its matches in a freshly
@@ -2177,20 +2177,24 @@ FILENAME is a non-directory filename, with an extension
       (notdeft-find-file fn))))
 
 ;;;###autoload
-(defun notdeft-open-query (&optional query rank)
-  "Open NotDeft with an Xapian search query.
-If called interactively, read a search query interactively.
-Non-interactively, the QUERY may be given as an argument. With a
-non-nil RANK, have results ranked by relevance; interactively, a
-prefix argument will set this option. Create a `notdeft-buffer'
-if one does not yet exist; otherwise refer to the
-`notdeft-open-query-in-new-buffer' configuration option."
-  (interactive "i\nP")
+(defun notdeft-open-query (&optional query rank negate)
+  "Open NotDeft with an Xapian search QUERY.
+When called interactively, read the QUERY interactively. With
+non-nil RANK, have results ranked by relevance; when called
+interactively, the command prefix C-u 1 will set this option.
+Open the query in a new buffer as specified by the
+`notdeft-open-query-in-new-buffer' configuration option; a
+non-nil NEGATE argument reverses that setting, as does the prefix
+C-u when called interactively."
+  (interactive (let ((prefix current-prefix-arg))
+		 (list (notdeft-xapian-read-query)
+		       (equal prefix 1)
+		       (equal prefix '(4)))))
   (when notdeft-xapian-program
-    (let ((query (or query (notdeft-xapian-read-query)))
-	  (notdeft-xapian-order-by-time
-	   (if rank nil notdeft-xapian-order-by-time)))
-      (notdeft nil notdeft-open-query-in-new-buffer)
+    (let* ((query (if rank (concat "!rank " (or query "")) query))
+	   (new notdeft-open-query-in-new-buffer)
+	   (new (if negate (not new) new)))
+      (notdeft nil new)
       (notdeft-xapian-query-set query))))
 
 (defun notdeft-select-file/ido/nondirectory (files &optional prompt)

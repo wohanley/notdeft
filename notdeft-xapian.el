@@ -131,7 +131,7 @@ non-directory filename, all descending, based on the
 	(max-results notdeft-xapian-max-results)
 	name-sort)
     (when query
-      (while (string-match "^ *!\\([[:alpha:]]+\\) +" query)
+      (while (string-match "^ *!\\([[:alpha:]]+\\)\\>" query)
 	(let ((opt (match-string 1 query)))
 	  (setq query (substring query (match-end 0)))
 	  (pcase (downcase opt)
@@ -140,7 +140,8 @@ non-directory filename, all descending, based on the
 	    ("all" (setq max-results 0))
 	    ("file" (setq name-sort t))
 	    ))))
-    (let* ((s (shell-command-to-string
+    (let* ((query (notdeft-chomp-nullify query))
+	   (s (shell-command-to-string
 	       (concat
 		(shell-quote-argument notdeft-xapian-program) " search"
 		(if name-sort " --name-sort" "")

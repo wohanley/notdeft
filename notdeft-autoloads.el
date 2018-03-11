@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23205 7156 0 0))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23205 17838 0 0))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -193,7 +193,8 @@ clear queries and filters for all NotDeft mode buffers. Invoke
 this command manually if NotDeft files change outside of NotDeft
 mode and NotDeft note minor mode (as toggled by the command
 `notdeft-mode' and the command `notdeft-note-mode'), as such
-changes are not detected automatically.
+changes are not detected automatically. Also invoke this if you
+change `notdeft-directories'.
 
 \(fn &optional RESET)" t nil)
 
@@ -241,24 +242,26 @@ FILENAME is a non-directory filename, with an extension
 \(fn FILENAME)" nil nil)
 
 (autoload 'notdeft-open-query "notdeft" "\
-Open NotDeft with an Xapian search query.
-If called interactively, read a search query interactively.
-Non-interactively, the QUERY may be given as an argument. With a
-non-nil RANK, have results ranked by relevance; interactively, a
-prefix argument will set this option. Create a `notdeft-buffer'
-if one does not yet exist; otherwise refer to the
-`notdeft-open-query-in-new-buffer' configuration option.
+Open NotDeft with an Xapian search QUERY.
+When called interactively, read the QUERY interactively. With
+non-nil RANK, have results ranked by relevance; when called
+interactively, the command prefix C-u 1 will set this option.
+Open the query in a new buffer as specified by the
+`notdeft-open-query-in-new-buffer' configuration option; a
+non-nil NEGATE argument reverses that setting, as does the prefix
+C-u when called interactively.
 
-\(fn &optional QUERY RANK)" t nil)
+\(fn &optional QUERY RANK NEGATE)" t nil)
 
 (autoload 'notdeft-query-ido-find-file "notdeft" "\
 Open one of the files matching Xapian search QUERY.
 If called interactively, read a search query interactively,
 accounting for `notdeft-xapian-query-history'. If there is more
 than one match, present a choice list of non-directory filenames
-with `ido-completing-read', ordering the choices by relevance.
+with `ido-completing-read'. Order the choices by relevance, or
+BY-TIME if requested.
 
-\(fn &optional QUERY)" t nil)
+\(fn &optional QUERY BY-TIME)" t nil)
 
 (autoload 'notdeft-lucky-find-file "notdeft" "\
 Open the highest-ranked note matching a search QUERY.
