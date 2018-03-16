@@ -349,11 +349,12 @@ A string that is treated as a list of whitespace-separated
 strings (not regular expressions) that are required to match.
 Local to a NotDeft mode buffer.")
 
-(defvar notdeft-dirlist-cache nil
+(defvar notdeft-dirlist-cache (make-hash-table :test 'equal)
   "A cache of lists of notes in `notdeft-directories'.
-Of the form (t (DIR . FILES) (DIR . FILES) ...). Only used with
-the dirlist backend, in which case this data structure gets built
-instead of a search index.")
+NotDeft directory names as keys, as they appear in the
+`notdeft-directories' list. Lists of full note file names as
+values. Only used with the dirlist backend, in which case this
+data structure gets built instead of a search index.")
 
 (defvar notdeft-all-files nil
   "List of all files to list or filter.
@@ -529,6 +530,11 @@ containing NotDeft directory."
     (and root
 	 (let ((dir (file-name-directory file)))
 	   (not (notdeft-file-equal-p dir root))))))
+
+(defun notdeft-file-assoc (file list)
+  "Like `assoc' for FILE in LIST.
+Compare keys with `notdeft-file-equal-p'."
+  (cl-assoc file list :test #'notdeft-file-equal-p))
 
 (defun notdeft-file-member (file list)
   "Whether FILE is a member of LIST.
@@ -956,66 +962,67 @@ Return the results as absolute paths, in any order."
        (cons dir (notdeft-glob/absolute dir nil nil file-re)))
      dirs)))
 
-(defun notdeft-dirlist-cache-new ()
-  "Produce a value for `notdeft-dirlist-cache'.
-Do that by scanning `notdeft-directories'."
-  (cons t (notdeft-dirlist-scan-entries notdeft-directories)))
+(defun notdeft-hash-keys (hash)
+  "Return a list of the keys of HASH.
+Implemented in terms of `maphash'."
+  (let (keys)
+    (maphash
+     (lambda (k v)
+       (notdeft-setq-cons keys k))
+     hash)
+    keys))
 
 (defun notdeft-dirlist-gc ()
   "Garbage collect `notdeft-dirlist-cache'.
-That is, remove cached information for directories no longer in
-`notdeft-directories'."
-  (when notdeft-dirlist-cache
-    (setq notdeft-dirlist-cache
-	  (cons t (delete nil
-			  (mapcar
-			   (lambda (entry)
-			     (when (notdeft-directories-member (car entry))
-			       entry))
-			   (cdr notdeft-dirlist-cache)))))))
+That is, remove cached information for directories whose names
+are no longer in `notdeft-directories'."
+  (let ((keys (notdeft-hash-keys notdeft-dirlist-cache)))
+    (dolist (dir keys)
+      (unless (member dir notdeft-directories)
+	(remhash dir notdeft-dirlist-cache)))))
 
 (defun notdeft-dirlist-cache-rebuild ()
-  "Rebuild, set, and return the value for `notdeft-dirlist-cache'."
-  (let ((cache (notdeft-dirlist-cache-new)))
-    (setq notdeft-dirlist-cache cache)))
-
-(defun notdeft-dirlist-cache-get ()
-  "Return `notdeft-dirlist-cache'.
-If not set, compute and memoize a value for it first."
-  (or notdeft-dirlist-cache
-      (notdeft-dirlist-cache-rebuild)))
-
-(defun notdeft-dirlist-cache-update-incrementally (function)
-  "Update dirlist cache entries with FUNCTION.
-Return the updated cache data structure."
-  (let ((cache
-	 (if (not notdeft-dirlist-cache)
-	     (notdeft-dirlist-cache-new)
-	   (let ((entries (cdr notdeft-dirlist-cache)))
-	     (funcall function entries)
-	     (cons t entries)))))
-    (setq notdeft-dirlist-cache cache)))
+  "Rebuild the value for `notdeft-dirlist-cache'."
+  (clrhash notdeft-dirlist-cache)
+  (notdeft-dirlist-cache-update-dirs notdeft-directories))
 
 (defun notdeft-dirlist-cache-update-dirs (dirs)
   "Scan the specified NotDeft DIRS.
-Update the dirlist cache, and return the updated cache."
-  (notdeft-dirlist-cache-update-incrementally
-   (lambda (xs)
-     (let ((ys (notdeft-dirlist-scan-entries dirs)))
-       (dolist (y ys xs)
-	 (let ((x (assoc (car y) xs)))
-	   (if x
-	       (setcdr x (cdr y))
-	     (setq xs (cons y xs)))))))))
+Update the dirlist cache."
+  (cl-assert (and (listp dirs) (cl-every 'stringp dirs)))
+  (let ((entries (notdeft-dirlist-scan-entries dirs)))
+    (dolist (entry entries)
+      (let ((dir (car entry))
+	    (files (cdr entry)))
+	(cl-assert (cl-every (lambda (file)
+			       (notdeft-file-in-directory-p file dir))
+			     files))
+	(puthash dir files notdeft-dirlist-cache)))))
+
+(defun notdeft-dirlist-cache-size ()
+  "Return directory and file count for dirlist cache."
+  (let ((d 0) (f 0))
+    (maphash
+     (lambda (k v)
+       (setq d (+ d 1)
+	     f (+ f (length v))))
+     notdeft-dirlist-cache)
+    (cons d f)))
+
+(defun notdeft-append-copy (&rest sequences)
+  "Like `append', but copy all of the SEQUENCES.
+That is, do not use the last sequence object as the tail of the
+result."
+  (apply 'append (append sequences (list nil))))
 
 (defun notdeft-dirlist-get-all-files ()
-  "Like `notdeft-dirlist-cache-get', but return a file list.
-Only include files under `notdeft-directories'."
-  (let ((cache (notdeft-dirlist-cache-get)))
-    (apply #'append (mapcar (lambda (x)
-			      (when (notdeft-directories-member (car x))
-				(cdr x)))
-			    (cdr cache)))))
+  "Return a file list collected from `notdeft-dirlist-cache'.
+Only include files for `notdeft-directories'."
+  (let ((lst (mapcar (lambda (dir)
+		       ;; nil if no `dir' key
+		       (gethash dir notdeft-dirlist-cache))
+		     notdeft-directories)))
+    (apply 'notdeft-append-copy lst)))
 
 (defmacro notdeft-if2 (cnd thn els)
   "Two-armed `if'.
@@ -1027,11 +1034,6 @@ Equivalent to (if CND THN ELS)."
   "Prepend into list X the value V."
   (declare (indent 1))
   `(setq ,x (cons ,v ,x)))
-
-(defmacro notdeft-setq-non-nil (x v)
-  "To X, assign the result of deleting nils from list V."
-  (declare (indent 1))
-  `(setq ,x (delete nil ,v)))
 
 (defun notdeft-pending-lessp (x y)
   "Whether pending status value X < Y."
@@ -1080,8 +1082,9 @@ changes remain."
   (let (dirs files) ;; filtered to Deft ones
     (cl-case what
       (dirs
-       (notdeft-setq-non-nil dirs
-	 (mapcar 'notdeft-directories-member things)))
+       (setq dirs
+	     (delete nil
+		     (mapcar 'notdeft-directories-member things))))
       (files
        (dolist (file things)
 	 (let ((dir (notdeft-dir-of-file file)))
@@ -1093,7 +1096,7 @@ changes remain."
     (if (or (and (eq what 'files) (not files))
 	    (and (eq what 'dirs) (not dirs)))
 	nil
-      (cons (cl-delete-duplicates dirs :test 'notdeft-file-equal-p)
+      (cons (cl-remove-duplicates dirs :test 'notdeft-file-equal-p)
 	    files))))
 
 (defun notdeft-changed/fs (what &optional things)
@@ -1116,6 +1119,7 @@ For further work call `notdeft-global-do-pending'."
   (let ((changes (notdeft-compute-changes what things)))
     (when changes
       (let ((dirs (car changes)))
+	;;(message "CHANGES: %S" dirs)
 	(notdeft-global-do-pending
 	 (notdeft-if2 notdeft-xapian-program
 	   (lambda () (notdeft-xapian-index-dirs dirs))
@@ -1824,7 +1828,8 @@ Show filename, title, summary, etc."
 ;; File list filtering
 
 (defun notdeft-sort-files (files)
-  "Sort FILES in reverse order by modification time."
+  "Sort FILES in reverse order by modification time.
+The argument list is modified."
   (sort files (lambda (f1 f2) (notdeft-file-newer-p f1 f2))))
 
 (defun notdeft-filter-update ()
@@ -1944,7 +1949,7 @@ information."
 
 (defun notdeft-quit (prefix)
   "Quit NotDeft mode.
-With one prefix argument, kill the buffer. With two prefix
+With one PREFIX argument, kill the buffer. With two prefix
 arguments, kill all NotDeft mode buffers."
   (interactive "P")
   (quit-window prefix)
