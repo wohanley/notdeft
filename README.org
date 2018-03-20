@@ -13,7 +13,7 @@ NotDeft does not aim for the user interaction simplicity of applications like De
 * Quick Start
 
 Download the source code with
-: git clone https://github.com/hasu/deft.git notdeft
+: git clone https://github.com/hasu/notdeft.git
 
 Then byte-compile the Emacs Lisp files with the commands
 : cd notdeft
@@ -46,6 +46,6 @@ For other ways to install, configure, and use NotDeft, see the [[http://tero.has
 - http://tero.hasu.is/notdeft/ :: documentation
 - http://tero.hasu.is/notdeft/download/ :: installable Emacs packages
 - http://tero.hasu.is/tags/notdeft/ :: related blog posts
-- https://github.com/hasu/deft :: source code repository
+- https://github.com/hasu/notdeft :: source code repository
 - [[./notdeft.el][“notdeft.el”]] :: some more documentation (in comments)
 - [[https://xapian.org/][Xapian]] and [[https://jblevins.org/projects/deft/][Deft]] :: related software
