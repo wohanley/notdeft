@@ -5,7 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23205 21230 0 0))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23218 50172 0 0))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -98,10 +98,11 @@ from STR.
 
 (autoload 'notdeft-switch-to-file-named "notdeft" "\
 Switch to a NotDeft note with the specified TITLE.
-It is assumed that a notename has been derived from
-the title with `notdeft-title-to-notename'.
-If no note so named exists, create one.
-Initialize any created file with DATA, or TITLE if not given.
+Derive a note name from the title with
+`notdeft-title-to-notename', or fail that cannot be done. If no
+note of the derived named exists, create one. Initialize any
+created file with DATA, or TITLE if not given. Return the full
+file name of the file.
 
 \(fn TITLE &optional DATA)" nil nil)
 

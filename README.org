@@ -33,7 +33,11 @@ To your Emacs startup file (e.g., “~/.emacs”), add
   (require 'notdeft-autoloads)
 #+END_SRC
 
-Create a “~/.deft/” directory, and copy some “.org” files there.
+Create a “~/.deft/” directory, and copy some “.org” files there. To arrange to enable =notdeft-note-mode= minor mode for those files, also create a “~/.deft/.dir-locals.el” file containing
+#+BEGIN_SRC emacs-lisp
+((org-mode . ((mode . org)
+              (mode . notdeft-note))))
+#+END_SRC
 
 Launch Emacs with
 : emacs -f notdeft

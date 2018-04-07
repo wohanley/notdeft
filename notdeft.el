@@ -1425,10 +1425,11 @@ Return the name of the new file."
 ;;;###autoload
 (defun notdeft-switch-to-file-named (title &optional data)
   "Switch to a NotDeft note with the specified TITLE.
-It is assumed that a notename has been derived from
-the title with `notdeft-title-to-notename'.
-If no note so named exists, create one.
-Initialize any created file with DATA, or TITLE if not given."
+Derive a note name from the title with
+`notdeft-title-to-notename', or fail that cannot be done. If no
+note of the derived named exists, create one. Initialize any
+created file with DATA, or TITLE if not given. Return the full
+file name of the file."
   (let ((notename (notdeft-title-to-notename title)))
     (unless notename
       (error "Aborting, unsuitable title: %S" title))

@@ -216,7 +216,7 @@ static int doIndex(vector<string> subArgs) {
 	if (verbose)
 	  cerr << "indexing directory " << dir << endl;
 	
-	string dbFile(file_join(dir, ".xapian-db"));
+	string dbFile(file_join(dir, ".notdeft-db"));
 	Xapian::WritableDatabase db(dbFile,
 				    resetArg.getValue() ?
 				    Xapian::DB_CREATE_OR_OVERWRITE :
@@ -427,7 +427,7 @@ static int doSearch(vector<string> subArgs) {
     auto dirs = dirsArg.getValue();
     int numDbFiles = 0;
     for (auto dir : dirs) {
-      string dbFile(file_join(dir, ".xapian-db"));
+      string dbFile(file_join(dir, ".notdeft-db"));
       if (access(dbFile.c_str(), R_OK) != -1) {
 	Xapian::Database dirDb(dbFile);
 	db.add_database(dirDb);
@@ -490,7 +490,7 @@ static int doDump(vector<string> subArgs) {
   try {
     auto dirs = dirsArg.getValue();
     for (auto dir : dirs) {
-      string dbFile(file_join(dir, ".xapian-db"));
+      string dbFile(file_join(dir, ".notdeft-db"));
       if (access(dbFile.c_str(), R_OK) != -1) {
 	cout << "database " << dbFile << endl;
 	Xapian::Database db(dbFile);
