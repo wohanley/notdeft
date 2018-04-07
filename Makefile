@@ -28,9 +28,3 @@ package :
 	cp -ai ./ /tmp/$(PKGNAMEVER)/
 	( cd /tmp/$(PKGNAMEVER) && git clean -dxffq && rm -rf .git && rm notdeft-autoloads.el )
 	( tar --create --file web/$(PKGNAMEVER).tar -C /tmp $(PKGNAMEVER) )
-
-website : web/index.html
-
-web/index.html : README.org notdeft-website.el template.html
-	mkdir -p web
-	emacsclient --eval '(progn (load "notdeft-website.el") (notdeft-web-make "README.org" "template.html" "web/index.html"))'
