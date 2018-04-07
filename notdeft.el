@@ -570,10 +570,20 @@ Return nil on failure."
 	   (title (notdeft-parse-title file contents)))
       title)))
 
+;;;###autoload
 (defun notdeft-chomp (str)
   "Trim leading and trailing whitespace from STR."
   (replace-regexp-in-string "\\(\\`[[:space:]\n]*\\|[[:space:]\n]*\\'\\)"
 			    "" str))
+
+;;;###autoload
+(defun notdeft-chomp-nullify (str &optional trim)
+  "Return string STR if non-empty, otherwise return nil.
+Optionally, use function TRIM to trim any result string."
+  (when str
+    (let ((str (notdeft-chomp str)))
+      (unless (string= "" str)
+	(if trim (funcall trim str) str)))))
 
 ;;;###autoload
 (defun notdeft-file-by-basename (name)
@@ -697,15 +707,6 @@ Extract it from position FROM, and up to MAX-N characters."
 (defun notdeft-condense-whitespace (str)
   "Condense whitespace in STR into a single space."
   (replace-regexp-in-string "[[:space:]\n]+" " " str))
-
-;;;###autoload
-(defun notdeft-chomp-nullify (str &optional trim)
-  "Return string STR if non-empty, otherwise return nil.
-Optionally, use function TRIM to trim any result string."
-  (when str
-    (let ((str (notdeft-chomp str)))
-      (unless (string= "" str)
-	(if trim (funcall trim str) str)))))
 
 (defun notdeft-parse-buffer ()
   "Parse the file contents in the current buffer.

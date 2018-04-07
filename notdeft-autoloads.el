@@ -5,7 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23218 50172 0 0))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23240 60890 801320
+;;;;;;  887000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -15,6 +16,17 @@ Extract a title from FILE content.
 Return nil on failure.
 
 \(fn FILE)" nil nil)
+
+(autoload 'notdeft-chomp "notdeft" "\
+Trim leading and trailing whitespace from STR.
+
+\(fn STR)" nil nil)
+
+(autoload 'notdeft-chomp-nullify "notdeft" "\
+Return string STR if non-empty, otherwise return nil.
+Optionally, use function TRIM to trim any result string.
+
+\(fn STR &optional TRIM)" nil nil)
 
 (autoload 'notdeft-file-by-basename "notdeft" "\
 Resolve a NotDeft note NAME to a full pathname.
@@ -33,12 +45,6 @@ The result list is sorted by the `string-lessp' relation.
 It may contain duplicates.
 
 \(fn)" nil nil)
-
-(autoload 'notdeft-chomp-nullify "notdeft" "\
-Return string STR if non-empty, otherwise return nil.
-Optionally, use function TRIM to trim any result string.
-
-\(fn STR &optional TRIM)" nil nil)
 
 (autoload 'notdeft-note-mode "notdeft" "\
 Manage NotDeft state for a note buffer.

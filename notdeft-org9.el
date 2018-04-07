@@ -47,6 +47,13 @@ The optional PFX argument is ignored."
 The function is given the file name as its sole argument.
 Used by `notdeft-make-org-link'.")
 
+(defun notdeft-make-deft-link (name &optional desc)
+  "Turn NAME and DESC into a \"deft\" link.
+NAME is not filtered through `org-link-escape'."
+  (if desc
+      (concat "[[deft:" name "][" desc "]]")
+    (concat "[[deft:" name "]]")))
+
 (defun notdeft-make-org-link (pfx)
   "Return an Org \"deft:\" link as a string.
 Choose the link target interactively.
@@ -64,9 +71,7 @@ The PFX argument is as for `notdeft-insert-org-link'."
 				    nil nil t)))
 		  (4 nil)
 		  (16 (notdeft-title-from-file-content file)))))
-	  (if desc
-	      (concat "[[deft:" name "][" desc "]]")
-	    (concat "[[deft:" name "]]")))))))
+	  (notdeft-make-deft-link name desc))))))
 
 (defun notdeft-insert-org-link (pfx)
   "Insert an Org \"deft:\" link, interactively.
@@ -80,6 +85,33 @@ name, pick any one of them for title extraction.)"
   (let ((s (notdeft-make-org-link pfx)))
     (when s
       (insert s))))
+
+(defun notdeft-link-new-file (pfx)
+  "Create a \"deft:\" link to a new note.
+Query for a note title and link description. Offer to use the
+text of any active region as the title. Derive a note filename
+based on the title, as usual. Insert an Org \"deft:\" link to the
+newly created note at point. Return the filename of the created
+file. The prefix argument PFX is as for `notdeft-new-file'."
+  (interactive "*P")
+  (let* ((buf (current-buffer))
+	 (region (when mark-active
+		   (list (region-beginning) (region-end))))
+	 (title
+	  (read-string "Title: "
+		       (if region
+			   (notdeft-chomp
+			    (apply 'buffer-substring-no-properties region))
+			 "") nil nil t))
+	 (desc
+	  (notdeft-chomp-nullify
+	   (read-string "Description: " title nil nil t)))
+	 (name (file-name-nondirectory
+		(notdeft-new-file-named pfx title))))
+    (switch-to-buffer buf)
+    (when region
+      (apply 'delete-region region))
+    (insert (notdeft-make-deft-link name desc))))
 
 (defun notdeft-kill-ring-save-org-link (pfx)
   "Store an Org \"deft:\" link into `kill-ring'.
