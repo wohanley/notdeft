@@ -41,6 +41,21 @@ bool string_starts_with(const string& s, const string& pfx) {
   return s.compare(0, pfx.length(), pfx) == 0;
 }
 
+/* Compares lowercase prefix, ignoring case in 's'. Works for ASCII
+ * characters at least. */
+bool string_prefixed_with(const string& s, const string& pfx) {
+  /* This implementation is roughly as suggested by Timmmm on Stack
+   * Overflow. */
+  const size_t len = pfx.length();
+  if (s.length() < len)
+    return false;
+  for (unsigned int i = 0; i < len; ++i) {
+    if (tolower(s[i]) != pfx[i])
+      return false;
+  }
+  return true;
+}
+
 bool string_ends_with(const string& s, const string& sfx) {
   const int pos = s.length() - sfx.length();
   return (pos >= 0) && (s.compare(pos, sfx.length(), sfx) == 0);
@@ -295,14 +310,14 @@ static int doIndex(vector<string> subArgs) {
 		    indexer.index_text(line);
 		  }
 		  break;
-		} else if (string_starts_with(line, "#+TITLE:")) {
+		} else if (string_prefixed_with(line, "#+title:")) {
 		  string s = line.substr(8);
 		  indexer.index_text(s, 1, "S");
 		  indexer.index_text(s, titleArg.getValue());
 		  indexer.increase_termpos();
 		  titleDone = true;
-		} else if (string_starts_with(line, "#+KEYWORDS:") ||
-			   string_starts_with(line, "#+FILETAGS:")) {
+		} else if (string_prefixed_with(line, "#+keywords:") ||
+			   string_prefixed_with(line, "#+filetags:")) {
 		  string s = line.substr(11);
 		  indexer.index_text_without_positions(s, 0, "K");
 		  indexer.index_text(s);

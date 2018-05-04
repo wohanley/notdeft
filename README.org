@@ -18,7 +18,7 @@ Download the source code with
 Then byte-compile the Emacs Lisp files with the commands
 : cd notdeft
 : make
-where =make= is assumed in invoke GNU Make.
+where =make= is assumed to invoke GNU Make.
 
 Then build the Xapian backend by doing
 : cd xapian
@@ -41,7 +41,7 @@ Create a “~/.deft/” directory, and copy some “.org” files there. To arra
 
 Launch Emacs with
 : emacs -f notdeft
-and press =TAB= to enter a search query, and then type characters to do further filtering of the results. Input =C-c f1= to see other available commands.
+and press =TAB= to enter a search query (or =S-TAB= to clear it), and then type characters to do further filtering of the results. Input =C-c f1= to see other available commands.
 
 For other ways to install, configure, and use NotDeft, see the [[http://tero.hasu.is/notdeft/][documentation]].
 
