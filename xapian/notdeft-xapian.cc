@@ -41,9 +41,9 @@ bool string_starts_with(const string& s, const string& pfx) {
   return s.compare(0, pfx.length(), pfx) == 0;
 }
 
-/* Compares lowercase prefix, ignoring case in 's'. Works for ASCII
- * characters at least. */
-bool string_prefixed_with(const string& s, const string& pfx) {
+/* Compares 'pfx' against lowercased 's'. Works for ASCII characters
+ * at least. */
+bool string_lc_starts_with(const string& s, const string& pfx) {
   /* This implementation is roughly as suggested by Timmmm on Stack
    * Overflow. */
   const size_t len = pfx.length();
@@ -296,7 +296,7 @@ static int doIndex(vector<string> subArgs) {
 	      while (getline(infile, line)) {
 		if (whitespace_p(line)) {
 		  // skip blank line
-		} if (!string_starts_with(line, "#")) {
+		} else if (!string_starts_with(line, "#")) {
 		  // non Org header mode
 		  if (!titleDone) {
 		    indexer.index_text(line, 1, "S");
@@ -310,14 +310,14 @@ static int doIndex(vector<string> subArgs) {
 		    indexer.index_text(line);
 		  }
 		  break;
-		} else if (string_prefixed_with(line, "#+title:")) {
+		} else if (string_lc_starts_with(line, "#+title:")) {
 		  string s = line.substr(8);
 		  indexer.index_text(s, 1, "S");
 		  indexer.index_text(s, titleArg.getValue());
 		  indexer.increase_termpos();
 		  titleDone = true;
-		} else if (string_prefixed_with(line, "#+keywords:") ||
-			   string_prefixed_with(line, "#+filetags:")) {
+		} else if (string_lc_starts_with(line, "#+keywords:") ||
+			   string_lc_starts_with(line, "#+filetags:")) {
 		  string s = line.substr(11);
 		  indexer.index_text_without_positions(s, 0, "K");
 		  indexer.index_text(s);
