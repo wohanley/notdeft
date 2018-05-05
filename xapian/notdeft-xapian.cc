@@ -56,6 +56,49 @@ bool string_lc_starts_with(const string& s, const string& pfx) {
   return true;
 }
 
+/** Returns the length of any note header prefix marker such as "#" or
+ * "@;#". If the string is not a header string, returns 0. */
+size_t string_header_marker_len(const string& s) {
+  const size_t len = s.length();
+  for (size_t i = 0; i < len; ++i) {
+    const char& ch = s[i];
+    if (ch == '@' || ch == ';' || ch == '%') {
+      // skip
+    } else if (ch == '#') {
+      return i + 1;
+    } else {
+      break;
+    }
+  }
+  return 0;
+}
+
+bool line_skip_marker(const string& s, size_t& pos) {
+  const size_t len = string_header_marker_len(s);
+  if (len == 0)
+    return false;
+  pos = len;
+  return true;
+}
+
+/** Whether the lowercased string 's' matches 'pfx' starting at
+ * position 'pos'. If so, increment 'pos' to index the position after
+ * 'pfx'. */
+bool string_lc_skip_keyword(const string& s,
+			    size_t& pos,
+			    const string& pfx) {
+  auto pfx_len = pfx.length();
+  auto epos = pos + pfx_len;
+  if (s.length() < epos)
+    return false;
+  for (size_t i = 0; i < pfx_len; ++i) {
+    if (tolower(s[pos + i]) != pfx[i])
+      return false;
+  }
+  pos += pfx_len;
+  return true;
+}
+
 bool string_ends_with(const string& s, const string& sfx) {
   const int pos = s.length() - sfx.length();
   return (pos >= 0) && (s.compare(pos, sfx.length(), sfx) == 0);
@@ -293,10 +336,11 @@ static int doIndex(vector<string> subArgs) {
 	    {
 	      string line;
 	      bool titleDone = false;
+	      size_t pos = 0;
 	      while (getline(infile, line)) {
 		if (whitespace_p(line)) {
 		  // skip blank line
-		} else if (!string_starts_with(line, "#")) {
+		} else if (!line_skip_marker(line, pos)) {
 		  // non Org header mode
 		  if (!titleDone) {
 		    indexer.index_text(line, 1, "S");
@@ -310,15 +354,15 @@ static int doIndex(vector<string> subArgs) {
 		    indexer.index_text(line);
 		  }
 		  break;
-		} else if (string_lc_starts_with(line, "#+title:")) {
-		  string s = line.substr(8);
+		} else if (string_lc_skip_keyword(line, pos, "+title:")) {
+		  string s = line.substr(pos);
 		  indexer.index_text(s, 1, "S");
 		  indexer.index_text(s, titleArg.getValue());
 		  indexer.increase_termpos();
 		  titleDone = true;
-		} else if (string_lc_starts_with(line, "#+keywords:") ||
-			   string_lc_starts_with(line, "#+filetags:")) {
-		  string s = line.substr(11);
+		} else if (string_lc_skip_keyword(line, pos, "+keywords:") ||
+			   string_lc_skip_keyword(line, pos, "+filetags:")) {
+		  string s = line.substr(pos);
 		  indexer.index_text_without_positions(s, 0, "K");
 		  indexer.index_text(s);
 		  indexer.increase_termpos();
@@ -328,7 +372,7 @@ static int doIndex(vector<string> subArgs) {
 	      }
 	    }
 	    return doc;
-	  };
+	  }; // end makeDoc
 
 	  auto addFile = [&] (const pair<string, int64_t>& x) {
 	    if (verbose)
