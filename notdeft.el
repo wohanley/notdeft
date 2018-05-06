@@ -722,15 +722,15 @@ undefined components."
 	(while (and (< (point) end) (not (and title summary)))
 	  ;;(message "%S" (list (point) title summary))
 	  (cond
-	   ((looking-at "^[@;%]*#\\+TITLE:[ \t]*\\(.*\\)$") ;; Org title
+	   ((looking-at "^\\(?:%\\|@;\\|<!--\\)?#\\+TITLE:[ \t]*\\(.*\\)$") ;; Org title
 	    (setq dbg (cons `(TITLE . ,(match-string 1)) dbg))
 	    (setq title (match-string 1))
 	    (goto-char (match-end 0)))
-	   ((looking-at "^[@;%]*#\\+\\(?:KEYWORDS\\|FILETAGS\\):[ \t]*\\(.*\\)$")
+	   ((looking-at "^\\(?:%\\|@;\\|<!--\\)?#\\+\\(?:KEYWORDS\\|FILETAGS\\):[ \t]*\\(.*\\)$")
 	    (setq dbg (cons `(KEYWORDS . ,(match-string 1)) dbg))
 	    (setq keywords (match-string 1))
 	    (goto-char (match-end 0)))
-	   ((looking-at "^[@;%]*#.*$") ;; line comment
+	   ((looking-at "^\\(?:%\\|@;\\|<!--\\)?#.*$") ;; line comment
 	    (setq dbg (cons `(COMMENT . ,(match-string 0)) dbg))
 	    (goto-char (match-end 0)))
 	   ((looking-at "[[:graph:]].*$") ;; non-whitespace

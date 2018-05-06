@@ -56,18 +56,25 @@ bool string_lc_starts_with(const string& s, const string& pfx) {
   return true;
 }
 
-/** Returns the length of any note header prefix marker such as "#" or
- * "@;#". If the string is not a header string, returns 0. */
+/** Returns the length of any note header marker such as "#" or "%#"
+ * or "@;#". If the string is not a header string, returns 0. */
 size_t string_header_marker_len(const string& s) {
   const size_t len = s.length();
-  for (size_t i = 0; i < len; ++i) {
-    const char& ch = s[i];
-    if (ch == '@' || ch == ';' || ch == '%') {
-      // skip
-    } else if (ch == '#') {
-      return i + 1;
-    } else {
-      break;
+  if (len >= 1) {
+    if (s[0] == '#')
+      return 1;
+    if (len >= 2) {
+      if ((s[1] == '#') && (s[0] == '%'))
+	return 2;
+      if (len >= 3) {
+	if ((s[2] == '#') && (s[0] == '@') && (s[1] == ';'))
+	  return 3;
+	if (len >= 5) {
+	  if ((s[4] == '#') && (s[0] == '<') && (s[1] == '!') &&
+	      (s[2] == '-') && (s[3] == '-'))
+	    return 5;
+	}
+      }
     }
   }
   return 0;
