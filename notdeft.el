@@ -1855,6 +1855,23 @@ strings and require all elements to match."
 		      (string-match-p filter contents))
 		    filter-lst)
       file)))
+
+(defun notdeft-grep-for-filter ()
+  "Open a Grep view to show filter substrings.
+Show each individual match of the `notdeft-filter-string' words,
+as they appear in `notdeft-current-files'."
+  (interactive)
+  (when notdeft-filter-string
+    (let ((grep-args
+	   (mapconcat
+	    'shell-quote-argument
+	    `("grep" "--color" "-nH" "-F" "-i"
+	      ,(mapconcat 'identity
+			  (split-string notdeft-filter-string)
+			  "\n")
+	      ,@notdeft-current-files)
+	    " ")))
+      (grep grep-args))))
   
 ;; Filters that cause a refresh
 
@@ -1988,6 +2005,7 @@ arguments, kill all NotDeft mode buffers."
     ;; Miscellaneous
     (define-key map (kbd "C-c b") 'notdeft-switch-to-note-buffer)
     (define-key map (kbd "C-c B") 'notdeft-switch-to-buffer)
+    (define-key map (kbd "C-c g") 'notdeft-grep-for-filter)
     (define-key map (kbd "C-c G") 'notdeft-gc)
     (define-key map (kbd "C-c R") 'notdeft-reindex)
     (define-key map (kbd "C-c C-q") 'notdeft-quit)

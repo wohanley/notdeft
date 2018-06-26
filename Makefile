@@ -22,9 +22,9 @@ clean :
 PKGNAMEVER = `cat PKGNAMEVER`
 package :
 	emacs --batch -L . -q -l notdeft-info.el -f notdeft-pkg-basename > PKGNAMEVER 2>/dev/null
-	mkdir -p web
+	mkdir -p download
 	-rm -r /tmp/$(PKGNAMEVER)
 	mkdir -p /tmp/$(PKGNAMEVER)
 	cp -ai ./ /tmp/$(PKGNAMEVER)/
 	( cd /tmp/$(PKGNAMEVER) && git clean -dxffq && rm -rf .git && rm notdeft-autoloads.el )
-	( tar --create --file web/$(PKGNAMEVER).tar -C /tmp $(PKGNAMEVER) )
+	( tar --create --file download/$(PKGNAMEVER).tar -C /tmp $(PKGNAMEVER) )
