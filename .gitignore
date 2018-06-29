@@ -10,3 +10,4 @@ local.mk
 .dir-locals.el
 /download/
 /PKGNAMEVER
+.notdeft-db/

@@ -45,16 +45,14 @@ The optional PFX argument is ignored."
 (defvar notdeft-describe-link 'notdeft-title-from-file-content
   "Function to determine NotDeft note file link description.
 The function is given the file name as its sole argument.
-Used by `notdeft-make-org-link'.")
+Used by `notdeft-select-make-org-link'.")
 
 (defun notdeft-make-deft-link (name &optional desc)
-  "Turn NAME and DESC into a \"deft\" link.
-NAME is not filtered through `org-link-escape'."
-  (if desc
-      (concat "[[deft:" name "][" desc "]]")
-    (concat "[[deft:" name "]]")))
+  "Turn NAME and DESC into a \"deft:\" link.
+NAME should be a non-directory file name with extension."
+  (org-make-link-string (concat "deft:" name) desc))
 
-(defun notdeft-make-org-link (pfx)
+(defun notdeft-select-make-org-link (pfx)
   "Return an Org \"deft:\" link as a string.
 Choose the link target interactively.
 The PFX argument is as for `notdeft-insert-org-link'."
@@ -82,7 +80,7 @@ With two prefix arguments, insert any note title
 as the link description. (If multiple notes have the same
 name, pick any one of them for title extraction.)"
   (interactive "*p")
-  (let ((s (notdeft-make-org-link pfx)))
+  (let ((s (notdeft-select-make-org-link pfx)))
     (when s
       (insert s))))
 
@@ -117,7 +115,7 @@ file. The prefix argument PFX is as for `notdeft-new-file'."
   "Store an Org \"deft:\" link into `kill-ring'.
 The PFX argument is as for `notdeft-insert-org-link'."
   (interactive "p")
-  (let ((s (notdeft-make-org-link pfx)))
+  (let ((s (notdeft-select-make-org-link pfx)))
     (when s
       (kill-new s))))
 
