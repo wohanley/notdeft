@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Tue, 26 Jun 2018 18:18:18 +0300
+#+MTIME: Tue, 24 Jul 2018 03:53:51 +0300
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -248,8 +248,8 @@ For example, we can display the name of each note's containing NotDeft (root) di
 			  ("bibliography-notes" "bib")
 			  ("homepage-notes" "hp")
 			  (_ s)))
-		     (s (if (> (length s) 12)
-			    (substring s 0 12)
+		     (s (if (> (string-width s) 12)
+			    (truncate-string-to-width s 12)
 			  s)))
 		(concat " " s)))))
 #+END_SRC
@@ -352,18 +352,18 @@ You might also implement additional commands in terms of the globally accessible
 
 An intended use case for NotDeft is to support other applications that wish to locate files in terms of search queries instead of path names. For example, suppose we are using an =org-contacts= command to look for contacts by =name=, and that command expects the =org-contacts-files= list to be set. In that scenario we might set that variable for it based on a suitable NotDeft search query:
 #+BEGIN_SRC emacs-lisp
-  (let ((org-contacts-files
-	 (notdeft-list-files-by-query
-	  "!all ext:Org AND Email")))
-    (org-contacts name))
+  (setq org-contacts-files
+	(notdeft-list-files-by-query
+	 "!all ext:Org AND Email"))
+  (org-contacts name)
 #+END_SRC
 
-Similarly, we might use =org-agenda='s =org-todo-list= command to list to-do entries, but resolving the =org-agenda-files= list on demand by looking for the “TODO” keyword in any Org files in our collection:
+Similarly, we might use =org-agenda='s =org-todo-list= command to list to-do entries, but resolving the =org-agenda-files= list on demand by looking for the “TODO” and “DONE” keywords in any Org files in our collection:
 #+BEGIN_SRC emacs-lisp
-  (let ((org-agenda-files
-	   (notdeft-list-files-by-query
-	    "!all ext:Org AND Todo")))
-      (org-todo-list))
+  (setq org-agenda-files
+	(notdeft-list-files-by-query
+	 "!all ext:Org AND (Todo OR Done)"))
+  (org-todo-list)
 #+END_SRC
 
 * NotDeft Note Syntax

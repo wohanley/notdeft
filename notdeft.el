@@ -256,9 +256,9 @@ Set to nil to hide."
 
 (defcustom notdeft-file-display-function nil
   "Formatter for file names in the NotDeft browser.
-If a function, it must accept the filename and
-a maximum width as its two arguments.
-Set to nil to hide."
+If a function, it must accept the filename and a maximum
+width (as for `string-width') as its two arguments. Set to nil to
+have no file information displayed."
   :type '(choice (function :tag "Formatting function")
 		 (const :tag "Hide" nil))
   :safe 'null
@@ -699,11 +699,6 @@ title in CONTENTS."
 	 (title (car res)))
     title))
 
-(defun notdeft-substring-from (str from max-n)
-  "Extract a substring from STR.
-Extract it from position FROM, and up to MAX-N characters."
-  (substring str from (max (length str) (+ from max-n))))
-
 (defun notdeft-condense-whitespace (str)
   "Condense whitespace in STR into a single space."
   (replace-regexp-in-string "[[:space:]\n]+" " " str))
@@ -881,21 +876,25 @@ Keep any information for a non-existing file."
     (goto-char (point-min))
     (forward-line (1- line))))
 
+(defun notdeft-string-width (str)
+  "Like `string-width', but return 0 if STR is nil."
+  (if str (string-width str) 0))
+
 (defun notdeft-file-widget (file)
   "Add a line to the file browser for the given FILE."
-  (let* ((text (notdeft-file-contents file))
-	 (title (notdeft-file-title file))
+  (let* ((title (notdeft-file-title file))
 	 (summary (notdeft-file-summary file))
 	 (mtime (when notdeft-time-format
 		  (format-time-string notdeft-time-format
 				      (notdeft-file-mtime file))))
-	 (line-width (- notdeft-buffer-width (length mtime)))
+	 (line-width (- notdeft-buffer-width (notdeft-string-width mtime)))
 	 (path (when notdeft-file-display-function
 		 (funcall notdeft-file-display-function file line-width)))
-	 (path-width (length path))
+	 (path-width (notdeft-string-width path))
 	 (up-to-path-width (- line-width path-width))
-	 (title-width (min up-to-path-width (length title)))
-	 (summary-width (min (length summary)
+	 (title-width (min up-to-path-width
+			   (notdeft-string-width title)))
+	 (summary-width (min (notdeft-string-width summary)
 			     (- up-to-path-width
 				title-width
 				(length notdeft-separator)))))
@@ -909,13 +908,14 @@ Keep any information for a non-existing file."
 		   :notify (lambda (widget &rest ignore)
 			     (notdeft-find-file (widget-get widget :tag)))
 		   (if title
-		       (substring title 0 title-width)
+		       (truncate-string-to-width title title-width)
 		     "[Empty file]"))
     (when (> summary-width 0)
-      (widget-insert (propertize notdeft-separator 'face 'notdeft-separator-face))
-      (widget-insert (propertize
-		      (if summary (substring summary 0 summary-width) "")
-		      'face 'notdeft-summary-face)))
+      (widget-insert
+       (propertize notdeft-separator 'face 'notdeft-separator-face))
+      (widget-insert
+       (propertize (truncate-string-to-width summary summary-width)
+		   'face 'notdeft-summary-face)))
     (when (or path mtime)
       (while (< (current-column) up-to-path-width)
 	(widget-insert " ")))
@@ -1245,9 +1245,10 @@ summarizing some statistics about the results shown."
 ;;;###autoload
 (define-minor-mode notdeft-note-mode
   "Manage NotDeft state for a note buffer.
-A minor mode that is enabled automatically for notes opened from
-within a `notdeft-mode' buffer. Does nothing but manage calls to
-`notdeft-register-buffer' and `notdeft-deregister-buffer'."
+A minor mode that should be enabled for NotDeft notes. Does
+nothing but manage calls to `notdeft-register-buffer' and
+`notdeft-deregister-buffer', which allow NotDeft to keep track of
+changes to its note buffers."
   :lighter " ¬D"
   (if notdeft-note-mode
       (notdeft-register-buffer)
@@ -1941,11 +1942,11 @@ kill ring is not affected."
 
 (defun notdeft-complete ()
   "Complete the current action.
-If there is a widget at the point, press it.  If a filter is
-applied and there is at least one match, open the first matching
-file.  If there is an active filter but there are no matches,
-quickly create a new file using the filter string as the title.
-Otherwise, quickly create a new file."
+If there is a widget at the point, press it. Otherwise, if a
+filter is applied and there is at least one match, open the first
+matching file. If there is an active filter but there are no
+matches, quickly create a new file using the filter string as the
+title. Otherwise, quickly create a new file."
   (interactive)
   (cond
    ;; Activate widget

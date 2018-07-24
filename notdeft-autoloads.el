@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23240 60890 801320
-;;;;;;  887000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23383 10051 542625
+;;;;;;  972000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -48,9 +48,10 @@ It may contain duplicates.
 
 (autoload 'notdeft-note-mode "notdeft" "\
 Manage NotDeft state for a note buffer.
-A minor mode that is enabled automatically for notes opened from
-within a `notdeft-mode' buffer. Does nothing but manage calls to
-`notdeft-register-buffer' and `notdeft-deregister-buffer'.
+A minor mode that should be enabled for NotDeft notes. Does
+nothing but manage calls to `notdeft-register-buffer' and
+`notdeft-deregister-buffer', which allow NotDeft to keep track of
+changes to its note buffers.
 
 \(fn &optional ARG)" t nil)
 
