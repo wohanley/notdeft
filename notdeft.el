@@ -1587,8 +1587,7 @@ invoke with a prefix argument PFX."
 	      (file-name-as-directory (notdeft-base-filename old-file))
 	      (file-name-nondirectory old-file))))
 	(notdeft-rename-file+buffer old-file new-file nil t)
-	(notdeft-changed/fs 'dirs
-	  (list (notdeft-dir-of-notdeft-file new-file)))
+	(notdeft-changed/fs 'files (list old-file new-file))
 	(message "Renamed as `%s`" new-file))))))
 
 ;;;###autoload
@@ -1608,11 +1607,7 @@ Operate on the selected or current NotDeft note file."
 	(unless (string= old-ext new-ext)
 	  (let ((new-file (concat (file-name-sans-extension old-file)
 				  "." new-ext)))
-	    (notdeft-rename-file+buffer old-file new-file)
-	    (when (get-buffer notdeft-buffer)
-	      (notdeft-changed/fs
-	       'dirs
-	       (list (notdeft-dir-of-notdeft-file new-file))))
+	    (notdeft-rename-file+buffer/changed old-file new-file)
 	    (message "Renamed as `%s`" new-file))))))))
 
 ;;;###autoload
@@ -1641,8 +1636,7 @@ if called with a prefix argument PFX."
 (defun notdeft-sub-rename-file (old-file old-name def-name)
   "Rename OLD-FILE with the OLD-NAME NotDeft name.
 Query for a new name, defaulting to DEF-NAME.
-Use OLD-FILE's filename extension in the new name.
-Used by `notdeft-rename-file' and `notdeft-rename-current-file'."
+Use OLD-FILE's filename extension in the new name."
   (let* ((history (list def-name))
 	 (new-name
 	  (read-string
@@ -1655,13 +1649,15 @@ Used by `notdeft-rename-file' and `notdeft-rename-current-file'."
 	  (notdeft-make-filename new-name
 	    (file-name-extension old-file)
 	    (file-name-directory old-file))))
-    (unless (string= old-file new-file)
-      (notdeft-rename-file+buffer old-file new-file)
-      (when (get-buffer notdeft-buffer)
-	(notdeft-changed/fs
-	 'dirs
-	 (list (notdeft-dir-of-notdeft-file new-file)))))
+    (notdeft-rename-file+buffer/changed old-file new-file)
     new-file))
+
+(defun notdeft-rename-file+buffer/changed (old-file new-file)
+  "Rename file and buffer with change notification.
+OLD-FILE and NEW-FILE are as for `notdeft-rename-file+buffer'."
+  (unless (string= old-file new-file)
+    (notdeft-rename-file+buffer old-file new-file)
+    (notdeft-changed/fs 'files (list old-file new-file))))
 
 (defun notdeft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
   "Like `rename-file', rename OLD-FILE as NEW-FILE.
