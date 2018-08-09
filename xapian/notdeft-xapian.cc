@@ -209,6 +209,51 @@ void ls_org(vector<string>& res, const string& root,
   }
 }
 
+struct Op {
+  bool whole_dir;
+  string dir;
+  vector<string> files;
+  Op() {}
+  explicit Op(const string& d) : whole_dir(true), dir(d) {}
+};
+
+static bool parse_ops(istream& in, vector<Op>& lst) {
+  string opcode;
+  while (getline(in, opcode)) {
+    if (opcode == ":idir") {
+      string dir;
+      if (getline(in, dir)) {
+	lst.push_back(Op(dir));
+      } else {
+	return false; // expected directory name
+      }
+    } else if (opcode == ":ifiles") {
+      string dir;
+      if (!getline(in, dir))
+	return false; // expected directory name
+      string count_s;
+      if (!getline(in, count_s))
+	return false; // expected file count
+      int count = std::stoi(count_s);
+      if (count < 0)
+	return false; // expected non-negative integer
+      Op op;
+      op.whole_dir = false;
+      op.dir = dir;
+      string file;
+      for ( ; count > 0; count--) {
+	if (!getline(in, file))
+	  return false; // expected count filenames
+	op.files.push_back(file);
+      }
+      lst.push_back(op);
+    } else {
+      return false; // unknown command
+    }
+  }
+  return true;
+}
+
 static void usage()
 {
   cerr << "notdeft-xapian" << endl;
@@ -226,10 +271,11 @@ static constexpr Xapian::valueno DOC_FILENAME = 1;
 
 static int doIndex(vector<string> subArgs) {
   TCLAP::CmdLine cmdLine
-    ("Specify the directories to index."
-     " Any relative paths are stored as given."
-     " Search results are reported in the same manner,"
-     " regardless of the search time working directory.");
+    ("Specify any indexing commands via STDIN."
+     " For each command, specify its database index directory."
+     " All paths are used and stored as given."
+     " Search results are reported with the stored paths,"
+     " regardless of the search-time working directory.");
   TCLAP::ValueArg<string>
     langArg("l", "lang", "stemming language (e.g., 'en' or 'fi')",
 	    false, "en", "language");
@@ -252,34 +298,74 @@ static int doIndex(vector<string> subArgs) {
   TCLAP::SwitchArg
     verboseArg("v", "verbose", "be verbose", false);
   cmdLine.add(verboseArg);
+  TCLAP::SwitchArg
+    inputArg("i", "input", "read instructions from STDIN", false);
+  cmdLine.add(inputArg);
   TCLAP::UnlabeledMultiArg<string>
     dirsArg("directory...", "index specified dirs", false, "directory");
   cmdLine.add(dirsArg);
   cmdLine.parse(subArgs);
 
   if (chdirArg.getValue() != ".") {
-    if (chdir(chdirArg.getValue().c_str()) == -1)
-      return errno;
+    if (chdir(chdirArg.getValue().c_str()) == -1) {
+      auto e = errno;
+      cerr << "could not change into directory " <<
+	chdirArg.getValue() << " (errno: " << e << ")" << endl;
+      return 1;
+    }
   }
   
   vector<string> exts = extArg.getValue();
   if (exts.empty())
     exts.push_back(".org");
+
   auto verbose = verboseArg.getValue();
+  
+  vector<Op> opList;
+  {
+    auto dirs = dirsArg.getValue();
+    for (auto dir : dirs) {
+      opList.push_back(Op(dir));
+    }
+  }
+  if (inputArg.getValue()) {
+    if (!parse_ops(cin, opList)) {
+      cerr << "option -i / --input given, "
+	"but failed to parse instructions from STDIN" << endl;
+      if (verbose) { // print out parsed instructions
+	cerr << "successfully parsed:" << endl;
+	ostream& out(cerr);
+	for (auto op : opList) {
+	  out << op.dir;
+	  if (op.whole_dir) {
+	    out << endl << " (ALL)" << endl;
+	  } else {
+	    for (auto file : op.files) {
+	      out << endl << " " << file;
+	    }
+	    out << endl;
+	  }
+	}
+      }
+      return 1;
+    }
+  }
   
   try {
     Xapian::TermGenerator indexer;
     Xapian::Stem stemmer(langArg.getValue());
     indexer.set_stemmer(stemmer);
     
-    auto dirs = dirsArg.getValue();
-    for (auto dir : dirs) {
+    for (auto op : opList) {
+      auto dir = op.dir;
+      
       struct stat sb;
       // Whether a readable and writable directory.
       if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode) &&
 	  (access(dir.c_str(), R_OK|W_OK) != -1)) {
-	if (verbose)
+	if (verbose) {
 	  cerr << "indexing directory " << dir << endl;
+	}
 	
 	string dbFile(file_join(dir, ".notdeft-db"));
 	Xapian::WritableDatabase db(dbFile,
@@ -287,11 +373,18 @@ static int doIndex(vector<string> subArgs) {
 				    Xapian::DB_CREATE_OR_OVERWRITE :
 				    Xapian::DB_CREATE_OR_OPEN);
 
-	map<string, int64_t> fsFiles, dbFiles;
+	map<string, int64_t> fsFiles; // mtimes for files in file system
+	map<string, int64_t> dbFiles; // mtimes for files in database
 	map<string, Xapian::docid> dbIds;
 	
 	vector<string> orgFiles;
-	ls_org(orgFiles, dir, ".", exts);
+	if (op.whole_dir) {
+	  ls_org(orgFiles, dir, ".", exts);
+	} else {
+	  // Sparse directory paths must be specified relative to
+	  // their database root.
+	  orgFiles = op.files;
+	}
 	for (const string& file : orgFiles) { // `dir` relative `file`
 	  auto filePath = file_join(dir, file);
 	  struct stat sb;
