@@ -89,16 +89,28 @@ Return the read string, or nil if no query is given."
 
 (defun notdeft-xapian-index-dirs (dirs &optional recreate)
   "Create or update a Xapian index for DIRS.
-With RECREATE, truncate any existing index files.
-The return value is as for `call-process'."
+Each element of DIRS must be either a directory path string, or a
+list of the form (directory-path . relative-file-path-list). With
+RECREATE, truncate any existing index files."
   (with-temp-buffer
+    (dolist (dir dirs)
+      (if (stringp dir)
+	  (insert ":idir\n" (file-relative-name dir "~") "\n")
+	(let ((dir (car dir))
+	      (files (cdr dir)))
+	  (insert ":ifiles\n" (file-relative-name dir "~") "\n")
+	  (insert (format "%d\n" (length files)))
+	  (dolist (file files)
+	    (insert file "\n")))))
     (let ((ret
 	   (apply
-	    'call-process
+	    'call-process-region
+	    (point-min) ;; START
+	    (point-max) ;; END
 	    notdeft-xapian-program ;; PROGRAM
-	    nil	                ;; INFILE
-	    t                   ;; DESTINATION
-	    nil	                ;; DISPLAY
+	    t ;; DELETE (delete input)
+	    t ;; BUFFER (output to current buffer)
+	    nil	;; DISPLAY (do not refresh)
 	    `("index"
 	      "--chdir" ,(expand-file-name "." "~")
 	      ,@(if recreate '("--recreate") nil)
@@ -106,12 +118,10 @@ The return value is as for `call-process'."
 		       (mapcar
 			(lambda (ext)
 			  `("--extension" ,(concat "." ext)))
-			(cons notdeft-extension notdeft-secondary-extensions)))
+			(cons notdeft-extension
+			      notdeft-secondary-extensions)))
 	      "--lang" ,notdeft-xapian-language
-	      ,@(mapcar
-		 (lambda (dir)
-		   (file-relative-name dir "~"))
-		 dirs)))))
+	      "--input"))))
       (when (/= 0 ret)
 	(error "Index generation failed: %s (%d): %s"
 	       notdeft-xapian-program ret (buffer-string))))))
