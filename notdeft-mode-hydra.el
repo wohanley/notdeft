@@ -33,6 +33,7 @@
 (declare-function notdeft-reindex "notdeft")
 (declare-function notdeft-filter "notdeft")
 (declare-function notdeft-filter-clear "notdeft")
+(declare-function notdeft-grep-for-filter "notdeft")
 
 (when (fboundp 'defhydra)
   (defhydra notdeft-mode-hydra ()
@@ -51,12 +52,13 @@
     ("t" notdeft-open-in-deft "Deft" :exit t)
     ;; NotDeft state
     ("j" notdeft-chdir "chdir")
-    ("g" notdeft-refresh "refresh")
+    ("C-g" notdeft-refresh "refresh")
     ("G" notdeft-gc "GC")
     ("R" notdeft-reindex "re-index")
     ;; filtering
     ("l" notdeft-filter "filter" :exit t)
     ("c" notdeft-filter-clear "clear filter")
+    ("g" notdeft-grep-for-filter "grep for filter" :exit t)
     ;; querying
     ("o" notdeft-query-edit "query")
     ("O" notdeft-query-clear "clear query")
