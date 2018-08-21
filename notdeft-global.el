@@ -27,7 +27,7 @@
     ;; File management
     (define-key map (kbd "C-d") 'notdeft-delete-file)
     (define-key map (kbd "C-r") 'notdeft-rename-file)
-    (define-key map (kbd "S") 'notdeft-move-into-subdir)
+    (define-key map (kbd "x s") 'notdeft-move-into-subdir)
     (define-key map (kbd "m") 'notdeft-move-file)
     (define-key map (kbd "x e") 'notdeft-change-file-extension)
     (define-key map (kbd "C-a") 'notdeft-archive-file)

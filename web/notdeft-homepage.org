@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Tue, 24 Jul 2018 03:53:51 +0300
+#+MTIME: Tue, 21 Aug 2018 20:44:12 +0300
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -128,7 +128,7 @@ To enable Xapian search queries, you should build the =notdeft-xapian= C++ progr
 : make
 should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
 
-* NotDeft Configuration Basics
+* NotDeft Configuration
 
 Once the =notdeft= feature has been loaded, you can see and edit all of its configuration options and their documentation with
 : (customize-group "notdeft")
@@ -139,8 +139,39 @@ The most essential settings are
 - =notdeft-directories= :: to specify the location(s) of your notes
 - =notdeft-xapian-program= :: to specify the path of the Xapian search tool
 
+** Specifying Note File Locations
+
+In a simple case you would have a single directory (tree) of note file, specified by the =notdeft-directories= configuration variable, which you can configure with the command
+: M-x customize-variable RET notdeft-directories RET
+For example:
+: (setq notdeft-directories '("~/all-my-notes"))
+
+You can have multiple directories, which makes NotDeft use a bit harder, as you may at times get asked for a target directory for some file operations.
+: (setq notdeft-directories '("~/some-notes" "~/some-more"))
+
 If your notes are not in a fixed directory, but you'd rather discover the directories programmatically, it may be convenient to set =notdeft-directories= in your startup file. For example:
 : (setq notdeft-directories (cons "~/notes" (file-expand-wildcards "~/*/notes")))
+
+*** Sparse Directories
+
+If you wish to include some additional text files into your searches, you may also explicitly specify files that reside outside any of the =notdeft-directories=. You must still specify a directory for a search index covering those files. In effect, you specify a /sparse directory/, since it is not scanned, but rather only explicitly specified files are considered to be NotDeft notes, if they exist.
+
+To specify the index directories and any files within them, use the =notdeft-sparse-directories= configuration variable to specify directories and their file lists. For example:
+#+BEGIN_SRC emacs-lisp
+  (setq notdeft-sparse-directories
+	'(("~" .
+	   ("projects/magnolisp/web/magnolisp-homepage.org"
+	    "projects/notdeft/web/notdeft-homepage.org"))))
+#+END_SRC
+where all note file paths are specified relative to the search index containing directory, which should be a parent directory of all the specified notes.
+
+The usual note manipulation operations (renaming, deleting, etc.) are not available for notes in sparse directories, which are not managed by NotDeft as such. The facility exists merely to support cases where you have important note files spread around project-specific directories, ones that you want to make accessible from within NotDeft. If you have a standard naming convention for such files, you can certainly resolve the list value programmatically:
+#+BEGIN_SRC emacs-lisp
+  (setq notdeft-sparse-directories
+	`(("~" . ,(mapcar
+		   (lambda (file) (file-relative-name file "~"))
+		   (file-expand-wildcards "~/projects/*/web/*-homepage.org")))))
+#+END_SRC
 
 ** Choosing the Note File Format
 
@@ -243,7 +274,7 @@ For example, we can display the name of each note's containing NotDeft (root) di
 	    (when (> w 30)
 	      (let* ((s (file-name-nondirectory
 			 (directory-file-name
-			  (notdeft-dir-of-notdeft-file file))))
+			  (notdeft-dir-of-file file))))
 		     (s (pcase s
 			  ("bibliography-notes" "bib")
 			  ("homepage-notes" "hp")

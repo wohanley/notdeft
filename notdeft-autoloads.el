@@ -5,8 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23383 10051 542625
-;;;;;;  972000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23420 19379 779726
+;;;;;;  776000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -30,19 +30,20 @@ Optionally, use function TRIM to trim any result string.
 
 (autoload 'notdeft-file-by-basename "notdeft" "\
 Resolve a NotDeft note NAME to a full pathname.
-NAME is a non-directory filename, with extension.
-Resolve it to the path of a file under `notdeft-directories',
-if such a note file does exist.
-If multiple such files exist, return one of them.
-If none exist, return nil.
+NAME is a non-directory filename, with extension. Resolve it to
+the path of a file under `notdeft-directories' or
+`notdeft-sparse-directories', if such a note file does exist. If
+multiple such files exist, return one of them. If none exist,
+return nil.
 
 \(fn NAME)" nil nil)
 
 (autoload 'notdeft-make-basename-list "notdeft" "\
 Return the names of all NotDeft notes.
-Search all existing `notdeft-directories'.
-The result list is sorted by the `string-lessp' relation.
-It may contain duplicates.
+Search all existing `notdeft-directories', and include all
+existing `notdeft-sparse-directories' files. The result list is
+sorted by the `string-lessp' relation, and it may contain
+duplicates.
 
 \(fn)" nil nil)
 
@@ -202,7 +203,7 @@ this command manually if NotDeft files change outside of NotDeft
 mode and NotDeft note minor mode (as toggled by the command
 `notdeft-mode' and the command `notdeft-note-mode'), as such
 changes are not detected automatically. Also invoke this if you
-change `notdeft-directories'.
+change `notdeft-directories' or `notdeft-sparse-directories'.
 
 \(fn &optional RESET)" t nil)
 
