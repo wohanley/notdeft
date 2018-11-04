@@ -709,7 +709,7 @@ containing NotDeft directory."
 Return nil on failure."
   (when (notdeft-file-readable-p file)
     (let* ((contents (notdeft-read-file file))
-	   (title (notdeft-parse-title file contents)))
+	   (title (notdeft-parse-title contents)))
       title)))
 
 ;;;###autoload
@@ -841,8 +841,8 @@ duplicates."
     (let ((name-lst (mapcar 'file-name-nondirectory fn-lst)))
       (sort name-lst 'string-lessp))))
 
-(defun notdeft-parse-title (file contents)
-  "Parse the given FILE CONTENTS and determine the title.
+(defun notdeft-parse-title (contents)
+  "Parse the given file CONTENTS and determine the title.
 The title is taken to be the first non-empty line of a file.
 Org comments are skipped, and \"#+TITLE\" syntax is recognized,
 and may also be used to define the title.
@@ -1795,7 +1795,7 @@ if called with a prefix argument PFX."
 		     (let ((title
 			    (if (notdeft-buffer-p)
 				(notdeft-title-from-file-content old-file)
-			      (notdeft-parse-title old-file (buffer-string)))))
+			      (notdeft-parse-title (buffer-string)))))
 		       (and title (notdeft-title-to-notename title))))
 		   old-name))
 	     (new-file (notdeft-sub-rename-file old-file old-name def-name)))
