@@ -2033,19 +2033,20 @@ strings and require all elements to match."
 (defun notdeft-grep-for-filter ()
   "Open a Grep view to show filter substrings.
 Show each individual match of the `notdeft-filter-string' words,
-as they appear in `notdeft-current-files'."
+as they appear in `notdeft-current-files'. Where there is no
+filter string, use any `notdeft-xapian-query' instead, treating
+it as a plain string (without query operators)."
   (interactive)
-  (when notdeft-filter-string
-    (let ((grep-args
-	   (mapconcat
-	    'shell-quote-argument
-	    `("grep" "--color" "-nH" "-F" "-i"
-	      ,(mapconcat 'identity
-			  (split-string notdeft-filter-string)
-			  "\n")
-	      ,@notdeft-current-files)
-	    " ")))
-      (grep grep-args))))
+  (let ((s (or notdeft-filter-string notdeft-xapian-query)))
+    (when s
+      (let ((grep-args
+	     (mapconcat
+	      'shell-quote-argument
+	      `("grep" "--color" "-nH" "-F" "-i"
+		,(mapconcat 'identity (split-string s) "\n")
+		,@notdeft-current-files)
+	      " ")))
+	(grep grep-args)))))
   
 ;; Filters that cause a refresh
 
