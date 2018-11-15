@@ -1091,6 +1091,11 @@ Keep any information for a non-existing file."
 	      (cons dir (notdeft-glob/absolute dir nil nil file-re)))))
       dirs)))
 
+(defmacro notdeft-setq-cons (x v)
+  "Prepend into list X the value V."
+  (declare (indent 1))
+  `(setq ,x (cons ,v ,x)))
+
 (defun notdeft-hash-keys (hash)
   "Return a list of the keys of HASH.
 Implemented in terms of `maphash'."
@@ -1161,11 +1166,6 @@ Only include files for current NotDeft directories."
 Equivalent to (if CND THN ELS)."
   (declare (indent defun))
   `(if ,cnd ,thn ,els))
-
-(defmacro notdeft-setq-cons (x v)
-  "Prepend into list X the value V."
-  (declare (indent 1))
-  `(setq ,x (cons ,v ,x)))
 
 (defun notdeft-pending-lessp (x y)
   "Whether pending status value X < Y."
