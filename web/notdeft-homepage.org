@@ -343,7 +343,7 @@ This does not work if done in =org-mode-hook=, as directory locals are not set y
 #+END_SRC
 
 To set the =notdeft-note-mode-auto-enable= flag for the entire directory of a note file that you have opened, you may use the Emacs command
-: M-x add-dir-local-variable RET notdeft-note-mode-auto-enable RET t RET
+: M-x add-dir-local-variable RET nil RET notdeft-note-mode-auto-enable RET t RET
 Of course, if desired, you could also use =add-file-local-variable= to instruct the mode to be enabled for just the file.
 
 * Using NotDeft from Non-NotDeft Modes
