@@ -8,7 +8,7 @@ EMACS_BATCH := emacs --batch
 all : autoloads compile
 
 compile :
-	$(EMACS_BATCH) -L . -f batch-byte-compile $(filter-out %-pkg.el, $(wildcard *.el))
+	$(EMACS_BATCH) -L . -f batch-byte-compile $(wildcard *.el)
 
 autoloads :
 	emacs --batch -L . --eval '(update-file-autoloads "notdeft.el" t (expand-file-name "notdeft-autoloads.el"))'
@@ -19,12 +19,17 @@ exe :
 clean :
 	-rm *.elc
 
-PKGNAMEVER = `cat PKGNAMEVER`
+PKGVER := 0.6.$(shell date +%Y%m%d)
+PKGNAMEVER := notdeft-$(PKGVER)
+PKGTMPDIR := /tmp/$(PKGNAMEVER)
+PKGMANIFEST := $(PKGTMPDIR)/notdeft-pkg.el
+
 package :
-	emacs --batch -L . -q -l notdeft-info.el -f notdeft-pkg-basename > PKGNAMEVER 2>/dev/null
 	mkdir -p download
-	-rm -r /tmp/$(PKGNAMEVER)
-	mkdir -p /tmp/$(PKGNAMEVER)
-	cp -ai ./ /tmp/$(PKGNAMEVER)/
-	( cd /tmp/$(PKGNAMEVER) && git clean -dxffq && rm -rf .git && rm notdeft-autoloads.el )
+	-rm -r $(PKGTMPDIR)
+	mkdir -p $(PKGTMPDIR)
+	cp -ai ./ $(PKGTMPDIR)/
+	( cd $(PKGTMPDIR) && git clean -dxffq && rm -rf .git && rm notdeft-autoloads.el )
+	echo '(define-package "notdeft" "'$(PKGVER)'"' > $(PKGMANIFEST)
+	echo '  "Edit, organize, and quickly find note files")' >> $(PKGMANIFEST)
 	( tar --create --file download/$(PKGNAMEVER).tar -C /tmp $(PKGNAMEVER) )
