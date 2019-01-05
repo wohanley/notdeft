@@ -2035,19 +2035,21 @@ strings and require all elements to match."
 Show each individual match of the `notdeft-filter-string' words,
 as they appear in `notdeft-current-files'. Where there is no
 filter string, use any `notdeft-xapian-query' instead, treating
-it as a plain string (without query operators)."
+it as a plain string (without query operators). Use
+`grep-program' when set, and otherwise \"grep\"."
   (interactive)
   (let ((s (or notdeft-filter-string notdeft-xapian-query)))
     (when s
       (let ((grep-args
 	     (mapconcat
 	      'shell-quote-argument
-	      `("grep" "--color" "-nH" "-F" "-i"
+	      `(,(or (bound-and-true-p grep-program) "grep")
+		"--color" "-nH" "-F" "-i"
 		,(mapconcat 'identity (split-string s) "\n")
 		,@notdeft-current-files)
 	      " ")))
 	(grep grep-args)))))
-  
+
 ;; Filters that cause a refresh
 
 (defun notdeft-filter-clear (&optional pfx)
