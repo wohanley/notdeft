@@ -29,33 +29,38 @@
 (require 'hydra nil t)
 (require 'notdeft-autoloads)
 
-(when (fboundp 'defhydra) ;; if `require' has succeeded
-  (defhydra notdeft-global-hydra (:exit t)
-    "NotDeft"
-    ;; file management
-    ("n" notdeft-new-file "create")
-    ("N" notdeft-new-file-named "create named")
-    ("f" notdeft-find-file "open")
-    ("w" notdeft-save-buffer "save" :exit nil)
-    ("d" notdeft-delete-file "delete")
-    ("r" notdeft-rename-file "rename")
-    ("m" notdeft-move-file "move")
-    ("s" notdeft-move-into-subdir "move into subdir")
-    ("e" notdeft-change-file-extension "change ext")
-    ("a" notdeft-archive-file "archive")
-    ("i" notdeft-show-file-directory "show dir" :exit nil)
-    ("t" notdeft-open-in-deft "Deft")
-    ;; NotDeft state
-    ("j" notdeft-chdir "chdir" :exit nil)
-    ("g" notdeft-refresh "refresh" :exit nil)
-    ;; search
-    ("o" notdeft-open-query "search")
-    ("l" notdeft-lucky-find-file "lucky search")
-    ;; other
-    ("v" notdeft "NotDeft")
-    ("b" notdeft-switch-to-note-buffer "switch to note")
-    ("B" notdeft-switch-to-buffer "switch to buffer")
-    ("q" nil "cancel")))
+(eval-when-compile
+  (unless (fboundp 'defhydra)
+    (defmacro defhydra (&rest args)
+      "Do not define a hydra."
+      '(progn))))
+
+(defhydra notdeft-global-hydra (:exit t)
+  "NotDeft"
+  ;; file management
+  ("n" notdeft-new-file "create")
+  ("N" notdeft-new-file-named "create named")
+  ("f" notdeft-find-file "open")
+  ("w" notdeft-save-buffer "save" :exit nil)
+  ("d" notdeft-delete-file "delete")
+  ("r" notdeft-rename-file "rename")
+  ("m" notdeft-move-file "move")
+  ("s" notdeft-move-into-subdir "move into subdir")
+  ("e" notdeft-change-file-extension "change ext")
+  ("a" notdeft-archive-file "archive")
+  ("i" notdeft-show-file-directory "show dir" :exit nil)
+  ("t" notdeft-open-in-deft "Deft")
+  ;; NotDeft state
+  ("j" notdeft-chdir "chdir" :exit nil)
+  ("g" notdeft-refresh "refresh" :exit nil)
+  ;; search
+  ("o" notdeft-open-query "search")
+  ("l" notdeft-lucky-find-file "lucky search")
+  ;; other
+  ("v" notdeft "NotDeft")
+  ("b" notdeft-switch-to-note-buffer "switch to note")
+  ("B" notdeft-switch-to-buffer "switch to buffer")
+  ("q" nil "cancel"))
 
 (provide 'notdeft-global-hydra)
 

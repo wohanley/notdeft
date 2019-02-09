@@ -35,40 +35,45 @@
 (declare-function notdeft-filter-clear "notdeft")
 (declare-function notdeft-grep-for-filter "notdeft")
 
-(when (fboundp 'defhydra)
-  (defhydra notdeft-mode-hydra ()
-    "notdeft-mode"
-    ;; file management
-    ("RET" notdeft-select-file "open" :exit t)
-    ("n" notdeft-new-file "create" :exit t)
-    ("N" notdeft-new-file-named "create named" :exit t)
-    ("d" notdeft-delete-file "delete")
-    ("r" notdeft-rename-file "rename")
-    ("m" notdeft-move-file "move")
-    ("s" notdeft-move-into-subdir "move into subdir")
-    ("e" notdeft-change-file-extension "change ext")
-    ("a" notdeft-archive-file "archive")
-    ("i" notdeft-show-file-directory "show dir")
-    ("t" notdeft-open-in-deft "Deft" :exit t)
-    ;; NotDeft state
-    ("j" notdeft-chdir "chdir")
-    ("C-g" notdeft-refresh "refresh")
-    ("G" notdeft-gc "GC")
-    ("R" notdeft-reindex "re-index")
-    ;; filtering
-    ("l" notdeft-filter "filter" :exit t)
-    ("c" notdeft-filter-clear "clear filter")
-    ("g" notdeft-grep-for-filter "grep for filter" :exit t)
-    ;; querying
-    ("o" notdeft-query-edit "query")
-    ("O" notdeft-query-clear "clear query")
-    ;; movement
-    ("<up>" previous-line)
-    ("<down>" next-line)
-    ;; other
-    ("b" notdeft-switch-to-note-buffer "switch to note" :exit t)
-    ("x" quit-window "quit" :exit t)
-    ("q" nil "cancel" :exit t)))
+(eval-when-compile
+  (unless (fboundp 'defhydra)
+    (defmacro defhydra (&rest args)
+      "Do not define a hydra."
+      '(progn))))
+
+(defhydra notdeft-mode-hydra ()
+  "notdeft-mode"
+  ;; file management
+  ("RET" notdeft-select-file "open" :exit t)
+  ("n" notdeft-new-file "create" :exit t)
+  ("N" notdeft-new-file-named "create named" :exit t)
+  ("d" notdeft-delete-file "delete")
+  ("r" notdeft-rename-file "rename")
+  ("m" notdeft-move-file "move")
+  ("s" notdeft-move-into-subdir "move into subdir")
+  ("e" notdeft-change-file-extension "change ext")
+  ("a" notdeft-archive-file "archive")
+  ("i" notdeft-show-file-directory "show dir")
+  ("t" notdeft-open-in-deft "Deft" :exit t)
+  ;; NotDeft state
+  ("j" notdeft-chdir "chdir")
+  ("C-g" notdeft-refresh "refresh")
+  ("G" notdeft-gc "GC")
+  ("R" notdeft-reindex "re-index")
+  ;; filtering
+  ("l" notdeft-filter "filter" :exit t)
+  ("c" notdeft-filter-clear "clear filter")
+  ("g" notdeft-grep-for-filter "grep for filter" :exit t)
+  ;; querying
+  ("o" notdeft-query-edit "query")
+  ("O" notdeft-query-clear "clear query")
+  ;; movement
+  ("<up>" previous-line)
+  ("<down>" next-line)
+  ;; other
+  ("b" notdeft-switch-to-note-buffer "switch to note" :exit t)
+  ("x" quit-window "quit" :exit t)
+  ("q" nil "cancel" :exit t))
 
 (provide 'notdeft-mode-hydra)
 
