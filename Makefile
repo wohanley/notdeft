@@ -1,14 +1,17 @@
 default : compile
 
-# override this to add custom load paths to the required libraries, or perhaps to load the init file with `emacs --batch -l ~/.emacs`
+# Override this to add custom load paths to the required libraries, or perhaps to load the init file with "emacs --batch -l ~/.emacs".
 EMACS_BATCH := emacs --batch
+
+# Override this to compile more files. These ones typically would not require additional library load paths. However, it may be easiest to `byte-recompile-directory' from a running Emacs, one that has all the usual run-time libraries available.
+COMPILED_EL := notdeft.el notdeft-xapian.el notdeft-global.el notdeft-path.el
 
 -include local.mk
 
 all : autoloads compile
 
 compile :
-	$(EMACS_BATCH) -L . -f batch-byte-compile $(wildcard *.el)
+	$(EMACS_BATCH) -L . -f batch-byte-compile $(COMPILED_EL)
 
 autoloads :
 	emacs --batch -L . --eval '(update-file-autoloads "notdeft.el" t (expand-file-name "notdeft-autoloads.el"))'

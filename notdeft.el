@@ -2190,6 +2190,7 @@ arguments, kill all NotDeft mode buffers."
     (define-key map [down-mouse-1] 'widget-button-click)
     (define-key map [down-mouse-2] 'widget-button-click)
     ;; Xapian
+    (define-key map (kbd "C-c C-o") 'notdeft-query-edit)
     (define-key map (kbd "<tab>") 'notdeft-query-edit)
     (define-key map (kbd "<backtab>") 'notdeft-query-clear)
     (define-key map (kbd "<S-tab>") 'notdeft-query-clear)

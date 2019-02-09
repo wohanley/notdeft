@@ -230,7 +230,9 @@ That is, finding an interesting set of notes is a two-step process: (1) enter a 
 
 The NotDeft Mode interface is optimized for editing the filter string. You can append characters to the filter by pressing regular symbol keys without modifiers. Other available commands include =DEL=, =M-DEL=, =C-y=, with familiar Emacs style behavior.
 
-To enter a query, press =TAB= first. To clear a query, you can
+To enter a query, press =TAB= (or =C-c C-o=) to open a prompt for typing in the query. The query is then executed when you press =RET=.
+
+To clear a query, you can
 1. press =TAB= and enter the empty string, or
 2. press =S-TAB=, or
 3. =C-u C-c C-c= also works for clearing the query in addition to any filter string.
@@ -531,11 +533,11 @@ There is also an optional hydra for =notdeft-mode=, which can be made available 
 
 * Org Mode Integration
 
-NotDeft is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, and your Org mode is version 9, you may want to include
-: (require 'notdeft-org9)
+NotDeft is somewhat specialized for managing notes in the Org format. If you do use Org mode for editing your notes, you may want to include
+: (require 'notdeft-org)
 in your Org startup code, to set up support for “deft:” and “notdeft:” links in =org-mode=. A “deft:” link names a note by its non-directory filename, whereas a “notdeft:” link contains a NotDeft Xapian search expression.
 
-Org mode's =org-store-link= command may be used to capture any Xapian search in a NotDeft buffer, to be later inserted with =org-insert-link=. The =notdeft-org9= feature also defines NotDeft-specific =notdeft-kill-ring-save-org-link= and =notdeft-insert-org-link= commands for capturing and inserting “deft:” links. 
+Org mode's =org-store-link= command may be used to capture any Xapian search in a NotDeft buffer, to be later inserted with =org-insert-link=. The =notdeft-org= feature also defines NotDeft-specific =notdeft-kill-ring-save-org-link= and =notdeft-insert-org-link= commands for capturing and inserting “deft:” links. 
 
 ** Using NotDeft and Org Mode as a Desktop Wiki Engine
 
@@ -551,7 +553,7 @@ to move a note file into a different directory does not cause any “deft:” li
 
 To conveniently create a dedicated note for a given topic in an Org-mode buffer, and also link to that note at the same time, highlight the title (and link description) of that topic so that it becomes the active region, and then issue the command
 : M-x notdeft-link-new-file
-For example, if you've highlighted the text “desktop wikis”, the command will offer to create a note of the same title, derive a filename for it based on the title, and replace the region with a “deft:” link to it. (The command is defined by the =notdeft-org9= feature.)
+For example, if you've highlighted the text “desktop wikis”, the command will offer to create a note of the same title, derive a filename for it based on the title, and replace the region with a “deft:” link to it. (The command is defined by the =notdeft-org= feature.)
 
 * Quick Note Capture
 
