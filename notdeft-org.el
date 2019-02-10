@@ -120,8 +120,9 @@ This defines the opening of Org \"notdeft:\" links."
 
 (defun notdeft-org-store-notdeft-link ()
   "Store the current NotDeft search as an Org link.
-This only works in a `notdeft-buffer'.
-Return nil otherwise."
+Use `org-store-link' to invoke this function in a `notdeft-mode'
+buffer. Return nil if not in `notdeft-mode', or if there is no
+current query."
   (when (and (eq major-mode 'notdeft-mode)
 	     notdeft-xapian-query)
     (org-store-link-props

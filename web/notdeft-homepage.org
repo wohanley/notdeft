@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Tue, 21 Aug 2018 20:44:12 +0300
+#+MTIME: Sun, 10 Feb 2019 14:17:57 +0100
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -30,13 +30,13 @@ https://github.com/hasu/notdeft
 
 For the impatient, this section outlines one way of downloading, installing and setting up NotDeft.
 
-Download the source code into some directory with
+Open a terminal, and =cd= into your home directory. Download the source code into some directory with
 : git clone https://github.com/hasu/notdeft.git
 
-Then byte-compile the Emacs Lisp files with the commands
+Then byte-compile select Emacs Lisp files with the commands
 : cd notdeft
 : make
-where =make= is assumed in invoke GNU Make.
+where =make= is assumed to invoke GNU Make.
 
 Then build the Xapian backend by doing
 : cd xapian
@@ -45,21 +45,19 @@ If the =make= command fails, then you will need to ensure that you have the requ
 
 To make NotDeft loadable in Emacs, add the following code to your Emacs startup file (e.g., “~/.emacs”):
 #+BEGIN_SRC emacs-lisp
-  (add-to-list 'load-path "/your/installation/of/notdeft")
-  (setq notdeft-xapian-program
-	"/your/installation/of/notdeft/xapian/notdeft-xapian")
-  (require 'notdeft-autoloads)
+  (add-to-list 'load-path "~/notdeft")
+  (load "notdeft-example")
 #+END_SRC
+The “notdeft-example.el” file is a sample configuration for NotDeft, which sets up NotDeft for use with Org mode based note files, also enabling some optional components of NotDeft, and setting up some keybindings. It may be a useful starting point for a personal configuration.
 
-Create a “~/.deft/” directory, and copy some “.org” files there. To arrange to enable =notdeft-note-mode= minor mode for those files, also create a “~/.deft/.dir-locals.el” file containing
-#+BEGIN_SRC emacs-lisp
-((org-mode . ((mode . org)
-              (mode . notdeft-note))))
-#+END_SRC
+Create a “~/.deft” directory, and copy some “.org” files there.
 
 Launch Emacs with
 : emacs -f notdeft
-and *press =TAB= to enter a search query*, and then type characters to do further filtering of the results. Input =C-c f1= to see other available commands.
+
+*Press =TAB= to enter a search query*, and type characters to do further filtering of the results. Press =RET= to select a file to open. Use =C-c f1= to see other available commands.
+
+To configure =notdeft-note-mode= minor mode for use automatically in note buffers, add the required directory local variable to “~/.deft” by entering the command =f6 a d l v=, and by saving the resulting file.
 
 For other ways to install, configure, and use NotDeft, see the rest of this page.
 
@@ -319,34 +317,52 @@ This way of declaring both a major and minor =mode= appears to work at least in 
 
 ** Enabling NotDeft Note Mode based on a Directory-Local Variable
 
-If enabling =notdeft-note-mode= directly in “.dir-locals.el” does not work or appeal to you, then it's possible to do the same thing indirectly, by using an actual per-directory local variable to indicate if the minor mode should be enabled:
+If enabling =notdeft-note-mode= directly in “.dir-locals.el” does not work or appeal to you, then it's possible to do the same thing indirectly, by using an actual per-directory local variable to indicate if the minor mode should be enabled. That is, you can have the “.dir-locals.el” file contain
+#+BEGIN_SRC emacs-lisp
+((nil . ((notdeft-note-mode-auto-enable . t))))
+#+END_SRC
+
+The variable can be declared as
 #+BEGIN_SRC emacs-lisp
   (defcustom notdeft-note-mode-auto-enable nil
     "Whether to enable NotDeft note mode for a buffer."
     :type 'boolean
     :safe 'booleanp)
   (make-variable-buffer-local 'notdeft-note-mode-auto-enable)
+#+END_SRC
 
+To set that variable for a note directory, we can use the Emacs command
+: M-x add-dir-local-variable RET nil RET notdeft-note-mode-auto-enable RET t RET
+
+Or, if we want to programmatically set the variable for all our =notdeft-directories=, we can use the code
+#+BEGIN_SRC emacs-lisp
+  (dolist (dir notdeft-directories)
+    (let ((default-directory dir))
+      (add-dir-local-variable nil 'notdeft-note-mode-auto-enable t)))
+#+END_SRC
+
+Defining and setting the variable alone does not enable the mode, which we want to do only for specific file types, reflecting our =notdeft-extension= and =notdeft-secondary-extensions= configuration. If we only supported =org-mode= files, we would like to say something like
+#+BEGIN_SRC emacs-lisp
   (add-hook
-   'org-mode-local-vars-hook
+   'org-mode-local-variables-hook
    (lambda ()
      (when notdeft-note-mode-auto-enable
        (notdeft-note-mode 1))))
 #+END_SRC
-This does not work if done in =org-mode-hook=, as directory locals are not set yet, and thus what is needed is a later hook. Borrowing code from “phils” at Stack Overflow, we can get our =org-mode-local-vars-hook= run by defining a new kind of hook as
+We cannot just use =org-mode-hook=, as directory locals are not yet set at the time when the mode is enabled. What is needed is a later hook, which in the above is called =org-mode-local-variables-hook=. 
+
+We also have to get such hooks to run. Borrowing code from “phils” at Stack Overflow, we can get our =org-mode-local-variables-hook= run by defining and registering a new kind of hook as
 #+BEGIN_SRC emacs-lisp
-  (defun run-local-vars-mode-hooks ()
+  (defun run-local-variables-mode-hooks ()
     "Run hooks for `major-mode' with locals set.
   Like `run-mode-hooks', but run later, with any buffer and
   directory local variables set."
     (run-hooks (intern (concat (symbol-name major-mode)
-			       "-local-vars-hook"))))
-  (add-hook 'hack-local-variables-hook 'run-local-vars-mode-hooks)
+			       "-local-variables-hook"))))
+  (add-hook 'hack-local-variables-hook 'run-local-variables-mode-hooks)
 #+END_SRC
 
-To set the =notdeft-note-mode-auto-enable= flag for the entire directory of a note file that you have opened, you may use the Emacs command
-: M-x add-dir-local-variable RET nil RET notdeft-note-mode-auto-enable RET t RET
-Of course, if desired, you could also use =add-file-local-variable= to instruct the mode to be enabled for just the file.
+The above solution gives us a “proper” way to enable the NotDeft note minor mode, and to do it only within directories that have a persistent NotDeft “signature” (in a “.dir-locals.el” file), and only for our chosen note-editing major modes.
 
 * Using NotDeft from Non-NotDeft Modes
 :PROPERTIES:

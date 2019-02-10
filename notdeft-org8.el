@@ -15,7 +15,7 @@
 ;; avoid warning if compiling with a later Org version
 (declare-function org-add-link-type "org" t t)
 
-(declare-function notdeft-org-complete-deft-link "notdeft-org" t t)
+(declare-function notdeft-org-complete-deft-link "notdeft-org")
 
 (org-add-link-type
  "deft"
