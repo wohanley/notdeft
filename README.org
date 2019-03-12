@@ -15,7 +15,7 @@ NotDeft does not aim for the user interaction simplicity of applications like De
 Open a terminal, and =cd= into your home directory. Download the source code into some directory with
 : git clone https://github.com/hasu/notdeft.git
 
-Then byte-compile select Emacs Lisp files with the commands
+Then (optionally) byte-compile select Emacs Lisp files with the commands
 : cd notdeft
 : make
 where =make= is assumed to invoke GNU Make.
@@ -37,7 +37,7 @@ Create a “~/.deft” directory, and copy some “.org” files there.
 Launch Emacs with
 : emacs -f notdeft
 
-*Press =TAB= to enter a search query*, and type characters to do further filtering of the results. Press =RET= to select a file to open. Use =C-c f1= to see other available commands.
+Press =TAB= to enter a search query, and type characters to do further filtering of the results. Press =RET= to select a file to open. Use =C-c f1= to see other available commands.
 
 To configure =notdeft-note-mode= minor mode for use automatically in note buffers, add the required directory local variable to “~/.deft” by entering the command =f6 a d l v=, and by saving the resulting file.
 

@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Sun, 10 Feb 2019 14:17:57 +0100
+#+MTIME: Tue, 12 Mar 2019 21:52:55 +0100
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -33,7 +33,7 @@ For the impatient, this section outlines one way of downloading, installing and 
 Open a terminal, and =cd= into your home directory. Download the source code into some directory with
 : git clone https://github.com/hasu/notdeft.git
 
-Then byte-compile select Emacs Lisp files with the commands
+Then (optionally) byte-compile select Emacs Lisp files with the commands
 : cd notdeft
 : make
 where =make= is assumed to invoke GNU Make.
@@ -82,14 +82,16 @@ NotDeft can be installed either manually, or as a package.
 First download the source code with the command
 : git clone https://github.com/hasu/notdeft.git
 
-Optionally, go to the “notdeft” directory, and byte-compile the Emacs Lisp files with the command
+Optionally, go to the “notdeft” directory, and byte-compile select Emacs Lisp files with the command
 : make
 
 Add the directory containing those files to the Emacs search path by adding
 : (add-to-list 'load-path "/path/to/repo/of/notdeft")
 to your Emacs startup file (e.g., “~/.emacs”). Also add
 : (require 'notdeft-autoloads)
-to the startup file, to cause NotDeft to be loaded when you execute
+to the startup file, to make NotDeft available for loading.
+
+With the above setup work done, NotDeft is available for launching from within Emacs with the command
 : M-x notdeft
 
 While the above commands acquire, build, and set up NotDeft's Emacs Lisp code, they do not yet build or configure the C++-based Xapian backend; see [[*Building the Xapian Backend][Building the Xapian Backend]] and [[*Configuring the Xapian Backend][Configuring the Xapian Backend]].
@@ -194,8 +196,10 @@ The default implementation is suitable for titles with ASCII letters, and you pr
 
 ** Configuring the Xapian Backend
 
-To have NotDeft use the =notdeft-xapian= program you've built, you will have to specify its absolute path in the =notdeft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
+To have NotDeft use the =notdeft-xapian= program you've built, you will have to specify its full path in the =notdeft-xapian-program= variable. You could use =M-x customize-variable= to set it, or simply
 : (setq notdeft-xapian-program "/path/to/notdeft-xapian")
+
+Set the variable to the program's full absolute path, without any shorthands, as no shell expansion is performed on the path name---you may explicitly expand it using Emacs' =expand-file-name= function instead.
 
 If you installed as a package, and built the =notdeft-xapian= executable in that location, then the appropriate setting may be
 #+BEGIN_SRC emacs-lisp
@@ -708,7 +712,7 @@ Try doing the following in a =*NotDeft*= buffer:
 3. Having pressed =TAB=, enter a query string at the prompt, one that should match some notes, and press =RET=.
 4. If that reports "Found no notes", or an unexpected set of notes, then your search index may not be up-to-date, perhaps due to filesystem changes outside of NotDeft. Invoke the command =M-x notdeft-refresh= (i.e., =C-c C-g=) to refresh the search index.
 5. If you suspect that your search index may be corrupt or incompatible in some way, you may invoke the command =M-x notdeft-reindex= (i.e., =C-c R=) to fully rebuild the search index, instead of just refreshing it.
-6. If you see unexpected behavior after setting a search query, ensure that the =notdeft-xapian-program= variable names a working executable. It may be worth trying to run the program directly, and seeing what it says. For example:    
+6. If you see unexpected behavior after setting a search query, ensure that the =notdeft-xapian-program= variable names the complete and fully expanded path of a working executable. It may be worth trying to run the program directly, and seeing what it says. For example:    
    : /path/to/notdeft-xapian search -q 'Emacs OR Vi' ~/.deft
 7. If your search query includes prefix terms such as “title:Emacs”, and you do not get all the expected matches, then make sure that any lines before any =#+TITLE= (or, =#+KEYWORDS=, etc.) are either whitespace only or begin with “#”. While the Org markup language allows in-buffer settings to appear anywhere in a file, NotDeft only scans the beginning of each file for such settings.
 8. If all else fails, a tool such as =xapian-delve= may be used to inspect the contents of the search index to see which terms it actually contains.

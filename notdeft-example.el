@@ -35,7 +35,7 @@ Enable when the buffer local variable
 ;; set for all NotDeft note file types, and no others.
 (add-hook 'org-mode-local-variables-hook 'default-notdeft-hook)
 
-(defun notdeft-add-directory-local-variables ()
+(defun my-notdeft-add-directory-local-variables ()
   "Add `notdeft-note-mode-auto-enable' flag.
 Add it for all `notdeft-directories'."
   (interactive)
@@ -54,17 +54,20 @@ Add it for all `notdeft-directories'."
 (defvar my-notdeft-global-map
   (let ((map (make-sparse-keymap)))
     (define-key map [(a) (d) (l) (v)]
-      'notdeft-add-directory-local-variables)
+      'my-notdeft-add-directory-local-variables)
     (define-key map [(l)] 'notdeft-insert-org-link) ;; l for link
     (define-key map [(n)] 'notdeft-link-new-file) ;; n for new
     (define-key map [(s)] 'org-store-link) ;; s for store
     (set-keymap-parent map 'notdeft-global-map)
-    map))
+    map)
+  "Custom keymap for accessing NotDeft functionality.
+
+\\{my-notdeft-global-map}")
 (fset 'my-notdeft-global-map my-notdeft-global-map)
 (global-set-key [f6] 'my-notdeft-global-map)
 
 (require 'hydra nil t)
-(when (fboundp 'defhydra)
+(when (featurep 'hydra)
   ;; Augment `notdeft-mode' bindings with a hydra.
   (autoload 'notdeft-mode-hydra/body "notdeft-mode-hydra" nil t)
   (eval-after-load 'notdeft
@@ -72,6 +75,6 @@ Add it for all `notdeft-directories'."
       (define-key notdeft-mode-map (kbd "C-c h")
 	'notdeft-mode-hydra/body)))
 
-  ;; Augment the global NotDeft keymap with a Hydra also.
+  ;; Augment the global NotDeft keymap with a hydra also.
   (autoload 'notdeft-global-hydra/body "notdeft-global-hydra" nil t)
   (define-key my-notdeft-global-map [(h)] 'notdeft-global-hydra/body))

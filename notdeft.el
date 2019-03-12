@@ -2118,20 +2118,16 @@ kill ring is not affected."
 
 (defun notdeft-complete ()
   "Complete the current action.
-If there is a widget at the point, press it. Otherwise, if a
-filter is applied and there is at least one match, open the first
-matching file. If there is an active filter but there are no
-matches, quickly create a new file using the filter string as the
+If there is a widget at point, press it. Otherwise, open the
+first listed file. If none are listed, but there is an active
+filter, quickly create a new file using the filter string as the
 title. Otherwise, quickly create a new file."
   (interactive)
   (cond
-   ;; Activate widget
    ((widget-at)
     (widget-button-press (point)))
-   ;; Active filter string with match
-   ((and notdeft-filter-string notdeft-current-files)
+   (notdeft-current-files
     (notdeft-find-file (car notdeft-current-files)))
-   ;; Default
    (t
     (notdeft-new-file 1))))
 
@@ -2198,7 +2194,9 @@ arguments, kill all NotDeft mode buffers."
       (define-key parent-map (kbd "C-c") 'notdeft-global-map)
       (set-keymap-parent map parent-map)
       map))
-  "Keymap for NotDeft mode.")
+  "Keymap for NotDeft mode.
+
+\\{notdeft-mode-map}")
 
 (defun notdeft-reindex ()
   "Recreate all indexes for `notdeft-directories'.
