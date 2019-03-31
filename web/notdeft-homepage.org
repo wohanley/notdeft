@@ -481,13 +481,14 @@ The usual Xapian search [[https://xapian.org/docs/queryparser.html][query syntax
 
 ** Prefixes
 
-   The following prefixes are supported by NotDeft:
-   - =file:= :: Indicates that the search term must appear in the (non-directory, non-extension) filename.
-   - =ext:= :: Indicates the string that must be the filename extension of the file (without the ".").
-   - =title:= :: Indicates that the search term must appear in the title.
-     - Title is specified either as the first non-empty non-comment line, or as the file property (or Org mode “in-buffer setting”) =#+TITLE=. (Multiple =#+TITLE= lines are not supported.)
-   - =tag:= :: Indicates that the search term must appear among the tags given to the document.
-     - The tags for a note are specified either with the standard Org file property =#+FILETAGS=, or the custom file property =#+KEYWORDS=.
+The following prefixes are supported by NotDeft:
+  - =file:= :: Indicates that the search term must appear in the (non-directory, non-extension) filename.
+  - =ext:= :: Indicates the string that must be the filename extension of the file (without the ".").
+  - =path:= :: Indicates that the search term must appear in the non-directory part of the file pathname, where the pathname is relative to the user's home directory.
+  - =title:= :: Indicates that the search term must appear in the title.
+    - Title is specified either as the first non-empty non-comment line, or as the file property (or Org mode “in-buffer setting”) =#+TITLE=. (Multiple =#+TITLE= lines are not supported.)
+  - =tag:= :: Indicates that the search term must appear among the tags given to the document.
+    - The tags for a note are specified either with the standard Org file property =#+FILETAGS=, or the custom file property =#+KEYWORDS=. (Org headline tags do not qualify.)
 
 ** Query Modifiers
 

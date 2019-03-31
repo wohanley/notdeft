@@ -166,6 +166,15 @@ string file_join(const string& x, const string& y) {
   return x + "/" + y;
 }
 
+/** Return the pathname of the parent directory of `s`, or return ""
+    if `s` has no directory components, or if `s` is "/". */
+string file_directory_path(const string& s) {
+  auto found = s.find_last_of('/');
+  if ((found == string::npos) || (found == 0))
+    return "";
+  return string(s.substr(0, found));
+}
+
 /** Return the non-directory component of pathname `s`, or return `s`
     itself if `s` has no directory components. */
 string file_non_directory(const string& s) {
@@ -176,21 +185,23 @@ string file_non_directory(const string& s) {
 }
 
 /** Return the non-directory component of `s`, with its last extension
-    (if any) removed. */
+    (if any) removed. A filename that is "all extension" has no
+    extension. */
 string file_basename(const string& s) {
   auto basename = file_non_directory(s);
-  auto found = basename.find_last_of('.');
-  if (found == string::npos)
+  size_t found = basename.find_last_of('.');
+  if ((found == 0) || (found == string::npos))
     return basename;
   return string(basename.substr(0, found));
 }
 
 /** Return the last filename extension of `s`, with its leading ".",
-    or return "" if `s` has no extension. */
+    or return "" if `s` has no extension. A filename that is "all
+    extension" has no extension. */
 string file_extension(const string& s) {
   auto basename = file_non_directory(s);
-  auto found = basename.find_last_of('.');
-  if (found == string::npos)
+  size_t found = basename.find_last_of('.');
+  if ((found == 0) || (found == string::npos))
     return "";
   return string(basename.substr(found));
 }
@@ -419,17 +430,21 @@ static int doIndex(vector<string> subArgs) {
 	    doc.add_value(DOC_FILENAME, fileNonDir);
 	    indexer.set_document(doc);
 	    {
+	      const string fileDir = file_directory_path(filePath);
+	      indexer.index_text(fileDir, 1, "P");
+	    }
+	    {
 	      const string fileBase = file_basename(fileNonDir);
 	      indexer.index_text(fileBase, 1, "F");
 	    }
 	    {
+	      /* As for Omega, lowercase, without dot, and just "E"
+		 for the no extension case. */ 
 	      string fileExt = file_extension(fileNonDir);
 	      if (!fileExt.empty()) {
-		fileExt = fileExt.substr(1);
+		fileExt = downcase(fileExt.substr(1));
 	      }
-	      fileExt = downcase(fileExt);
 	      //doc.add_boolean_term("E" + fileExt);
-	      //doc.add_boolean_term("ZE" + fileExt);
 	      indexer.index_text_without_positions(fileExt, 0, "E");
 	      //cerr << "ext: '" << fileExt << "'" << endl;
 	    }
@@ -604,8 +619,9 @@ static int doSearch(vector<string> subArgs) {
       enquire.set_sort_by_value(DOC_MTIME, true);
 
     Xapian::QueryParser qp;
-    qp.add_prefix("ext", "E");
+    qp.add_prefix("path", "P");
     qp.add_prefix("file", "F");
+    qp.add_prefix("ext", "E");
     qp.add_prefix("title", "S");
     qp.add_prefix("tag", "K");
     Xapian::Stem stemmer(langArg.getValue());
