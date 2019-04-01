@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Tue, 12 Mar 2019 21:52:55 +0100
+#+MTIME: Sat, 06 Apr 2019 14:10:53 +0200
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -435,45 +435,51 @@ You can have in-buffer settings even if you do not use Org for your notes---the 
 
 ** Example Notes
 
-  No special markup is necessarily required:
-  #+BEGIN_SRC org
-this is a title
+No special markup is necessarily required:
+#+BEGIN_SRC org
+  this is a title
 
-This is body text.
-  #+END_SRC
+  This is body text.
+#+END_SRC
 
-  Comments can be included, and they are ignored when searching:
-  #+BEGIN_SRC org
-# this is a comment
-this is a title
+Comments can be included, and they are ignored when searching:
+#+BEGIN_SRC org
+  # this is a comment
+  this is a title
 
-This is body text.
-  #+END_SRC
+  This is body text.
+#+END_SRC
 
-  Org mode's =#+TITLE= syntax is supported:
-  #+BEGIN_SRC org
-# this is a comment
-#+TITLE: this is a title
-# this is a comment
+Org mode's =#+TITLE= syntax is supported:
+#+BEGIN_SRC org
+  # this is a comment
+  ,#+TITLE: this is a title
+  # this is a comment
 
-This is body text.
-  #+END_SRC
+  This is body text.
+#+END_SRC
 
-  A note can be tagged, e.g., with the tags “some” and “tags”:
-  #+BEGIN_SRC org
-#+TITLE: this is a title
-#+KEYWORDS: some tags
+A note can be tagged, e.g., with the tags “some” and “tags”:
+#+BEGIN_SRC org
+  ,#+TITLE: this is a title
+  ,#+KEYWORDS: some tags
 
-This is body text.
-  #+END_SRC
-  Instead of the =#+KEYWORDS= syntax, we can use the Org standard =#+FILETAGS= syntax:
-  #+BEGIN_SRC org
-#+FILETAGS: :some:tags:
-this is a title
+  This is body text.
+#+END_SRC
+Instead of the =#+KEYWORDS= syntax, we can use the Org standard =#+FILETAGS= syntax:
+#+BEGIN_SRC org
+  ,#+FILETAGS: :some:tags:
+  this is a title
 
-This is body text.
-  #+END_SRC
-  Stemming is used also on tags, and so the query “tag:tag” will find these two notes (assuming English stemming---see =notdeft-xapian-language=).
+  This is body text.
+#+END_SRC
+Stemming is used also on tags, and so the query “tag:tag” will find these two notes (assuming English stemming---see =notdeft-xapian-language=).
+
+Whitespace is considered as a separator for tags, as are the delimiters “:”, “;”, and “,”. This means that the keyword declaration
+#+BEGIN_SRC org
+  ,#+KEYWORDS: helsinki-vantaa places
+#+END_SRC
+is not matched by the search phrase “tag:"vantaa places"”. However, a hyphen still separates words, so that “tag:helsinki” and “tag:vantaa” and “tag:helsinki-vantaa” all match the first tag, which is semantically appropriate at least in this case.
 
 * Search Query Syntax
 
@@ -504,35 +510,37 @@ The following prefixes are supported by NotDeft:
 
 ** Example Search Queries
 
-  It is simple to find all notes containing both the words Emacs and Org:
-  : Emacs AND Org
+It is simple to find all notes containing both the words Emacs and Org:
+: Emacs AND Org
 
-  If you have a lot of notes about Org mode, and few about other Emacs matters, it may be interesting to use
-  : Emacs AND NOT Org
-  which works if the =notdeft-xapian-pure-not= option is set.
+If you have a lot of notes about Org mode, and few about other Emacs matters, it may be interesting to use
+: Emacs AND NOT Org
+which works if the =notdeft-xapian-pure-not= option is set.
 
-  While you're often likely to be more interested in recent (or best maintained) notes, sorting by relevance can be useful particularly when there are multiple search terms: you may be more interested in seeing notes that contain /all/ the terms instead of just /one/ of them. You may use “!rank” to enable relevance-based ranking for a specific query:
-  : !rank Emacs Org Deft
+While you're often likely to be more interested in recent (or best maintained) notes, sorting by relevance can be useful particularly when there are multiple search terms: you may be more interested in seeing notes that contain /all/ the terms instead of just /one/ of them. You may use “!rank” to enable relevance-based ranking for a specific query:
+: !rank Emacs Org Deft
 
-  If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =notdeft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
-  : !all Emacs
-  to list /all/ documents mentioning Emacs.
+If, on the other hand, you use a single, common search term, and have a lot of documents, you may run into your =notdeft-xapian-max-results= limit, and miss out on some documents. In this case, you might use
+: !all Emacs
+to list /all/ documents mentioning Emacs.
 
-  If, unlike in the above case, you just want to see all documents that are about Emacs specifically, you may get more useful results with the query
-  : title:Emacs
-  to only find documents whose title indicates that they concern Emacs. Or, to be more thorough, you might want to make sure you also find notes with the word Emacs in the filename:
-  : title:Emacs OR file:Emacs
+If, unlike in the above case, you just want to see all documents that are about Emacs specifically, you may get more useful results with the query
+: title:Emacs
+to only find documents whose title indicates that they concern Emacs. Or, to be more thorough, you might want to make sure you also find notes with the word Emacs in the filename:
+: title:Emacs OR file:Emacs
 
-  You can combine prefixes and “bracketed subexpressions”:
-  : title:(Ayn AND Rand)
-  which will match both “Ayn Rand” and “Rand, Ayn” in a title.
+You can combine prefixes and “bracketed subexpressions”:
+: title:(Ayn AND Rand)
+which will match both “Ayn Rand” and “Rand, Ayn” in a title.
 
-  Phrase searches are not expected to be useful for tags, and hence the query
-  : tag:"some tags"
-  will not yield any results, regardless of the sets of tags in your notes, or the way they have been declared.
+Phrase searches are allowed for tags, and
+: tag:helsinki-vantaa
+: tag:"helsinki vantaa"
+: tag:(helsinki AND vantaa)
+all match the tag “helsinki-vantaa”.
 
-  Filename extensions can be capitalized to avoid any stemming. For example, to find all “.org” documents that may contain open to-do entries, we might query with
-  : !all ext:Org AND TODO
+Filename extensions can be capitalized to avoid any stemming. For example, to find all “.org” documents that may contain open to-do entries, we might query with
+: !all ext:Org AND TODO
 
 * Command Popup Buffers
 

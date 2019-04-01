@@ -220,6 +220,26 @@ void ls_org(vector<string>& res, const string& root,
   }
 }
 
+static bool keyword_separator_p(const int ch) {
+  return (ch == ':') || (ch == ';') || (ch == ',') || isspace(ch);
+}
+
+void index_keywords(Xapian::TermGenerator& indexer,
+		    const string& s) {
+  auto p = s.c_str();
+  for (;;) {
+    while (*p && keyword_separator_p(*p)) p++;
+    if (!*p) break;
+    auto q = p + 1;
+    while (*q && !keyword_separator_p(*q)) q++;
+    const string kw(p, q);
+    indexer.index_text(kw, 0, "K");
+    indexer.increase_termpos();
+    if (!*q) break;
+    p = q;
+  }
+}
+
 struct Op {
   bool whole_dir;
   string dir;
@@ -470,15 +490,15 @@ static int doIndex(vector<string> subArgs) {
 		  }
 		  break;
 		} else if (string_lc_skip_keyword(line, pos, "+title:")) {
-		  string s = line.substr(pos);
+		  const string s = line.substr(pos);
 		  indexer.index_text(s, 1, "S");
 		  indexer.index_text(s, titleArg.getValue());
 		  indexer.increase_termpos();
 		  titleDone = true;
 		} else if (string_lc_skip_keyword(line, pos, "+keywords:") ||
 			   string_lc_skip_keyword(line, pos, "+filetags:")) {
-		  string s = line.substr(pos);
-		  indexer.index_text_without_positions(s, 0, "K");
+		  const string s = line.substr(pos);
+		  index_keywords(indexer, s);
 		  indexer.index_text(s);
 		  indexer.increase_termpos();
 		} else {
