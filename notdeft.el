@@ -456,26 +456,23 @@ it does not."
 	      (aref cache 4))))
 
 (defun notdeft-dcache--roots (cache)
-  "Return all NotDeft roots in the CACHE."
+  "Return all NotDeft roots in the CACHE.
+The result includes both managed and sparse directory paths in
+their canonical form."
   (aref cache 2))
 
-(defun notdeft-dcache--root-p (file cache)
-  "Whether FILE is a NotDeft root.
-Use information in CACHE to determine that. When FILE is a
-NotDeft root, return the root name in its canonical form, as a
-syntactic directory name. Otherwise return nil."
-  (car (member (notdeft-canonicalize-root file)
-	       (aref cache 2))))
-
 (defun notdeft-dcache--filter-roots (dirs cache)
-  "Filter out NotDeft roots in DIRS.
-Use information in CACHE. That is, drop all DIRS for which
-`notdeft-dcache--root-p' does not hold. Return filtered directory
-paths in canonical form."
-  (delete nil
-	  (mapcar (lambda (dir)
-		    (notdeft-dcache--root-p dir cache))
-		  dirs)))
+  "Filter NotDeft roots in DIRS.
+Use information in CACHE. That is, functionally drop all DIRS
+that are not NotDeft root directories. Return a filtered list
+of directory paths in canonical form."
+  (let ((roots (aref cache 2)))
+    (delete nil
+	    (mapcar (lambda (dir)
+		      (let ((dir (notdeft-canonicalize-root dir)))
+			(when (member dir roots)
+			  dir)))
+		    dirs))))
 
 (defun notdeft-dcache--expand-sparse-root (dir cache)
   "Expand NotDeft root path DIR.
@@ -487,12 +484,11 @@ sparse root."
 
 (defun notdeft-dcache--sparse-file-root (file cache)
   "Resolve sparse FILE root directory.
-Use information in CACHE for that. More specifically, if FILE is
-a sparse NotDeft directory note file, return its NotDeft
-directory in an absolute and canonical form. Otherwise return
-nil."
-  (let ((sdirs-files (aref cache 3))
-	(file (expand-file-name file)))
+More specifically, if FILE is a sparse NotDeft directory note
+file, return its NotDeft directory in an absolute and canonical
+form. Otherwise return nil. Assume FILE to be in an absolute,
+canonical form. Use CACHE information for resolution."
+  (let ((sdirs-files (aref cache 3)))
     (cl-some
      (lambda (sdir-files)
        (when (member file (cdr sdir-files))
@@ -501,16 +497,16 @@ nil."
 
 (defun notdeft-dcache--managed-file-root (file cache)
   "Resolve managed FILE root directory.
-Use information in CACHE for that. More specifically, if FILE is
-a managed NotDeft directory note file, return its NotDeft
-directory in an absolute and canonical form. Otherwise return
-nil. The FILE name extension is not checked against
+Do this syntactically, using information in CACHE. More
+specifically, if FILE names a managed NotDeft directory note
+file, return its NotDeft directory in an absolute and canonical
+form. Otherwise return nil. FILE must be in an absolute,
+canonical form. The FILE name extension is not checked against
 `notdeft-extension' and `notdeft-secondary-extensions', which may
 be done separately on the argument if required. Also, it is not
 checked that FILE is strictly under the returned root, rather
 than the root itself, and that may also be done separately."
-  (let ((mdirs (aref cache 0))
-	(file (expand-file-name file)))
+  (let ((mdirs (aref cache 0)))
     (cl-some
      (lambda (dir)
        (when (string-prefix-p dir file)
@@ -518,39 +514,45 @@ than the root itself, and that may also be done separately."
      mdirs)))
 
 (defun notdeft-dcache--strict-managed-file-root (file cache)
-  "Resolve managed FILE root, strictly.
-Use CACHE information for resolution. That is, return nil if FILE
-names the root, otherwise return the root."
+  "Resolve managed FILE root, strictly, syntactically.
+Return nil if FILE has no root, or if it itself names the root.
+Otherwise return the root. Assume FILE to be in an absolute,
+canonical form. Use CACHE information for resolution."
   (let ((root (notdeft-dcache--managed-file-root file cache)))
-    (when (and root (not (string= root (file-name-as-directory file))))
+    (when (and root
+	       (not (string= root (file-name-as-directory file))))
       root)))
 
 (defun notdeft-dcache--managed-file-subdir (file cache)
   "Resolve managed FILE subdirectory.
-Use CACHE information for resolution. That is, if FILE is
-syntactically in a subdirectory of a NotDeft root, return the
-absolute and canonical path of that subdirectory. Otherwise
-return nil."
+That is, if FILE is syntactically in a subdirectory of a managed
+NotDeft root, return the absolute and canonical directory path of
+that subdirectory. Otherwise return nil. The result need not be
+an immediate subdirectory of a NotDeft root. Assume FILE to be in
+an absolute, canonical form. Use CACHE information for
+resolution."
   (let ((root (notdeft-dcache--strict-managed-file-root file cache)))
     (when root
       (let ((dir (file-name-as-directory
-		  (file-name-directory
-		   (expand-file-name file)))))
+		  (file-name-directory file))))
 	(unless (string= root dir)
 	  dir)))))
 
 (defun notdeft-dcache--file-root (file cache)
-  "Resolve note FILE root.
-Use CACHE information for resolution.
-Return the NotDeft root directory, or nil."
+  "Resolve note FILE root, syntactically.
+Return the NotDeft root directory, or nil if FILE is neither
+under a managed or sparse NotDeft directory. Assume FILE to be in
+an absolute, canonical form. Use CACHE information for
+resolution."
   (or (notdeft-dcache--strict-managed-file-root file cache)
       (notdeft-dcache--sparse-file-root file cache)))
 
 (defun notdeft-dcache--sparse-file-by-basename (name cache)
   "Resolve sparse note file by NAME.
-Use CACHE information for resolution. Return the file's absolute,
-canonical pathname. If multiple such files exist, return one of
-them. If none exist, return nil."
+Return the file's absolute, canonical pathname. If multiple such
+files exist, return one of them. If none exist, return nil. NAME
+is assumed to be without leading directory components, but with
+any extension. Use CACHE information for resolution."
   (let ((sdirs-files (aref cache 3)))
     (cl-some
      (lambda (sdir-files)
@@ -678,19 +680,22 @@ Return the matching member of the list, or nil."
   "Return the NotDeft directory for FILE, or nil.
 FILE may not itself be one of the NotDeft roots.
 Compare syntactically, without consulting the file system."
-  (notdeft-dcache--file-root file (notdeft-dcache)))
+  (notdeft-dcache--file-root
+   (expand-file-name file) (notdeft-dcache)))
 
 (defun notdeft-file-sparse-p (file)
   "Whether FILE is in a sparse NotDeft directory."
-  (notdeft-dcache--sparse-file-root file (notdeft-dcache)))
+  (notdeft-dcache--sparse-file-root
+   (expand-file-name file) (notdeft-dcache)))
 
 (defun notdeft-file-in-subdir-p (file)
   "Whether FILE is in a NotDeft sub-directory.
-I.e., whether FILE names a file or directory that is not an
-immediate child of one of the `notdeft-directories'. FILE need
-not actually exist for this predicate to hold, nor does the
-containing NotDeft directory."
-  (notdeft-dcache--managed-file-subdir file (notdeft-dcache)))
+More accurately, whether FILE syntactically names a file or
+directory that is not an immediate child of one of the
+`notdeft-directories'. FILE need not actually exist for this
+predicate to hold, nor does the containing NotDeft directory."
+  (notdeft-dcache--managed-file-subdir
+   (expand-file-name file) (notdeft-dcache)))
 
 (defun notdeft-file-readable-p (file)
   "Whether FILE is a readable non-directory."
@@ -1209,7 +1214,7 @@ this function."
 (defun notdeft-compute-changes (what things)
   "Compute optimized file system change lists.
 Optimize the WHAT and THINGS change specification to some extent,
-and return a result of the form (cons DIRS FILES), or nil if no
+and return a result of the form (DIRS . FILES), or nil if no
 changes remain."
   (let (dirs files) ;; filtered to NotDeft ones
     (cl-case what
@@ -1649,10 +1654,6 @@ Return the buffer, or nil."
       (when (eq major-mode 'notdeft-mode)
 	buffer))))
 
-(defun notdeft-get-buffer ()
-  "Return a NotDeft buffer, or nil."
-  (cl-some #'notdeft-buffer-p (buffer-list)))
-
 (defun notdeft-buffer-list ()
   "Return a list of NotDeft buffers.
 That is, behave like `buffer-list', but exclude all non-NotDeft
@@ -1705,8 +1706,8 @@ Otherwise return nil."
 ;;;###autoload
 (defun notdeft-delete-file (prefix)
   "Delete the selected or current NotDeft note file.
-Prompt before proceeding.
-With a PREFIX argument, also kill the deleted file's buffer, if any."
+Prompt before proceeding. With a PREFIX argument, also kill the
+deleted file's buffer, if any."
   (interactive "P")
   (let ((old-file (notdeft-current-filename)))
     (cond
@@ -1728,13 +1729,13 @@ With a PREFIX argument, also kill the deleted file's buffer, if any."
 	    (let ((buf (get-file-buffer old-file)))
 	      (when buf
 		(kill-buffer buf))))
-	  (message "Deleted %s" old-file-nd)))))))
+	  (message "Deleted %S" old-file-nd)))))))
 
 ;;;###autoload
-(defun notdeft-move-into-subdir (pfx)
+(defun notdeft-move-into-subdir (prefix)
   "Move the file at point into a subdirectory of the same name.
 To nest more than one level (which is allowed but perhaps atypical),
-invoke with a prefix argument PFX."
+invoke with a PREFIX argument to force the issue."
   (interactive "P")
   (let ((old-file (notdeft-current-filename)))
     (cond
@@ -1742,8 +1743,9 @@ invoke with a prefix argument PFX."
       (message (notdeft-no-selected-file-message)))
      ((notdeft-file-sparse-p old-file)
       (message "Cannot move fixed-path file"))
-     ((and (not pfx) (notdeft-file-in-subdir-p old-file))
-      (message "Already in a NotDeft sub-directory"))
+     ((and (not prefix) (notdeft-file-in-subdir-p old-file))
+      (message "Already in a NotDeft sub-directory (%S)"
+	       (file-name-directory old-file)))
      (t
       (let ((new-file
 	     (concat
@@ -1752,7 +1754,7 @@ invoke with a prefix argument PFX."
 	      (file-name-nondirectory old-file))))
 	(notdeft-rename-file+buffer old-file new-file nil t)
 	(notdeft-changed/fs 'files (list old-file new-file))
-	(message "Renamed as `%s`" new-file))))))
+	(message "Renamed as %S" new-file))))))
 
 ;;;###autoload
 (defun notdeft-change-file-extension ()
@@ -1774,7 +1776,7 @@ Operate on the selected or current NotDeft note file."
 	  (let ((new-file (concat (file-name-sans-extension old-file)
 				  "." new-ext)))
 	    (notdeft-rename-file+buffer/changed old-file new-file)
-	    (message "Renamed as `%s`" new-file))))))))
+	    (message "Renamed as %S" new-file))))))))
 
 ;;;###autoload
 (defun notdeft-rename-file (pfx)
@@ -1799,7 +1801,7 @@ if called with a prefix argument PFX."
 		       (and title (notdeft-title-to-notename title))))
 		   old-name))
 	     (new-file (notdeft-sub-rename-file old-file old-name def-name)))
-	(message "Renamed as `%s`" new-file))))))
+	(message "Renamed as %S" new-file))))))
 
 (defun notdeft-sub-rename-file (old-file old-name def-name)
   "Rename OLD-FILE with the OLD-NAME NotDeft name.
@@ -1829,11 +1831,11 @@ OLD-FILE and NEW-FILE are as for `notdeft-rename-file+buffer'."
 
 (defun notdeft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
   "Like `rename-file', rename OLD-FILE as NEW-FILE.
-Additionally, rename any OLD-FILE buffer as NEW-FILE,
-and also set its visited file as NEW-FILE.
-EXIST-OK is as the third argument of `rename-file'.
-If MKDIR is non-nil, also create any missing target directory,
-but do not create its parent directories."
+Additionally, rename any OLD-FILE buffer as NEW-FILE, and also
+set its visited file as NEW-FILE. EXIST-OK is as the third
+argument of `rename-file'. If MKDIR is non-nil, also create any
+missing target directory, but do not create its parent
+directories."
   (when mkdir
     (ignore-errors
       (make-directory (file-name-directory new-file) nil)))
@@ -1844,21 +1846,54 @@ but do not create its parent directories."
         (set-buffer buf)
         (set-visited-file-name new-file nil t)))))
 
-(defun notdeft-sub-move-file (old-file new-dir &optional whole-dir mkdir)
-  "Move the OLD-FILE note file into the NEW-DIR directory.
+(defun notdeft-rename-directory+buffer (old-dir new-dir &optional mkdir)
+  "Like `rename-file', rename OLD-DIR as NEW-DIR.
+If MKDIR is non-nil, also create any missing target directory,
+but do not create its parent directories. Error out if NEW-DIR
+already exists. After renaming the directory, also rename any
+affected NotDeft note buffers, and also set their visited files
+to be the ones under NEW-DIR."
+  (when mkdir
+    (ignore-errors
+      (make-directory (file-name-directory new-dir) nil)))
+  (rename-file old-dir new-dir)
+  (let ((old-dir (file-name-as-directory old-dir)))
+    (dolist (buf (notdeft-note-buffer-list))
+      (let ((old-file (buffer-file-name buf)))
+	(when (and old-file (string-prefix-p old-dir old-file))
+	  (let ((new-file (concat
+			   (file-name-as-directory new-dir)
+			   (substring old-file (length old-dir)))))
+	    (save-current-buffer
+	      (set-buffer buf)
+	      (set-visited-file-name new-file nil t))))))))
+
+(defun notdeft-sub-move-file (old-file dest-dir &optional whole-dir mkdir)
+  "Move the OLD-FILE note file into the DEST-DIR directory.
 If OLD-FILE has its own subdirectory, then move the entire
-subdirectory, but only if WHOLE-DIR is true. With non-nil
+subdirectory, but only if WHOLE-DIR is true. If WHOLE-DIR is the
+symbol `ask', then ask for confirmation first. With a non-nil
 argument MKDIR, create any missing target directory \(one level
-only). Return the pathname of the file/directory that was moved."
-  (when (notdeft-file-in-subdir-p old-file)
-    (unless whole-dir
-      (error "Attempt to move file in a sub-directory: %s" old-file))
-    (setq old-file (directory-file-name
-		    (file-name-directory old-file))))
-  (let ((new-file (concat (file-name-as-directory new-dir)
-			  (file-name-nondirectory old-file))))
-    (notdeft-rename-file+buffer old-file new-file nil mkdir)
-    old-file))
+only). Return the old pathname of the file or directory that was
+moved, or nil if nothing was moved."
+  (let ((moving-sub (notdeft-file-in-subdir-p old-file)))
+    (if (not moving-sub)
+	(let ((new-file (concat (file-name-as-directory dest-dir)
+				(file-name-nondirectory old-file))))
+	  (notdeft-rename-file+buffer old-file new-file nil mkdir)
+	  old-file)
+      (unless whole-dir
+	(error "Attempt to move file in a sub-directory: %S" old-file))
+      (let ((old-dir (directory-file-name
+		      (file-name-directory old-file))))
+	(unless (and (eq whole-dir 'ask)
+		     (not (y-or-n-p
+			   (concat "Move entire directory "
+				   (file-name-nondirectory old-dir) "? "))))
+	  (let ((new-dir (concat (file-name-as-directory dest-dir)
+				 (file-name-nondirectory old-dir))))
+	    (notdeft-rename-directory+buffer old-dir new-dir mkdir)
+	    old-dir))))))
 
 (defvar notdeft-previous-target nil
   "Previous file move target NotDeft directory.
@@ -1866,15 +1901,15 @@ Local to a NotDeft mode buffer. Set to nil if `notdeft-move-file'
 has not been used to move a file.")
 
 ;;;###autoload
-(defun notdeft-move-file (pfx)
+(defun notdeft-move-file (&optional pfx)
   "Move the selected file under selected NotDeft root.
 Query the user for a target from among `notdeft-directories'.
 Offer to create the chosen NotDeft root directory if it does not
 already exist. If the file resides in a subdirectory, move the
-entire subdirectory, but only if given a prefix argument PFX.
-Moving an external \(non-Deft) file under a NotDeft root is also
-allowed."
-  (interactive "P")
+entire subdirectory, but require confirmation as a non-nil PFX
+argument, or by asking. Moving an external \(non-Deft) file under
+a NotDeft root is also allowed."
+  (interactive "p")
   (let ((old-file (notdeft-current-filename)))
     (cond
      ((not old-file)
@@ -1896,38 +1931,53 @@ allowed."
 		 choices
 		 (lambda (dir)
 		   (notdeft-file-equal-p dir notdeft-previous-target)))))
+	     (chosen-root
+	      (notdeft-select-directory-from choices nil t t))
 	     (new-root
-	      (file-name-as-directory
-	       (notdeft-select-directory-from choices nil t t))))
-	(when (or (not old-root)
-		  (not (file-equal-p new-root old-root)))
+	      (notdeft-canonicalize-root chosen-root)))
+	(if (and old-root
+		 (file-exists-p new-root)
+		 (file-equal-p old-root new-root))
+	    (message "File %S already under root %S" old-file chosen-root)
 	  (notdeft-ensure-root new-root)
-	  (let ((moved-file (notdeft-sub-move-file old-file new-root pfx)))
-	    (setq notdeft-previous-target new-root)
-	    (notdeft-changed/fs
-	     'dirs (delete nil (list old-root new-root)))
-	    (message "Moved `%s` under root `%s`" old-file new-root))))))))
+	  (let ((moved-file
+		 (notdeft-sub-move-file old-file new-root
+					(and pfx (if (> pfx 1) t 'ask)))))
+	    (if (not moved-file)
+		(message "Did not move %S" old-file)
+	      (setq notdeft-previous-target new-root)
+	      (notdeft-changed/fs
+	       'dirs (delete nil (list old-root new-root)))
+	      (message "Moved %S under root %S" moved-file chosen-root)))))))))
 
 ;;;###autoload
-(defun notdeft-archive-file (pfx)
+(defun notdeft-archive-file (&optional pfx)
   "Archive the selected NotDeft note file.
 Archive it under `notdeft-archive-directory', under its NotDeft
 root directory. If it resides in a subdirectory, archive the
-entire directory, but only with a prefix argument PFX."
-  (interactive "P")
+entire directory, but require confirmation as a non-nil PFX
+argument, or by asking the user when called interactively."
+  (interactive "p")
   (let ((old-file (notdeft-current-filename)))
     (cond
      ((not old-file)
       (message (notdeft-no-selected-file-message)))
      ((notdeft-file-sparse-p old-file)
-      (message "Cannot move fixed-path file"))
+      (message "Cannot archive fixed-path file"))
      (t
-      (let ((new-dir
-	     (concat (file-name-directory old-file)
-		     (file-name-as-directory notdeft-archive-directory))))
-	(let ((moved-file (notdeft-sub-move-file old-file new-dir pfx t)))
-	  (notdeft-changed/fs 'files (list old-file))
-	  (message "Archived `%s` into `%s`" old-file new-dir)))))))
+      (let ((old-root (notdeft-dir-of-file old-file)))
+	(if (not old-root)
+	    (message "Cannot archive non-Deft file")
+	  (let* ((new-dir
+		  (concat old-root
+			  (file-name-as-directory notdeft-archive-directory)))
+		 (moved-file
+		  (notdeft-sub-move-file old-file new-dir
+					 (and pfx (if (> pfx 1) t 'ask)) t)))
+	    (if (not moved-file)
+		(message "Did not archive %S" old-file)
+	      (notdeft-changed/fs 'dirs (list old-root))
+	      (message "Archived %S into %S" moved-file new-dir)))))))))
 
 (eval-when-compile
   (defvar deft-directory))
@@ -1944,9 +1994,10 @@ implementation makes assumptions about Deft."
       (if (not old-file)
 	  (message (notdeft-no-selected-file-message))
 	(let ((old-dir (notdeft-dcache--strict-managed-file-root
-			old-file (notdeft-dcache))))
+			(expand-file-name old-file)
+			(notdeft-dcache))))
 	  (if (not old-dir)
-	      (message "Not a NotDeft file: %s" old-file)
+	      (message "Not a NotDeft file: %S" old-file)
 	    (let ((re-init
 		   (and (boundp 'deft-buffer)
 			(get-buffer deft-buffer)
@@ -2290,7 +2341,7 @@ Always return FILE."
     (let ((root (notdeft-dir-of-file file)))
       (when (and root (not (file-directory-p root)))
 	(when (file-exists-p root)
-	  (error "Data \"directory\" is a non-directory: %s" root))
+	  (error "Data \"directory\" is a non-directory: %S" root))
 	(when (y-or-n-p (concat "Create directory " root "? "))
 	  (make-directory root t)))))
   file)
@@ -2314,7 +2365,7 @@ two prefix arguments means RESET."
       (notdeft-create-buffer t))
     (notdeft-global-do-pending)
     (when (and notdeft-directory (or (not buf) reset))
-      (message "Using NotDeft data directory '%s'" notdeft-directory))))
+      (message "Using NotDeft data directory %S" notdeft-directory))))
 
 (defun notdeft-drop-nth-cons (n lst)
   "Make list element at position N the first one of LST.
@@ -2384,7 +2435,7 @@ Query for a directory with `notdeft-select-directory'."
   (interactive)
   (let ((dir (notdeft-select-directory)))
     (setq notdeft-directory (file-name-as-directory dir))
-    (message "Data directory set to '%s'" notdeft-directory)))
+    (message "Data directory set to %S" notdeft-directory)))
 
 ;;;###autoload
 (defun notdeft-open-file-by-basename (filename)
@@ -2393,7 +2444,7 @@ FILENAME is a non-directory filename, with an extension
 \(it is not necessarily unique)."
   (let ((fn (notdeft-file-by-basename filename)))
     (if (not fn)
-	(message "No NotDeft note '%s'" filename)
+	(message "No NotDeft note %S" filename)
       (notdeft-find-file fn))))
 
 ;;;###autoload

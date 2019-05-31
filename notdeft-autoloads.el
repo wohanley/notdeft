@@ -5,8 +5,7 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23420 19379 779726
-;;;;;;  776000))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23796 6841 389000 0))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -137,17 +136,17 @@ Return the filename of the created file.
 
 (autoload 'notdeft-delete-file "notdeft" "\
 Delete the selected or current NotDeft note file.
-Prompt before proceeding.
-With a PREFIX argument, also kill the deleted file's buffer, if any.
+Prompt before proceeding. With a PREFIX argument, also kill the
+deleted file's buffer, if any.
 
 \(fn PREFIX)" t nil)
 
 (autoload 'notdeft-move-into-subdir "notdeft" "\
 Move the file at point into a subdirectory of the same name.
 To nest more than one level (which is allowed but perhaps atypical),
-invoke with a prefix argument PFX.
+invoke with a PREFIX argument to force the issue.
 
-\(fn PFX)" t nil)
+\(fn PREFIX)" t nil)
 
 (autoload 'notdeft-change-file-extension "notdeft" "\
 Change the filename extension of a NotDeft note.
@@ -167,19 +166,20 @@ Move the selected file under selected NotDeft root.
 Query the user for a target from among `notdeft-directories'.
 Offer to create the chosen NotDeft root directory if it does not
 already exist. If the file resides in a subdirectory, move the
-entire subdirectory, but only if given a prefix argument PFX.
-Moving an external (non-Deft) file under a NotDeft root is also
-allowed.
+entire subdirectory, but require confirmation as a non-nil PFX
+argument, or by asking. Moving an external (non-Deft) file under
+a NotDeft root is also allowed.
 
-\(fn PFX)" t nil)
+\(fn &optional PFX)" t nil)
 
 (autoload 'notdeft-archive-file "notdeft" "\
 Archive the selected NotDeft note file.
 Archive it under `notdeft-archive-directory', under its NotDeft
 root directory. If it resides in a subdirectory, archive the
-entire directory, but only with a prefix argument PFX.
+entire directory, but require confirmation as a non-nil PFX
+argument, or by asking the user when called interactively.
 
-\(fn PFX)" t nil)
+\(fn &optional PFX)" t nil)
 
 (autoload 'notdeft-open-in-deft "notdeft" "\
 Open the selected note's Deft directory in Deft.
