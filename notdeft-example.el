@@ -55,8 +55,8 @@ Add it for all `notdeft-directories'."
   (let ((map (make-sparse-keymap)))
     (define-key map [(a) (d) (l) (v)]
       'my-notdeft-add-directory-local-variables)
-    (define-key map [(l)] 'notdeft-insert-org-link) ;; l for link
-    (define-key map [(n)] 'notdeft-link-new-file) ;; n for new
+    (define-key map [(l)] 'notdeft-org-link-existing-note) ;; l for link
+    (define-key map [(n)] 'notdeft-org-link-new-file) ;; n for new
     (define-key map [(s)] 'org-store-link) ;; s for store
     (set-keymap-parent map 'notdeft-global-map)
     map)

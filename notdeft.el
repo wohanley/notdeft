@@ -1535,7 +1535,7 @@ choice list of directories. If NOTENAME is of the form (format
 FMT), then use `notdeft-generate-filename' to generate a filename
 with the format string FMT. If NOTENAME is of the form (title
 STR), then use `notdeft-title-to-notename' to generate a notename
-from STR."
+from STR. Return the filename of the created file."
   (let* ((dir (pcase dir
 	       ((pred stringp)
 		dir)

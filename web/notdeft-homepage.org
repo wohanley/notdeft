@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Sat, 06 Apr 2019 14:10:53 +0200
+#+MTIME: Sun, 23 Jun 2019 20:13:51 +0200
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -566,7 +566,7 @@ NotDeft is somewhat specialized for managing notes in the Org format. If you do 
 : (require 'notdeft-org)
 in your Org startup code, to set up support for “deft:” and “notdeft:” links in =org-mode=. A “deft:” link names a note by its non-directory filename, whereas a “notdeft:” link contains a NotDeft Xapian search expression.
 
-Org mode's =org-store-link= command may be used to capture any Xapian search in a NotDeft buffer, to be later inserted with =org-insert-link=. The =notdeft-org= feature also defines NotDeft-specific =notdeft-kill-ring-save-org-link= and =notdeft-insert-org-link= commands for capturing and inserting “deft:” links. 
+Org mode's =org-store-link= command may be used to capture any Xapian search in a NotDeft buffer, to be later inserted with =org-insert-link=. The =notdeft-org= feature also defines NotDeft-specific =notdeft-org-link-existing-note= and =notdeft-org-link-new-file= commands for inserting “deft:” links, either to an existing note or a new one. 
 
 ** Using NotDeft and Org Mode as a Desktop Wiki Engine
 
