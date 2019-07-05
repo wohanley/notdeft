@@ -1801,12 +1801,14 @@ if called with a prefix argument PFX."
 		       (and title (notdeft-title-to-notename title))))
 		   old-name))
 	     (new-file (notdeft-sub-rename-file old-file old-name def-name)))
-	(message "Renamed as %S" new-file))))))
+	(when new-file
+	  (message "Renamed as %S" new-file)))))))
 
 (defun notdeft-sub-rename-file (old-file old-name def-name)
   "Rename OLD-FILE with the OLD-NAME NotDeft name.
-Query for a new name, defaulting to DEF-NAME.
-Use OLD-FILE's filename extension in the new name."
+Query for a new name, defaulting to DEF-NAME. Use OLD-FILE's
+filename extension in the new name. If the file was renamed,
+return the new filename, and otherwise return nil."
   (let* ((history (list def-name))
 	 (new-name
 	  (read-string
@@ -1819,15 +1821,10 @@ Use OLD-FILE's filename extension in the new name."
 	  (notdeft-make-filename new-name
 	    (file-name-extension old-file)
 	    (file-name-directory old-file))))
-    (notdeft-rename-file+buffer/changed old-file new-file)
-    new-file))
-
-(defun notdeft-rename-file+buffer/changed (old-file new-file)
-  "Rename file and buffer with change notification.
-OLD-FILE and NEW-FILE are as for `notdeft-rename-file+buffer'."
   (unless (string= old-file new-file)
     (notdeft-rename-file+buffer old-file new-file)
-    (notdeft-changed/fs 'files (list old-file new-file))))
+    (notdeft-changed/fs 'files (list old-file new-file))
+    new-file)))
 
 (defun notdeft-rename-file+buffer (old-file new-file &optional exist-ok mkdir)
   "Like `rename-file', rename OLD-FILE as NEW-FILE.
