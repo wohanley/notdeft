@@ -57,6 +57,18 @@ string, or nil if no non-whitespace description was provided."
 NAME should be a non-directory file name with extension."
   (org-make-link-string (concat "deft:" name) desc))
 
+(defun notdeft-org-store-deft-link ()
+  "Store a \"deft:\" link for the current note.
+Like `org-store-link', store the link into `org-stored-links'."
+  (interactive)
+  (let ((old-file (notdeft-current-filename t t)))
+    (when old-file
+      (let* ((name (file-name-nondirectory old-file))
+	     (link (concat "deft:" name))
+	     (desc (notdeft-title-from-file-content old-file)))
+	(push (list link desc) org-stored-links)
+	(message "Stored: %s" (or desc link))))))
+
 (defun notdeft-org-link-existing-note (notename &optional desc region)
   "Create a \"deft:\" link to an existing note.
 Link to a note by NOTENAME, inserting a link description if DESC

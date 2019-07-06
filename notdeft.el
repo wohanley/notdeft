@@ -1680,27 +1680,36 @@ the result into `notdeft-directory'."
 	(setq notdeft-directory (file-name-as-directory dir))
 	dir)))
 
-(defun notdeft-current-filename ()
+(defun notdeft-current-filename (&optional note-only barf)
   "Return the current NotDeft note filename.
 In a `notdeft-mode' buffer, return the currently selected file's
-name. Otherwise return the current buffer's file name, if any.
-Otherwise return nil."
-  (if (notdeft-buffer-p)
-      (widget-get (widget-at) :tag)
-    (buffer-file-name)))
-
-(defun notdeft-no-selected-file-message ()
-  "Return a \"file not selected\" message."
-  (if (notdeft-buffer-p)
-      "No file selected"
-    "Not in a file buffer"))
+name. Otherwise return the current buffer's file name, if any,
+requiring it to name a NotDeft note if NOTE-ONLY is non-nil.
+Otherwise return nil. Additionally, if the result is nil, print a
+message if BARF is non-nil."
+  (cond
+   ((notdeft-buffer-p)
+    (let ((file (widget-get (widget-at) :tag)))
+      (unless file
+	(message "No NotDeft note selected"))
+      file))
+   (note-only
+    (let ((file (and (notdeft-note-buffer-p)
+		     (buffer-file-name))))
+      (unless file
+	(message "Not in a NotDeft note buffer"))
+      file))
+   (t
+    (let ((file (buffer-file-name)))
+      (unless file
+	(message "Not in a file buffer"))
+      file))))
 
 (defun notdeft-select-file ()
   "Open the selected file, if any."
   (interactive)
-  (let ((old-file (notdeft-current-filename)))
-    (if (not old-file)
-	(message (notdeft-no-selected-file-message))
+  (let ((old-file (notdeft-current-filename nil t)))
+    (when old-file
       (notdeft-find-file old-file))))
 
 ;;;###autoload
@@ -1709,10 +1718,10 @@ Otherwise return nil."
 Prompt before proceeding. With a PREFIX argument, also kill the
 deleted file's buffer, if any."
   (interactive "P")
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename nil t)))
     (cond
      ((not old-file)
-      (message (notdeft-no-selected-file-message)))
+      nil)
      ((notdeft-file-sparse-p old-file)
       (message "Cannot delete fixed-path file"))
      (t
@@ -1737,10 +1746,10 @@ deleted file's buffer, if any."
 To nest more than one level (which is allowed but perhaps atypical),
 invoke with a PREFIX argument to force the issue."
   (interactive "P")
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename t t)))
     (cond
      ((not old-file)
-      (message (notdeft-no-selected-file-message)))
+      nil)
      ((notdeft-file-sparse-p old-file)
       (message "Cannot move fixed-path file"))
      ((and (not prefix) (notdeft-file-in-subdir-p old-file))
@@ -1761,21 +1770,22 @@ invoke with a PREFIX argument to force the issue."
   "Change the filename extension of a NotDeft note.
 Operate on the selected or current NotDeft note file."
   (interactive)
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename nil t)))
     (cond
+     ((not old-file)
+      nil)
      ((not notdeft-secondary-extensions)
       (message "Only one configured extension"))
-     ((not old-file)
-      (message (notdeft-no-selected-file-message)))
      ((notdeft-file-sparse-p old-file)
       (message "Cannot rename fixed-path file"))
      (t
       (let* ((old-ext (file-name-extension old-file))
 	     (new-ext (notdeft-read-extension old-ext)))
 	(unless (string= old-ext new-ext)
-	  (let ((new-file (concat (file-name-sans-extension old-file)
-				  "." new-ext)))
-	    (notdeft-rename-file+buffer/changed old-file new-file)
+	  (let ((new-file
+		 (concat (file-name-sans-extension old-file) "." new-ext)))
+	    (notdeft-rename-file+buffer old-file new-file)
+	    (notdeft-changed/fs 'files (list old-file new-file))
 	    (message "Renamed as %S" new-file))))))))
 
 ;;;###autoload
@@ -1784,10 +1794,10 @@ Operate on the selected or current NotDeft note file."
 Defaults to a content-derived file name (rather than the old one)
 if called with a prefix argument PFX."
   (interactive "P")
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename nil t)))
     (cond
      ((not old-file)
-      (message (notdeft-no-selected-file-message)))
+      nil)
      ((notdeft-file-sparse-p old-file)
       (message "Cannot rename fixed-path file"))
      (t
@@ -1907,10 +1917,10 @@ entire subdirectory, but require confirmation as a non-nil PFX
 argument, or by asking. Moving an external \(non-Deft) file under
 a NotDeft root is also allowed."
   (interactive "p")
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename nil t)))
     (cond
      ((not old-file)
-      (message (notdeft-no-selected-file-message)))
+      nil)
      ((notdeft-file-sparse-p old-file)
       (message "Cannot move fixed-path file"))
      (t
@@ -1955,10 +1965,10 @@ root directory. If it resides in a subdirectory, archive the
 entire directory, but require confirmation as a non-nil PFX
 argument, or by asking the user when called interactively."
   (interactive "p")
-  (let ((old-file (notdeft-current-filename)))
+  (let ((old-file (notdeft-current-filename t t)))
     (cond
      ((not old-file)
-      (message (notdeft-no-selected-file-message)))
+      nil)
      ((notdeft-file-sparse-p old-file)
       (message "Cannot archive fixed-path file"))
      (t
@@ -1987,9 +1997,8 @@ Do that only when the command `deft' is available. This
 implementation makes assumptions about Deft."
   (interactive)
   (when (fboundp 'deft)
-    (let ((old-file (notdeft-current-filename)))
-      (if (not old-file)
-	  (message (notdeft-no-selected-file-message))
+    (let ((old-file (notdeft-current-filename t t)))
+      (when old-file
 	(let ((old-dir (notdeft-dcache--strict-managed-file-root
 			(expand-file-name old-file)
 			(notdeft-dcache))))
@@ -2008,9 +2017,8 @@ implementation makes assumptions about Deft."
 (defun notdeft-show-file-directory ()
   "Show NotDeft directory of the selected note."
   (interactive)
-  (let ((old-file (notdeft-current-filename)))
-    (if (not old-file)
-	(message (notdeft-no-selected-file-message))
+  (let ((old-file (notdeft-current-filename t t)))
+    (when old-file
       (let ((dir (notdeft-dir-of-file old-file)))
 	(if (not dir)
 	    (message "Not on a NotDeft file")

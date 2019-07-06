@@ -58,6 +58,7 @@ Add it for all `notdeft-directories'."
     (define-key map [(l)] 'notdeft-org-link-existing-note) ;; l for link
     (define-key map [(n)] 'notdeft-org-link-new-file) ;; n for new
     (define-key map [(s)] 'org-store-link) ;; s for store
+    (define-key map [(S)] 'notdeft-org-store-deft-link) ;; s for store
     (set-keymap-parent map 'notdeft-global-map)
     map)
   "Custom keymap for accessing NotDeft functionality.
@@ -65,6 +66,12 @@ Add it for all `notdeft-directories'."
 \\{my-notdeft-global-map}")
 (fset 'my-notdeft-global-map my-notdeft-global-map)
 (global-set-key [f6] 'my-notdeft-global-map)
+
+;; Add Org-specific bindings that are also usable in a NotDeft buffer.
+(eval-after-load 'notdeft
+  (lambda ()
+    (define-key notdeft-mode-map (kbd "C-c S")
+      'notdeft-org-store-deft-link)))
 
 (require 'hydra nil t)
 (when (featurep 'hydra)
