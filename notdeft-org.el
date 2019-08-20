@@ -19,11 +19,20 @@
 (require 'org)
 (require 'notdeft-autoloads)
 
-(defun notdeft-org-open-deft-link (name)
-  "Visit the NotDeft note with the specified base file NAME.
-The argument is a non-directory filename.
-This defines the opening of Org \"deft:\" links."
-  (notdeft-open-file-by-basename name))
+(defun notdeft-org-open-deft-link (link)
+  "Visit the NotDeft note specified by LINK.
+The argument is a non-directory filename, possibly followed by
+search options (see the fourth argument of `org-open-file'). This
+function defines the opening of Org \"deft:\" links."
+  (let* ((search (when (string-match "::\\(.+\\)\\'" link)
+		   (match-string 1 link)))
+	 (name (if search
+		   (substring link 0 (match-beginning 0))
+		 link))
+	 (path (notdeft-file-by-basename name)))
+    (if (not path)
+	(message "No NotDeft note %S" name)
+      (org-open-file path t nil search))))
 
 (defun notdeft-org-read-deft-link-name ()
   "Query for a \"deft:\" link name.

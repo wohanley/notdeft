@@ -5,7 +5,8 @@
 
 ;;; Code:
 
-;;;### (autoloads nil "notdeft" "notdeft.el" (23796 6841 389000 0))
+;;;### (autoloads nil "notdeft" "notdeft.el" (23899 58500 605519
+;;;;;;  1000))
 ;;; Generated autoloads from notdeft.el
 
 (let ((loads (get 'notdeft 'custom-loads))) (if (member '"notdeft" loads) nil (put 'notdeft 'custom-loads (cons '"notdeft" loads))))
@@ -99,7 +100,7 @@ choice list of directories. If NOTENAME is of the form (format
 FMT), then use `notdeft-generate-filename' to generate a filename
 with the format string FMT. If NOTENAME is of the form (title
 STR), then use `notdeft-title-to-notename' to generate a notename
-from STR.
+from STR. Return the filename of the created file.
 
 \(fn &optional DIR NOTENAME EXT DATA)" nil nil)
 
@@ -245,8 +246,9 @@ Query for a directory with `notdeft-select-directory'.
 
 (autoload 'notdeft-open-file-by-basename "notdeft" "\
 Open a NotDeft file named FILENAME.
-FILENAME is a non-directory filename, with an extension
-\(it is not necessarily unique).
+FILENAME is a non-directory filename, with an extension (it is
+not necessarily unique). Returns the resolved path, or nil if
+none was found.
 
 \(fn FILENAME)" nil nil)
 

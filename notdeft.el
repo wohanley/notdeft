@@ -2445,12 +2445,14 @@ Query for a directory with `notdeft-select-directory'."
 ;;;###autoload
 (defun notdeft-open-file-by-basename (filename)
   "Open a NotDeft file named FILENAME.
-FILENAME is a non-directory filename, with an extension
-\(it is not necessarily unique)."
+FILENAME is a non-directory filename, with an extension \(it is
+not necessarily unique). Returns the resolved path, or nil if
+none was found."
   (let ((fn (notdeft-file-by-basename filename)))
     (if (not fn)
 	(message "No NotDeft note %S" filename)
-      (notdeft-find-file fn))))
+      (notdeft-find-file fn))
+    fn))
 
 ;;;###autoload
 (defun notdeft-open-query (&optional query rank negate)
