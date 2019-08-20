@@ -190,6 +190,26 @@ current query."
      :type "notdeft"
      :link (concat "notdeft:" notdeft-xapian-query))))
 
+(defun notdeft-org-open-heading-as-query (&optional rank negate)
+  "Query for current Org heading text.
+The RANK and NEGATE arguments are as for `notdeft-open-query'.
+When called interactively, any prefix arguments are also
+interpreted in the `notdeft-open-query' sense."
+  (interactive
+   (let ((prefix current-prefix-arg))
+     (list (equal prefix 1)
+	   (equal prefix '(4)))))
+  (if (not (org-at-heading-p))
+      (message "Not at a heading")
+    (let ((title (nth 4 (org-heading-components))))
+      (when title
+	(let ((title (notdeft-chomp title)))
+	  (unless (string-equal title "")
+	    (let* ((title (downcase title))
+		   (title (replace-regexp-in-string "\"" "" title))
+		   (title (concat "\"" title "\"")))
+	      (notdeft-open-query title rank negate))))))))
+
 (let ((ver (when (string-match "^[0-9]+" org-version)
 	     (string-to-number (match-string 0 org-version)))))
   (load (if (and ver (< ver 9)) "notdeft-org8" "notdeft-org9")))
