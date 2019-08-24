@@ -41,21 +41,6 @@ bool string_starts_with(const string& s, const string& pfx) {
   return s.compare(0, pfx.length(), pfx) == 0;
 }
 
-/* Compares 'pfx' against lowercased 's'. Works for ASCII characters
- * at least. */
-bool string_lc_starts_with(const string& s, const string& pfx) {
-  /* This implementation is roughly as suggested by Timmmm on Stack
-   * Overflow. */
-  const size_t len = pfx.length();
-  if (s.length() < len)
-    return false;
-  for (unsigned int i = 0; i < len; ++i) {
-    if (tolower(s[i]) != pfx[i])
-      return false;
-  }
-  return true;
-}
-
 /** Returns the length of any note header marker such as "#" or "%#"
  * or "@;#". If the string is not a header string, returns 0. */
 size_t string_header_marker_len(const string& s) {
@@ -220,23 +205,26 @@ void ls_org(vector<string>& res, const string& root,
   }
 }
 
-static bool keyword_separator_p(const int ch) {
-  return (ch == ':') || (ch == ';') || (ch == ',') || isspace(ch);
+static bool uni_keyword_separator_p(const unsigned ch) {
+  return (ch == ':') || (ch == ';') || (ch == ',')
+    || Xapian::Unicode::is_whitespace(ch);
 }
 
-void index_keywords(Xapian::TermGenerator& indexer,
-		    const string& s) {
-  auto p = s.c_str();
+/** Expects an UTF-8 encoded line as the argument `s`,
+    but reverts to octets for the remaining input if
+    non-UTF-8 encoding is detected. */
+static void uni_index_keywords(Xapian::TermGenerator& indexer,
+			       const string& s) {
+  Xapian::Utf8Iterator q(s);
   for (;;) {
-    while (*p && keyword_separator_p(*p)) p++;
-    if (!*p) break;
-    auto q = p + 1;
-    while (*q && !keyword_separator_p(*q)) q++;
-    const string kw(p, q);
+    while (q.left() && uni_keyword_separator_p(*q)) q++;
+    if (!q.left()) break;
+    const char* const p = q.raw();
+    while (q.left() && !uni_keyword_separator_p(*q)) q++;
+    const string kw(p, q.raw());
     indexer.index_text(kw, 0, "K");
     indexer.increase_termpos();
-    if (!*q) break;
-    p = q;
+    if (!q.left()) break;
   }
 }
 
@@ -498,7 +486,7 @@ static int doIndex(vector<string> subArgs) {
 		} else if (string_lc_skip_keyword(line, pos, "+keywords:") ||
 			   string_lc_skip_keyword(line, pos, "+filetags:")) {
 		  const string s = line.substr(pos);
-		  index_keywords(indexer, s);
+		  uni_index_keywords(indexer, s);
 		  indexer.index_text(s);
 		  indexer.increase_termpos();
 		} else {
@@ -676,40 +664,6 @@ static int doSearch(vector<string> subArgs) {
   return 0;
 }
 
-static int doDump(vector<string> subArgs) {
-  TCLAP::CmdLine cmdLine("Specify the directories for dumping.");
-  TCLAP::UnlabeledMultiArg<string>
-    dirsArg("dir...", "specifies directories to search", false, "directory");
-  cmdLine.add(dirsArg);
-  cmdLine.parse(subArgs);
-  try {
-    auto dirs = dirsArg.getValue();
-    for (auto dir : dirs) {
-      string dbFile(file_join(dir, ".notdeft-db"));
-      if (access(dbFile.c_str(), R_OK) != -1) {
-	cout << "database " << dbFile << endl;
-	Xapian::Database db(dbFile);
-	
-	for (auto it = db.metadata_keys_begin();
-	     it != db.metadata_keys_end(); it++) {
-	  auto mkey = *it;
-	  auto mvalue = db.get_metadata(mkey);
-	  cout << "metadata " << mkey << " = " << mvalue << endl;
-	}
-
-	for (auto it = db.allterms_begin();
-	     it != db.allterms_end(); it++) {
-	  cout << "term " << *it << endl;
-	}
-      }
-    }
-  } catch (const Xapian::Error &e) {
-    cerr << e.get_description() << endl;
-    return 1;
-  }
-  return 0;
-}
-
 int main(int argc, const char* argv[])
 {
   if (argc <= 1) {
@@ -727,8 +681,6 @@ int main(int argc, const char* argv[])
     return doIndex(args);
   } else if (cmd == "search") {
     return doSearch(args);
-  } else if (cmd == "dump") {
-    return doDump(args);
   } else if (cmd == "-h" || cmd == "--help") {
     usage();
     return 0;
