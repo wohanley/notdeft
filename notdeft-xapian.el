@@ -15,9 +15,9 @@
 
 (defcustom notdeft-xapian-program nil
   "Xapian backend's executable program path.
-Specified as an absolute path.
-When nil, incremental search is limited to files
-in the current `notdeft-directory' (if any)."
+Specified as an absolute path. When nil, the Xapian backend is
+disabled, and filtering does not concern search results, but all
+notes in `notdeft-directories'."
   :type '(choice (const :tag "None" nil)
 		 (file :tag "Path"))
   :safe 'string-or-null-p
