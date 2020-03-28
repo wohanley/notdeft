@@ -720,8 +720,9 @@ Return nil on failure."
 ;;;###autoload
 (defun notdeft-chomp (str)
   "Trim leading and trailing whitespace from STR."
-  (replace-regexp-in-string "\\(\\`[[:space:]\n]*\\|[[:space:]\n]*\\'\\)"
-			    "" str))
+  (replace-regexp-in-string
+   "\\(\\`[[:space:]\n\r]+\\|[[:space:]\n\r]+\\'\\)"
+   "" str))
 
 ;;;###autoload
 (defun notdeft-chomp-nullify (str &optional trim)
@@ -861,7 +862,7 @@ title in CONTENTS."
 
 (defun notdeft-condense-whitespace (str)
   "Condense whitespace in STR into a single space."
-  (replace-regexp-in-string "[[:space:]\n]+" " " str))
+  (replace-regexp-in-string "[[:space:]\n\r]+" " " str))
 
 (defun notdeft-parse-buffer ()
   "Parse the file contents in the current buffer.
