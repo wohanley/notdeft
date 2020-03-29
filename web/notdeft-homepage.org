@@ -3,7 +3,7 @@
 #+KEYWORDS: website terohasu
 #+VIEW_ACTION: export_hugo_page
 #+CTIME: Wed, 23 Aug 2017 01:00:08 +0300
-#+MTIME: Tue, 20 Aug 2019 16:37:36 +0300
+#+MTIME: Tue, 05 May 2020 21:27:53 +0200
 #+PAGE_META: title = "NotDeft"
 #+PAGE_META: url = "/notdeft/"
 #+PAGE_META: aliases = ["/deft/"]
@@ -127,6 +127,19 @@ While installing the package does unpack the Xapian backend source code, it does
 To enable Xapian search queries, you should build the =notdeft-xapian= C++ program in the “xapian” directory. On some systems simply going into that directory and typing
 : make
 should do the trick, provided that the required libraries have been installed. On other systems you will need to find the right C++ compiler incantation for building the program.
+
+*** Building the Backend Automatically
+
+Once a working compiler invocation command has been found, and the necessary C++ libraries have been installed, it is possible to have the C++ program built automatically using the included =notdeft-xapian-make= Emacs Lisp feature. To use it, set the variable =notdeft-xapian-program-compile-command-format= with the appropriate format string for the compilation command, and arrange for the =notdeft-xapian-make= feature to get loaded.
+
+For example, we might try to build =notdeft-xapian= on NotDeft startup whenever the program executable does not exist, or is out of date with respect to its source code:
+#+BEGIN_SRC emacs-lisp
+  (setq notdeft-xapian-program-compile-command-format "g++ -o %s %s -std=c++11 -Wall `pkg-config --cflags --libs tclap` `xapian-config --cxxflags --libs`")
+  (autoload 'notdeft-xapian-make-program-when-uncurrent "notdeft-xapian-make")
+  (add-hook 'notdeft-load-hook 'notdeft-xapian-make-program-when-uncurrent)
+#+END_SRC
+
+The =notdeft-xapian-make-program-when-uncurrent= function automatically sets the =notdeft-xapian-program= to the path of a successfully built program, so that it no longer needs to be specified otherwise.
 
 * NotDeft Configuration
 
