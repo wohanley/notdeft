@@ -2081,7 +2081,8 @@ Treat `notdeft-filter-string' as a list of whitespace-separated
 strings and require all elements to match."
   (let ((contents (notdeft-file-contents file))
 	(filter-lst
-	 (mapcar 'regexp-quote (split-string notdeft-filter-string))))
+	 (mapcar 'regexp-quote (split-string notdeft-filter-string)))
+	(case-fold-search t))
     (when (cl-every (lambda (filter)
 		      (string-match-p filter contents))
 		    filter-lst)
