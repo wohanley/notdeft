@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <string.h>
 #include <sys/stat.h>
 #include <tclap/CmdLine.h>
@@ -286,6 +287,22 @@ static void uni_index_keywords(Xapian::TermGenerator& indexer,
   }
 }
 
+/** Takes a string containing org-mode links and returns a string containing
+    just the titles of those links, e.g.
+    "[[file:20200101_xapian.org][Xapian]] [[file:20200101_notdeft.org][NotDeft]]" -> {"Xapian" "NotDeft"} */
+static vector<string> extract_link_titles(const string& links) {
+  regex link_regex("\\[\\[([^\\[\\]]+)\\]\\[([^\\[\\]]+)\\]\\]", regex_constants::ECMAScript);
+  string search = links;
+	smatch smtch;
+  vector<string> titles = {};
+	while (regex_search(search, smtch, link_regex)) {
+    titles.push_back(smtch[2]);
+    search = smtch.suffix().str();
+  }
+
+  return titles;
+}
+
 struct Op {
   bool whole_dir;
   string dir;
@@ -525,6 +542,7 @@ static int doIndex(vector<string> subArgs) {
 	      //cerr << "ext: '" << fileExt << "'" << endl;
 	    }
 	    {
+        string tags_keyword = "- tags ::";
 	      string line;
 	      bool titleDone = false;
 	      size_t pos = 0;
@@ -540,6 +558,17 @@ static int doIndex(vector<string> subArgs) {
 		    if (!org_drawer_line_p(line))
 		      break; // unclosed drawer
 		  }
+		} else if (line.find(tags_keyword) != string::npos) {
+      // index tags. tags list is not technically an org header, so this happens
+      // outside of the check for that
+      const string tags_text = line.substr(tags_keyword.length());
+      vector<string> tags_titles = extract_link_titles(tags_text);
+      for (string title : tags_titles) {
+        indexer.index_text(title, 0, "K");
+        indexer.increase_termpos();
+      }
+      indexer.index_text(tags_text);
+      indexer.increase_termpos();
 		} else if (!line_skip_marker(line, pos)) {
 		  // non Org header mode
 		  if (!titleDone) {
