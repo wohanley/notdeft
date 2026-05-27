@@ -340,9 +340,9 @@ static void uni_index_keywords(Xapian::Document& doc,
     just the titles of those links, e.g.
     "[[file:20200101_xapian.org][Xapian]] [[file:20200101_notdeft.org][NotDeft]]" -> {"Xapian" "NotDeft"} */
 static vector<string> extract_link_titles(const string& links) {
-  regex link_regex("\\[\\[([^\\[\\]]+)\\]\\[([^\\[\\]]+)\\]\\]", regex_constants::ECMAScript);
+  std::regex link_regex("\\[\\[([^\\[\\]]+)\\]\\[([^\\[\\]]+)\\]\\]", std::regex_constants::ECMAScript);
   string search = links;
-  smatch smtch;
+  std::smatch smtch;
   vector<string> titles = {};
   while (regex_search(search, smtch, link_regex)) {
     titles.push_back(smtch[2]);
@@ -598,7 +598,7 @@ static void doIndex(vector<string> subArgs) {
       // outside of the check for that
       const string tags_text = line.substr(tags_keyword.length());
       vector<string> tags_titles = extract_link_titles(tags_text);
-      regex space_re(" ");
+      std::regex space_re(" ");
       for (string title : tags_titles) {
         // Spaces are considered tag separators, so remove them
         indexer.index_text(regex_replace(title, space_re, "_"), 0, "K");
